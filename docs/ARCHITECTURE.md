@@ -7,13 +7,15 @@ The short reference for agents and reviewers. The longer narrative, with diagram
 
 ```
 packages/core        Money, domain enums and labels, the HTTP contract types, RFC 9457 shape
-packages/contracts   port interfaces: CreditBureau, KycAml, CoreBanking, Disbursement,
-                     ESignature, SimulationControl (each with its Nest token)
+packages/contracts   port interfaces: CreditBureau, KycAml, FraudCheck, CoreBanking,
+                     Disbursement, ESignature, SimulationControl (each with its Nest token)
 packages/base        the lending domain — one Nest module (lending.module.ts):
                        auth/        test sign-in (scrypt), SessionGuard (global, fails closed)
                        cases/       capture, decision, review, approval, signing, booking,
                                     activity, views; lifecycle.ts is the transition table
                        simulation/  admin switches for the simulators
+                       automation/  per-product automation mode and kill switch
+                                    (maker-checker between two administrators)
                        compliance/  AML escalations, screening again before disbursement
                        audit/       the hash-chained audit log (every case event, sign-ins,
                                     simulation changes) and its verification
@@ -29,6 +31,12 @@ Direction (dependency-cruiser): `core ← contracts ← base ← apps/api`; `cor
 apps/backoffice`. The backoffice never imports `base`, `contracts` or `apps/api`. From
 `core` it uses types plus the label maps (`ROLE_LABEL`, reason labels). The decision engine
 imports nothing with I/O.
+
+Product automation (`automation/`) is a second aggregate that stays in `LendingModule`: the
+decision reads the product's mode under a share lock inside the case's own transaction
+(`DecisionService.decideAndRecord` → `AutomationService.forDecision`), so both need the same
+transaction runner, and a separate module would only re-export it. Split it out if automation
+grows its own consumers (rules editor, model registry).
 
 ### Why compliance and audit stay in the lending module
 

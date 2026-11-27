@@ -43,7 +43,11 @@ describe("F1-1 — Maria Santos is auto-approved", () => {
   });
 
   it("passes every rule and prices at the grade A rate", () => {
-    expect(result.ruleResults.every((r) => r.result === "PASS")).toBe(true);
+    // Her income has no separate declaration, so the RS-PL-2 income-mismatch rule has nothing
+    // to compare and is not evaluated; every other rule passes.
+    expect(
+      result.ruleResults.filter((r) => r.result !== "PASS").map((r) => [r.id, r.result]),
+    ).toEqual([["RF-INCOME", "NOT_EVALUATED"]]);
     expect(result.monthlyRate).toBe("0.0120");
     expect(result.debtToIncome).toBe("0.1154");
   });
@@ -212,8 +216,35 @@ describe("score bands and referral triggers (D-4, D-5, D-6, D-7)", () => {
         existingDefault: true,
       },
     };
+    const mismatch: DecisionInputs = {
+      ...MARIA_F1,
+      applicant: { ...MARIA_F1.applicant, declaredMonthlyIncome: "95000.00" },
+    };
+    const related: DecisionInputs = {
+      ...MARIA_F1,
+      applicant: { ...MARIA_F1.applicant, relatedParty: true },
+    };
+    const fraudFlag: DecisionInputs = {
+      ...MARIA_F1,
+      fraud: { status: "OK", flagged: true, signals: ["VELOCITY"] },
+    };
+    const fraudDown: DecisionInputs = {
+      ...MARIA_F1,
+      fraud: { status: "UNAVAILABLE", reason: "outage" },
+    };
+    const automation = (mode: "OFF" | "SHADOW" | "LIVE", killSwitch = false): DecisionInputs => ({
+      ...MARIA_F1,
+      automation: { mode, killSwitch },
+    });
     const seen = new Set<string>();
     for (const p of [
+      mismatch,
+      related,
+      fraudFlag,
+      fraudDown,
+      automation("OFF"),
+      automation("SHADOW"),
+      automation("LIVE", true),
       NINA_NO_HIT,
       tooOld,
       defaulted,
@@ -294,7 +325,7 @@ describe("reproducibility (D-8, ADR 0022)", () => {
           )
         : v;
     const reordered = reverseKeys(MARIA_F1) as DecisionInputs;
-    expect(Object.keys(reordered)[0]).toBe("bureau");
+    expect(Object.keys(reordered)[0]).toBe(Object.keys(MARIA_F1).at(-1));
     expect(hashInputs(reordered)).toBe(hashInputs(MARIA_F1));
     expect(hashInputs({ ...MARIA_F1, asOfDate: "2026-11-29" })).not.toBe(hashInputs(MARIA_F1));
     expect(canonicalJson({ b: 1, a: [2, { d: 3, c: 4 }] })).toBe('{"a":[2,{"c":4,"d":3}],"b":1}');

@@ -36,6 +36,7 @@
  *   - require-label-in-name              : an aria-label must contain the visible label
  *   - no-server-env-in-client            : the backoffice's config/env only from route handlers and middleware
  *   - problem-code-through-constant      : the backoffice compares err.code / blockedBy with ProblemCode, never a literal
+ *   - no-reason-code-literal             : screens never branch on reason codes ("R10"); use the API's view
  */
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
 import noArbitraryTextSize from "./rules/no-arbitrary-text-size.js";
@@ -51,6 +52,7 @@ import noMoneyParseInController from "./rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "./rules/no-process-env-outside-config.js";
 import noProviderImportOutsideAdapters from "./rules/no-provider-import-outside-adapters.js";
 import noRawColour from "./rules/no-raw-colour.js";
+import noReasonCodeLiteral from "./rules/no-reason-code-literal.js";
 import noRingColorWithoutWidth from "./rules/no-ring-color-without-width.js";
 import noServerEnvInClient from "./rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "./rules/no-status-only-assertion.js";
@@ -93,5 +95,6 @@ export default {
     "require-label-in-name": requireLabelInName,
     "no-server-env-in-client": noServerEnvInClient,
     "problem-code-through-constant": problemCodeThroughConstant,
+    "no-reason-code-literal": noReasonCodeLiteral,
   },
 };

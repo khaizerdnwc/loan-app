@@ -43,6 +43,9 @@ const decision = {
   inputs: {},
   inputsHash: "h",
   createdAt: "2026-11-28T01:00:00.000Z",
+  automationMode: "LIVE",
+  killSwitch: false,
+  engineOutcome: "REFER",
 } as unknown as DecisionRecordView;
 
 describe("amounts in server-written sentences (U-2)", () => {

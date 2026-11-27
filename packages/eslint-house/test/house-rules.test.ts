@@ -15,6 +15,7 @@ import noMoneyParseInController from "../src/rules/no-money-parse-in-controller.
 import noProcessEnvOutsideConfig from "../src/rules/no-process-env-outside-config.js";
 import noProviderImportOutsideAdapters from "../src/rules/no-provider-import-outside-adapters.js";
 import noRawColour from "../src/rules/no-raw-colour.js";
+import noReasonCodeLiteral from "../src/rules/no-reason-code-literal.js";
 import noServerEnvInClient from "../src/rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "../src/rules/no-status-only-assertion.js";
 import noTodoComment from "../src/rules/no-todo-comment.js";
@@ -684,6 +685,62 @@ ruleTester.run("problem-code-through-constant", asRule(problemCodeThroughConstan
     {
       filename: at("packages/ui/src/components/thing.tsx"),
       code: "const y = e['code'] === 'COMPLIANCE_HOLD';",
+      errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+// Screens never re-derive case state from reason codes: R17 (fraud check unavailable) was
+// missed by the next-action text that tested for R10 and R13 (lesson ui-ux-20261128-no-reason-code-mirror).
+const PANEL = at("apps/backoffice/src/components/case/actions-panel.tsx");
+ruleTester.run("no-reason-code-literal", asRule(noReasonCodeLiteral), {
+  valid: [
+    // Asking the API's view instead.
+    {
+      filename: PANEL,
+      code: `const offered = c.allowedActions.some((a) => a.action === "REDECIDE" && a.enabled);`,
+    },
+    // Displaying the codes the API sent.
+    { filename: PANEL, code: `const L = ({ r }) => <span className="font-mono">{r.code}</span>;` },
+    // An object key that happens to look like a code.
+    { filename: PANEL, code: `const legend = { R10: "x" };` },
+    // Not a code: "R1" (one digit) and "RS-PL-1".
+    { filename: PANEL, code: `const v = x === "R1" || y === "RS-PL-1";` },
+    // Outside the path gate: the engine owns its codes.
+    {
+      filename: at("packages/base/src/decisioning/engine/reason-codes.ts"),
+      code: `export const R = { code: "R10" };`,
+    },
+    // Tests may name codes.
+    { filename: at("apps/backoffice/test/actions-panel.test.tsx"), code: `expect(x).toBe("R10");` },
+  ],
+  invalid: [
+    // The shape that bit us.
+    {
+      filename: PANEL,
+      code: `const out = c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13");`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // Hoisted into a constant list.
+    {
+      filename: PANEL,
+      code: `const OUTAGE = new Set(["R10", "R13"]);`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // A switch over codes.
+    {
+      filename: PANEL,
+      code: `switch (r.code) { case "R17": break; }`,
+      errors: [{ messageId: "literal" }],
+    },
+    // A template literal spelling.
+    { filename: PANEL, code: "const c = `R13`;", errors: [{ messageId: "literal" }] },
+    // A computed key is a lookup, not a label.
+    { filename: PANEL, code: `const m = { ["R10"]: 1 };`, errors: [{ messageId: "literal" }] },
+    // In packages/ui too.
+    {
+      filename: at("packages/ui/src/components/pill.tsx"),
+      code: `const outage = codes.includes("R10");`,
       errors: [{ messageId: "literal" }],
     },
   ],

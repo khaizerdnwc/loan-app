@@ -60,6 +60,8 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     bookingChecklist: null,
     indicativeRepayment: null,
     allowedActions: [],
+    decidedDuringOutage: false,
+    recommendationTypes: [],
     ...patch,
   };
 }
@@ -329,6 +331,7 @@ describe("ActionsPanel shows only what the API allows", () => {
         { action: "REDECIDE", enabled: true },
         { action: "RECOMMEND", enabled: true },
       ],
+      decidedDuringOutage: true,
     });
     const decided = detail({
       status: "OFFER",
@@ -808,6 +811,61 @@ describe("ActionsPanel shows only what the API allows", () => {
         expect(fetchMock).not.toHaveBeenCalled();
       },
     );
+  });
+
+  it("on a knockout referred while automation was not live, the recommend dialog offers only a decline, with the API's reason", async () => {
+    const reason =
+      "A policy knockout failed for this application (see the policy rules), so it can only be recommended for decline.";
+    vi.stubGlobal("fetch", vi.fn());
+    renderPanel(
+      detail({
+        status: "REVIEW",
+        recommendation: null,
+        allowedActions: [{ action: "RECOMMEND", enabled: true }],
+        recommendationTypes: [
+          {
+            type: "APPROVE",
+            enabled: false,
+            blockedBy: "INVALID_STATE_TRANSITION",
+            detail: reason,
+          },
+          {
+            type: "COUNTER_OFFER",
+            enabled: false,
+            blockedBy: "INVALID_STATE_TRANSITION",
+            detail: reason,
+          },
+          { type: "DECLINE", enabled: true },
+        ],
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Recommend a decision" }));
+    const select = screen.getByLabelText("Recommendation") as HTMLSelectElement;
+    expect(select.value).toBe("DECLINE");
+    expect(screen.getByRole("option", { name: "Approve as requested" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "Counter-offer" })).toBeDisabled();
+    expect(screen.getByRole("option", { name: "Decline" })).toBeEnabled();
+    expect(screen.getByRole("dialog")).toHaveTextContent(reason);
+    expect(screen.getByText("Recommendation: decline.")).toBeInTheDocument();
+  });
+
+  it("with no refusal from the API, the recommend dialog starts on approval and enables every type", async () => {
+    vi.stubGlobal("fetch", vi.fn());
+    renderPanel(
+      detail({
+        status: "REVIEW",
+        recommendation: null,
+        allowedActions: [{ action: "RECOMMEND", enabled: true }],
+        recommendationTypes: [
+          { type: "APPROVE", enabled: true },
+          { type: "COUNTER_OFFER", enabled: true },
+          { type: "DECLINE", enabled: true },
+        ],
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Recommend a decision" }));
+    expect((screen.getByLabelText("Recommendation") as HTMLSelectElement).value).toBe("APPROVE");
+    expect(screen.getByRole("option", { name: "Approve as requested" })).toBeEnabled();
   });
 
   it("a decline by the approver needs a reason code", async () => {

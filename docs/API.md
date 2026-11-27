@@ -54,7 +54,7 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | POST | /cases/:id/booking/approve | supervisor, not the maker (PENDING_CHECKER or BOOKING_FAILED) | → `CaseDetail` (books and disburses). Both APPROVE_BOOKING and RETRY_BOOKING use this endpoint, with the same idempotency key (ADR 0020 R5); the maker stays excluded on retry. |
 | GET | /cases/:id/loan-account | roles that can see the case | `LoanAccountView` |
 | GET | /simulation/services | any signed-in | `SimulationServiceView[]` |
-| PUT | /simulation/services/:service | admin | `SetSimulationModeRequest` → `SimulationServiceView` (the change is written to the audit log) |
+| PUT | /simulation/services/:service | admin | `SetSimulationModeRequest` → `SimulationServiceView` (services include `FRAUD`, the simulated fraud check; the change is written to the audit log) |
 | GET | /compliance/escalations?view=open\|all | compliance | `AmlEscalationView[]` (default open: not closed), newest first |
 | GET | /compliance/escalations/:id | compliance | `AmlEscalationView` |
 | POST | /compliance/escalations/:id/acknowledge | compliance (Open) | → `AmlEscalationView`; 409 if already acknowledged or closed |
@@ -62,6 +62,12 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /audit/events?actor=&action=&from=&to=&case=&before=&limit= | compliance, admin | `AuditLogPage` (newest first; `from`/`to` are business dates, inclusive; `before` pages by seq; limit 1–200, default 50). `case` is Compliance only (403 for admin). On a case entry the admin gets `caseHidden: true` and `caseId`, `caseReference`, `summary` and `details` null |
 | GET | /audit/actions | compliance, admin | `string[]`: the action codes in the log |
 | GET | /audit/verify | compliance, admin | `AuditChainVerification`: recomputes every hash from entry 1 |
+| GET | /automation | admin, compliance | `AutomationView[]`: each product's mode (OFF, SHADOW, LIVE), kill switch, the change waiting for approval, and the caller's `allowedActions` (none for compliance) |
+| GET | /automation/:product/history | admin, compliance | `AutomationEventView[]`, newest first: who changed what, when, before and after |
+| POST | /automation/:product/changes | admin | `AutomationChangeRequest` (`{ kind: "SET_MODE", mode, reason }` or `{ kind: "KILL_SWITCH_OFF", reason }`) → `AutomationView[]` (201). Drafts a change for a different administrator; nothing changes yet. 409 `CONFLICT` while another change waits; 400 for the current mode or a blank reason; 409 to turn off a switch that is off |
+| POST | /automation/:product/changes/:id/approve | admin, not the drafter | `{ note? }` → `AutomationView[]`. The change takes effect. 403 `MAKER_CHECKER_VIOLATION` for the drafter; 409 if no longer pending |
+| POST | /automation/:product/changes/:id/reject | admin | `{ note? }` → `AutomationView[]`. Closes it unchanged: REJECTED, or WITHDRAWN when the drafter closes it |
+| POST | /automation/:product/kill-switch | admin | `{ reason }` → `AutomationView[]`. Turns the kill switch on at once (409 if already on); turning it off is a change request |
 
 Who sees what (`GET /cases`, `GET /cases/:id`):
 
@@ -71,13 +77,29 @@ Who sees what (`GET /cases`, `GET /cases/:id`):
 | Approver | APPROVAL, and every case they approved, declined or returned |
 | Loan operations / supervisor | OFFER, BOOKING, PENDING_CHECKER, BOOKING_FAILED, DISBURSED |
 | Compliance | every case, read-only |
-| Admin | none (simulation controls only) |
+| Admin | none (simulation and automation controls only) |
 
 A withdrawn or expired case stays visible to the loan officer and compliance (and to an
 approver who acted on it); it leaves the operations stages.
 
 A case outside the caller's view answers 404, not 403, so its existence is not revealed.
 An approver's `view=all` shows every APPROVAL case, including ones above their authority.
+
+Decision records (`DecisionRecordView`) carry `automationMode`, `killSwitch` and `engineOutcome`:
+the mode the decision ran under and what the engine decided before the mode applied
+(`outcome` is what the case did). Records made before automation modes read `LIVE`, `false` and
+their own outcome. `POST /decisions/:id/reproduce` also checks the mode columns against the
+stored snapshot.
+
+`CaseDetail.decidedDuringOutage` says the current decision was made while the bureau,
+screening or fraud check could not answer (the officer re-decides it).
+`CaseDetail.recommendationTypes`, when RECOMMEND is offered, lists APPROVE, COUNTER_OFFER and
+DECLINE each enabled or disabled with the API's reason: after an outage or a failed knockout
+only DECLINE is accepted, and `POST /cases/:id/recommendation` refuses the others (409).
+
+Automation `allowedActions` are REQUEST_MODE_CHANGE, KILL_SWITCH_ON, REQUEST_KILL_SWITCH_OFF,
+APPROVE_CHANGE (disabled with MAKER_CHECKER_VIOLATION for the drafter), REJECT_CHANGE (another
+administrator) and WITHDRAW_CHANGE (the drafter); reject and withdraw both post to `/reject`.
 
 `CaseDetail.allowedActions` lists each action the caller's role could take in the case's
 current status, with `enabled: false`, `blockedBy` and `detail` when a server-side rule

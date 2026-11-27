@@ -20,6 +20,7 @@ import {
 } from "@loan/core";
 import {
   Button,
+  Callout,
   Card,
   ConfirmDialog,
   Field,
@@ -96,7 +97,7 @@ const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
     variant: "primary",
     title: (c) => `Decide ${c.applicant.fullName}'s application again?`,
     describe: (c) =>
-      `${formatPeso(c.requestedAmount)} over ${c.requestedTenorMonths} months. It was referred because a provider could not answer. The simulated bureau and screening are asked again and the decision rules run on their answers: it may be approved at once, referred to you again, or declined. The earlier decision record is kept.`,
+      `${formatPeso(c.requestedAmount)} over ${c.requestedTenorMonths} months. It was referred because a provider could not answer. The simulated bureau, screening and fraud check are asked again and the decision rules run on their answers: it may be approved at once, referred to you again, or declined. The earlier decision record is kept.`,
     done: (next) =>
       next.outcome === "AUTO_APPROVE"
         ? "Decided again — approved; waiting for the borrower's e-signature"
@@ -336,11 +337,6 @@ function canAttempt(a: ActionAvailability): boolean {
   return !a.enabled && a.action === "APPROVE" && a.blockedBy === ProblemCode.AuthorityLimit;
 }
 
-/** The case's decision was made while the bureau (R10) or screening (R13) could not answer. */
-function decidedDuringOutage(c: CaseDetail): boolean {
-  return c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13") ?? false;
-}
-
 /** Actions that close the case rather than move it on: shown apart, as the prototype does. */
 const TOOLS = new Set<CaseAction>(["WITHDRAW"]);
 
@@ -418,7 +414,7 @@ function waitingFor(c: CaseDetail): string {
     case "DRAFT":
       return `Draft: nothing has been checked yet. The loan officer submits it for decision.${expiresNote(c)}`;
     case "REVIEW":
-      return decidedDuringOutage(c)
+      return c.decidedDuringOutage
         ? "Referred because a provider could not answer: the loan officer decides it again once the provider is back."
         : "Referred: a loan officer reviews the evidence and recommends a decision.";
     case "APPROVAL":
@@ -467,7 +463,14 @@ function RecommendDialog({
   onCancel: () => void;
   onSubmit: (body: RecommendRequest) => void;
 }) {
-  const [type, setType] = useState<Recommendation>("APPROVE");
+  // The API lists which types it accepts now (only a decline after an outage or a failed
+  // knockout). Start on the first accepted one; an empty list (no rule known) accepts all.
+  const offered = detail.recommendationTypes ?? [];
+  const refusedType = (t: Recommendation) => offered.some((o) => o.type === t && !o.enabled);
+  const refusal = offered.find((o) => !o.enabled);
+  const [type, setType] = useState<Recommendation>(
+    offered.find((o) => o.enabled)?.type ?? "APPROVE",
+  );
   const [amount, setAmount] = useState(detail.requestedAmount);
   const [tenor, setTenor] = useState(String(detail.requestedTenorMonths));
   const [reason, setReason] = useState<OverrideReason | "">("");
@@ -535,11 +538,18 @@ function RecommendDialog({
       <FormStack>
         <Field label="Recommendation" error={fieldError("type")}>
           <Select value={type} onChange={(e) => setType(e.target.value as Recommendation)}>
-            <option value="APPROVE">Approve as requested</option>
-            <option value="COUNTER_OFFER">Counter-offer</option>
-            <option value="DECLINE">Decline</option>
+            <option value="APPROVE" disabled={refusedType("APPROVE")}>
+              Approve as requested
+            </option>
+            <option value="COUNTER_OFFER" disabled={refusedType("COUNTER_OFFER")}>
+              Counter-offer
+            </option>
+            <option value="DECLINE" disabled={refusedType("DECLINE")}>
+              Decline
+            </option>
           </Select>
         </Field>
+        {refusal && !refusal.enabled && <Callout tone="warn">{refusal.detail}</Callout>}
         {type === "COUNTER_OFFER" && (
           <FormGrid>
             <Field label="Amount (pesos)" error={fieldError("amount")}>

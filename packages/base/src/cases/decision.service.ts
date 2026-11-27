@@ -2,6 +2,8 @@ import {
   type ApplicantIdentity,
   CREDIT_BUREAU,
   type CreditBureau,
+  FRAUD_CHECK,
+  type FraudCheck,
   isProviderUnavailable,
   KYC_AML,
   type KycAml,
@@ -9,6 +11,7 @@ import {
 import type { ReproduceResult } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
+import { AutomationService } from "../automation/automation.service";
 import {
   CURRENT_RULE_SET,
   CURRENT_SCORECARD,
@@ -26,20 +29,23 @@ import type { LoanCaseEntity } from "./entities/loan-case.entity";
  * Runs the automated decision for a case (ADR 0022): gather every input through the ports
  * into one snapshot, decide with the current versions, store the record insert-only.
  * A provider that cannot answer becomes an UNAVAILABLE input — the engine then refers,
- * never declines (PRD NFR-005).
+ * never declines (PRD NFR-005). The product's automation mode joins the snapshot inside the
+ * decision's transaction (PRD §7.5), so the record says, and replays, what it ran under.
  */
 @Injectable()
 export class DecisionService {
   constructor(
     @Inject(CREDIT_BUREAU) private readonly bureau: CreditBureau,
     @Inject(KYC_AML) private readonly kycAml: KycAml,
+    @Inject(FRAUD_CHECK) private readonly fraud: FraudCheck,
     private readonly repo: CasesRepository,
+    private readonly automation: AutomationService,
   ) {
     // A decision record holds one provider mode; mixing a real and a simulated provider
     // would make it ambiguous, so that wiring is refused at boot.
-    if (bureau.mode !== kycAml.mode) {
+    if (bureau.mode !== kycAml.mode || bureau.mode !== fraud.mode) {
       throw new Error(
-        `Credit bureau (${bureau.mode}) and KYC/AML (${kycAml.mode}) must run in the same provider mode.`,
+        `Credit bureau (${bureau.mode}), KYC/AML (${kycAml.mode}) and fraud check (${fraud.mode}) must run in the same provider mode.`,
       );
     }
   }
@@ -52,7 +58,7 @@ export class DecisionService {
       birthDate: a.birthDate,
       governmentIdLast4: a.governmentIdLast4,
     };
-    const [screening, bureau] = await Promise.all([
+    const [screening, bureau, fraud] = await Promise.all([
       this.kycAml.screen(identity).then(
         (s) => ({
           status: "OK" as const,
@@ -74,6 +80,10 @@ export class DecisionService {
         }),
         (err: unknown) => unavailable(err),
       ),
+      this.fraud.assess(identity).then(
+        (f) => ({ status: "OK" as const, flagged: f.flagged, signals: [...f.signals] }),
+        (err: unknown) => unavailable(err),
+      ),
     ]);
     return {
       asOfDate,
@@ -88,29 +98,52 @@ export class DecisionService {
         monthlyObligations: a.monthlyObligations.toString(),
         employmentMonths: a.employmentMonths,
         relationshipMonths: a.relationshipMonths,
+        declaredMonthlyIncome: a.declaredMonthlyIncome?.toString() ?? null,
+        relatedParty: a.relatedParty,
       },
       screening,
       bureau,
+      fraud,
     };
   }
 
-  /** Whether a stored decision was made while the bureau or screening could not answer. */
+  /** Whether a stored decision was made while the bureau, screening or fraud check could not answer. */
   static decidedDuringOutage(record: DecisionRecordEntity | null): boolean {
     if (!record) return false;
-    return (
-      record.inputs.bureau.status === "UNAVAILABLE" ||
-      record.inputs.screening.status === "UNAVAILABLE"
-    );
+    return DecisionService.unavailableProvider(record.inputs) !== null;
   }
 
-  /** Decide and store the record in the caller's transaction. */
+  /** The first provider that could not answer for these inputs, in words; null if all did. */
+  static unavailableProvider(inputs: DecisionInputs): string | null {
+    if (inputs.bureau.status === "UNAVAILABLE") return "The credit bureau";
+    if (inputs.screening.status === "UNAVAILABLE") return "KYC/AML screening";
+    if (inputs.fraud?.status === "UNAVAILABLE") return "The fraud check";
+    return null;
+  }
+
+  /**
+   * Whether a policy knockout failed in a stored decision. Live, a knockout declines; with
+   * automation off, in shadow or under the kill switch it goes to a person, who may only
+   * decline it (CasesService.recommend).
+   */
+  static knockedOut(record: DecisionRecordEntity | null): boolean {
+    return record?.ruleResults.some((r) => r.kind === "KNOCKOUT" && r.result === "FAIL") ?? false;
+  }
+
+  /**
+   * Decide and store the record in the caller's transaction. The product's automation is
+   * read here, under a share lock in that same transaction, and added to the snapshot: a mode
+   * change or the kill switch cannot slip in between reading it and recording the decision.
+   */
   async decideAndRecord(
     manager: EntityManager,
     c: LoanCaseEntity,
-    inputs: DecisionInputs,
+    gathered: DecisionInputs,
     decidedBy: string,
   ): Promise<{ record: DecisionRecordEntity; result: DecisionResult }> {
     const versions = { ruleSet: CURRENT_RULE_SET, scorecard: CURRENT_SCORECARD };
+    const automation = await this.automation.forDecision(manager, c.productCode);
+    const inputs: DecisionInputs = { ...gathered, automation };
     const result = decide(inputs, versions);
     const record = await this.repo.insertDecision(manager, {
       caseId: c.id,
@@ -130,6 +163,9 @@ export class DecisionService {
       // Both input providers share one mode (checked at boot); swapping them for real ones
       // changes no line here (Engineering Standard 9).
       providerMode: this.bureau.mode,
+      automationMode: automation.mode,
+      killSwitch: automation.killSwitch,
+      engineOutcome: result.engineOutcome,
       decidedBy,
     });
     return { record, result };
@@ -155,10 +191,19 @@ export class DecisionService {
       debtToIncome: record.debtToIncome,
       monthlyRate: record.monthlyRate,
     };
+    // A record from before automation modes has no engine outcome column: it ran live, so
+    // its engine outcome is its outcome. Its mode columns hold the migration's LIVE backfill.
+    stored.engineOutcome = record.engineOutcome ?? record.outcome;
+    const replayed: Record<string, unknown> = {
+      ...(replay as unknown as Record<string, unknown>),
+      // The mode columns must agree with the snapshot the decision was made from.
+      automationMode: record.inputs.automation?.mode ?? "LIVE",
+      killSwitch: record.inputs.automation?.killSwitch ?? false,
+    };
+    stored.automationMode = record.automationMode;
+    stored.killSwitch = record.killSwitch;
     const differences = Object.keys(stored).filter(
-      (k) =>
-        canonicalJson(stored[k]) !==
-        canonicalJson((replay as unknown as Record<string, unknown>)[k]),
+      (k) => canonicalJson(stored[k]) !== canonicalJson(replayed[k]),
     );
     return {
       decisionId: record.id,

@@ -1,6 +1,11 @@
 import { DataSource, type DataSourceOptions } from "typeorm";
 import { AuditEventEntity } from "../audit/entities/audit-event.entity";
 import { StaffEntity } from "../auth/staff.entity";
+import {
+  AutomationChangeEntity,
+  AutomationEventEntity,
+  ProductAutomationEntity,
+} from "../automation/automation.entities";
 import { ActivityEventEntity } from "../cases/entities/activity-event.entity";
 import { ApplicantEntity } from "../cases/entities/applicant.entity";
 import {
@@ -29,6 +34,9 @@ export const ENTITIES = [
   ConsentRecordEntity,
   AuditEventEntity,
   AmlEscalationEntity,
+  ProductAutomationEntity,
+  AutomationChangeEntity,
+  AutomationEventEntity,
 ];
 
 /**

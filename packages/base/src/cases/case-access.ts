@@ -5,6 +5,7 @@ import {
   Money,
   ProblemCode,
   Recommendation,
+  type RecommendationAvailability,
   Role,
 } from "@loan/core";
 import type { SessionUser } from "../auth/session";
@@ -56,6 +57,34 @@ export function authorityProblem(approver: StaffEntity, c: LoanCaseEntity): stri
   return problems.length
     ? `${problems.join(", and ")}. Route it to an approver with higher authority.`
     : null;
+}
+
+/**
+ * Why only a decline may be recommended on this decision, or null when every type may be: a
+ * decision made during a provider outage, or one where a policy knockout failed (referred
+ * because automation was not live). CasesService.recommend refuses with the same words.
+ */
+export function recommendationRefusal(
+  decidedDuringOutage: boolean,
+  knockedOut: boolean,
+): string | null {
+  if (decidedDuringOutage) {
+    return "This case was decided while a provider could not answer (no score, no sanctions screening, or no fraud check), so it cannot be recommended for approval. Decide it again once the provider is back, or recommend a decline.";
+  }
+  if (knockedOut) {
+    return "A policy knockout failed for this application (see the policy rules), so it can only be recommended for decline.";
+  }
+  return null;
+}
+
+/** Each recommendation type with whether the API accepts it now (mirrors CasesService.recommend). */
+export function recommendationTypes(refusal: string | null): RecommendationAvailability[] {
+  return [Recommendation.Approve, Recommendation.CounterOffer, Recommendation.Decline].map(
+    (type) =>
+      refusal && type !== Recommendation.Decline
+        ? { type, enabled: false, blockedBy: ProblemCode.InvalidTransition, detail: refusal }
+        : { type, enabled: true },
+  );
 }
 
 const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
@@ -152,7 +181,7 @@ export function allowedActions(
           enabled: false,
           blockedBy: ProblemCode.InvalidTransition,
           detail:
-            "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be approved. Return it so the loan officer can decide it again.",
+            "This case was decided while a provider could not answer (no score, no sanctions screening, or no fraud check), so it cannot be approved. Return it so the loan officer can decide it again.",
         });
         continue;
       }

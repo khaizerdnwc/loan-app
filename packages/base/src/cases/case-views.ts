@@ -24,7 +24,7 @@ import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
 import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
-import { allowedActions } from "./case-access";
+import { allowedActions, recommendationRefusal, recommendationTypes } from "./case-access";
 import { CasesRepository } from "./cases.repository";
 import { consentComplete } from "./consent";
 import { ageOn, DecisionService } from "./decision.service";
@@ -83,6 +83,17 @@ export class CaseViews {
       regularInstalment = q?.regularInstalment.toString() ?? null;
     }
     const checklist = bookingChecklist(c, decision, new Date());
+    const outage = DecisionService.decidedDuringOutage(decision);
+    const actions = allowedActions(
+      user,
+      c,
+      me,
+      booking,
+      outage,
+      consentComplete(consent),
+      checklistRefusal(checklist),
+      booking ? await this.compliance.bookingHold(c.id) : null,
+    );
 
     return {
       ...summary(c, decision),
@@ -153,16 +164,11 @@ export class CaseViews {
       indicativeRepayment: decision
         ? null
         : await this.indicativeRepayment(c.requestedAmount, c.requestedTenorMonths),
-      allowedActions: allowedActions(
-        user,
-        c,
-        me,
-        booking,
-        DecisionService.decidedDuringOutage(decision),
-        consentComplete(consent),
-        checklistRefusal(checklist),
-        booking ? await this.compliance.bookingHold(c.id) : null,
-      ),
+      allowedActions: actions,
+      decidedDuringOutage: outage,
+      recommendationTypes: actions.some((a) => a.action === "RECOMMEND" && a.enabled)
+        ? recommendationTypes(recommendationRefusal(outage, DecisionService.knockedOut(decision)))
+        : [],
     };
   }
 
@@ -309,6 +315,10 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     inputs: r.inputs,
     inputsHash: r.inputsHash,
     createdAt: r.createdAt.toISOString(),
+    automationMode: r.automationMode,
+    killSwitch: r.killSwitch,
+    // Records from before automation modes ran live: the engine's outcome is the outcome.
+    engineOutcome: r.engineOutcome ?? r.outcome,
   };
 }
 

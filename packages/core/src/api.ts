@@ -1,3 +1,4 @@
+import type { AutomationMode } from "./automation";
 import type {
   CaseStatus,
   CoreBankingSimulationMode,
@@ -104,6 +105,12 @@ export interface DecisionRecordView {
   inputs: unknown;
   inputsHash: string;
   createdAt: string;
+  /** The product's automation mode when this decision was made (PRD §7.5). */
+  automationMode: AutomationMode;
+  /** Whether the product's kill switch was on. */
+  killSwitch: boolean;
+  /** What the rules and score decided, before the mode applied (`outcome` is what the case did). */
+  engineOutcome: DecisionOutcome;
 }
 
 export interface ReproduceResult {
@@ -177,6 +184,11 @@ export type ActionAvailability =
   | { action: CaseAction; enabled: true }
   | { action: CaseAction; enabled: false; blockedBy: ProblemCode; detail: string };
 
+/** A recommendation type the loan officer may send now, or why the API refuses it. */
+export type RecommendationAvailability =
+  | { type: Recommendation; enabled: true }
+  | { type: Recommendation; enabled: false; blockedBy: ProblemCode; detail: string };
+
 export interface CaseDetail extends CaseSummary {
   applicant: ApplicantView;
   purpose: string;
@@ -239,6 +251,13 @@ export interface CaseDetail extends CaseSummary {
   indicativeRepayment: IndicativeRepaymentView | null;
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
   allowedActions: ActionAvailability[];
+  /** The current decision was made while a provider could not answer (bureau, screening, fraud). */
+  decidedDuringOutage: boolean;
+  /**
+   * When RECOMMEND is offered: each recommendation type and whether the API accepts it now
+   * (only a decline after an outage or a failed knockout). Empty otherwise.
+   */
+  recommendationTypes: RecommendationAvailability[];
 }
 
 /** The items of the pre-booking checklist (PRD BKG-001; prototype booking screen). */

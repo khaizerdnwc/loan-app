@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { DecisionOutcome, Money } from "@loan/core";
+import { AutomationMode, DecisionOutcome, Money } from "@loan/core";
 import { ratioAsPercent } from "./ratio";
 import { REASONS } from "./reason-codes";
 import { type RuleSet, ruleSet } from "./rule-sets";
@@ -20,9 +20,27 @@ import type {
  * Order (PRD 7.1): knockouts first (they end the pipeline and cannot be overridden by the
  * score), then the score and its band, then referral triggers that send a case to a person
  * whatever the score. A provider that could not answer degrades to a referral, never to a
- * decline (PRD NFR-005).
+ * decline (PRD NFR-005). Last, the product's automation mode (PRD §7.5), an input like the
+ * rest: unless automation is live and the kill switch is off, the case goes to a person and
+ * the engine's own outcome is kept beside it (`engineOutcome`).
  */
 export function decide(inputs: DecisionInputs, versions: DecisionVersions): DecisionResult {
+  const byRules = decideByRules(inputs, versions);
+  const rs = ruleSet(versions.ruleSet);
+  // The overlay is versioned like any rule (ADR 0022 R4): a rule set with `automationModes`
+  // needs the mode in the snapshot, and one without it refuses a snapshot that carries one.
+  if (rs.automationModes && !inputs.automation) {
+    throw new Error(`Rule set ${rs.version} needs the automation mode in the decision inputs`);
+  }
+  if (!rs.automationModes && inputs.automation) {
+    throw new Error(`Rule set ${rs.version} does not apply automation modes`);
+  }
+  return applyAutomation({ ...byRules, engineOutcome: byRules.outcome }, inputs.automation);
+}
+
+type RulesResult = Omit<DecisionResult, "engineOutcome">;
+
+function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): RulesResult {
   const rs = ruleSet(versions.ruleSet);
   const sc = scorecard(versions.scorecard);
   const { applicant, application, bureau, screening } = inputs;
@@ -157,6 +175,12 @@ export function decide(inputs: DecisionInputs, versions: DecisionVersions): Deci
     add(REASONS.screeningUnavailable);
   }
 
+  // --- Triggers added in RS-PL-2 (absent from earlier versions, so their records replay) --
+  for (const reason of laterTriggers(inputs, rs, income, rules)) {
+    triggers.push(reason.staff);
+    add(reason);
+  }
+
   // --- Bureau unavailable: refer without a score (never decline) ----------------------
   if (bureau.status === "UNAVAILABLE") {
     rules.push({
@@ -241,6 +265,150 @@ export function decide(inputs: DecisionInputs, versions: DecisionVersions): Deci
     reasonCodes: outcome === DecisionOutcome.Refer ? reasons : [],
     referralTriggers: outcome === DecisionOutcome.Refer ? triggers : [],
     monthlyRate: rs.monthlyRate[scored.grade],
+  };
+}
+
+/**
+ * The referral triggers a rule set turns on with its optional fields: income mismatch,
+ * related party and fraud (RS-PL-2). Appends their rule results; returns the reasons that
+ * fired. A version that asks for an input the snapshot lacks is refused, so a record can
+ * never be decided or replayed on inputs its rule set does not describe.
+ */
+function laterTriggers(
+  inputs: DecisionInputs,
+  rs: RuleSet,
+  income: Money,
+  rules: RuleResult[],
+): ReasonCode[] {
+  const fired: ReasonCode[] = [];
+  const missing = (what: string) =>
+    new Error(`Rule set ${rs.version} needs ${what} in the decision inputs`);
+
+  if (rs.incomeMismatchTolerance !== undefined) {
+    const declaredRaw = inputs.applicant.declaredMonthlyIncome;
+    if (declaredRaw === undefined) throw missing("the declared income");
+    const tolerance = rs.incomeMismatchTolerance;
+    const name = `Declared and verified income within ${ratioAsPercent(tolerance)}`;
+    if (declaredRaw === null) {
+      rules.push({
+        id: "RF-INCOME",
+        name,
+        kind: "REFERRAL",
+        result: "NOT_EVALUATED",
+        value: "no separate declaration",
+      });
+    } else {
+      // Exact: |declared − verified| > verified × tolerance. No verified income: any declared
+      // income is a mismatch.
+      const declared = Money.of(declaredRaw);
+      const gap = declared.greaterThan(income) ? declared.minus(income) : income.minus(declared);
+      const mismatch = income.isZero()
+        ? !declared.isZero()
+        : gap.greaterThan(income.times(tolerance));
+      rules.push({
+        id: "RF-INCOME",
+        name,
+        kind: "REFERRAL",
+        result: mismatch ? "FAIL" : "PASS",
+        value: income.isZero()
+          ? "no verified income"
+          : `differs by ${ratioAsPercent(gap.ratioTo(income))}`,
+      });
+      if (mismatch) fired.push(REASONS.incomeMismatch);
+    }
+  }
+
+  if (rs.relatedPartyReferral) {
+    const related = inputs.applicant.relatedParty;
+    if (related === undefined) throw missing("the related-party flag");
+    rules.push({
+      id: "RF-RELATED",
+      name: "Not a related party or insider",
+      kind: "REFERRAL",
+      result: related ? "FAIL" : "PASS",
+      value: related ? "related party" : "none",
+    });
+    if (related) fired.push(REASONS.relatedParty);
+  }
+
+  if (rs.fraudCheck) {
+    const fraud = inputs.fraud;
+    if (fraud === undefined) throw missing("the fraud check");
+    if (fraud.status === "OK") {
+      rules.push({
+        id: "RF-FRAUD",
+        name: "No fraud or identity flag",
+        kind: "REFERRAL",
+        result: fraud.flagged ? "FAIL" : "PASS",
+        value: fraud.flagged
+          ? fraud.signals.map((s) => s.toLowerCase().replaceAll("_", " ")).join(", ") || "flagged"
+          : "clear",
+      });
+      if (fraud.flagged) fired.push(REASONS.fraudFlag);
+    } else {
+      // An unanswered fraud check refers, never declines (PRD NFR-005).
+      rules.push({
+        id: "RF-FRAUD",
+        name: "No fraud or identity flag",
+        kind: "REFERRAL",
+        result: "NOT_EVALUATED",
+        value: "fraud check unavailable",
+      });
+      fired.push(REASONS.fraudUnavailable);
+    }
+  }
+  return fired;
+}
+
+const MODE_WORDS: Record<AutomationMode, string> = {
+  OFF: "automation off",
+  SHADOW: "shadow mode",
+  LIVE: "live",
+};
+
+const OUTCOME_WORDS: Record<DecisionOutcome, string> = {
+  AUTO_APPROVE: "auto-approve",
+  REFER: "refer",
+  AUTO_DECLINE: "auto-decline",
+};
+
+/**
+ * The product's automation mode and kill switch (PRD §7.5). Live with the switch off: the
+ * engine's outcome stands. Otherwise the case goes to a person (a knockout too: a person
+ * declines it), with the score, grade and the engine's own reasons kept for the reviewer.
+ * Only rule sets with `automationModes` (RS-PL-2 on) apply it; RS-PL-1 records carry no
+ * `automation` and come back unchanged.
+ */
+function applyAutomation(
+  result: DecisionResult,
+  automation: DecisionInputs["automation"],
+): DecisionResult {
+  if (!automation) return result;
+  const live = automation.mode === AutomationMode.Live && !automation.killSwitch;
+  const rule: RuleResult = {
+    id: "AU-MODE",
+    name: "Automated decisions live for this product",
+    kind: "REFERRAL",
+    result: live ? "PASS" : "FAIL",
+    value: automation.killSwitch ? "kill switch on" : MODE_WORDS[automation.mode],
+  };
+  const ruleResults = [...result.ruleResults, rule];
+  if (live) return { ...result, ruleResults };
+
+  const reason = automation.killSwitch
+    ? REASONS.killSwitch
+    : automation.mode === AutomationMode.Off
+      ? REASONS.automationOff
+      : REASONS.shadowMode;
+  return {
+    ...result,
+    ruleResults,
+    outcome: DecisionOutcome.Refer,
+    reasonCodes: [reason, ...result.reasonCodes.filter((r) => r.code !== reason.code)],
+    referralTriggers: [
+      `${reason.staff} (the engine's outcome: ${OUTCOME_WORDS[result.engineOutcome]})`,
+      ...result.referralTriggers,
+    ],
   };
 }
 

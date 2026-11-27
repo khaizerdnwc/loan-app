@@ -46,10 +46,11 @@ export function navFor(role: Role): NavGroup[] {
     compliance.push({ href: "/audit", label: "Audit log", icon: "list" });
   }
   if (compliance.length) groups.push({ heading: "Compliance", items: compliance });
-  groups.push({
-    heading: "System",
-    items: [{ href: "/simulation", label: "Simulated services", icon: "sliders" }],
-  });
+  const system: NavItem[] = [{ href: "/simulation", label: "Simulated services", icon: "sliders" }];
+  // Automation controls (PRD §7.5): administrators change them, compliance reads them.
+  if (role === "ADMIN" || role === "COMPLIANCE")
+    system.push({ href: "/automation", label: "Automation controls", icon: "sliders" });
+  groups.push({ heading: "System", items: system });
   return groups;
 }
 

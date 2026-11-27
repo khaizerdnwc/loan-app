@@ -21,13 +21,15 @@ describe("where each role lands and what its sidebar offers", () => {
   });
 
   it("admin has no case screens and compliance has no queue", () => {
-    expect(hrefs("ADMIN")).toEqual(["/audit", "/simulation"]);
+    expect(hrefs("ADMIN")).toEqual(["/audit", "/simulation", "/automation"]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
       "/compliance/escalations",
       "/audit",
       "/simulation",
+      "/automation",
     ]);
+    expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
   });
 
   it("only compliance works AML escalations; compliance and admin read the audit log", () => {
@@ -47,6 +49,7 @@ describe("breadcrumb and page icons", () => {
     ["APPROVER", "/queue", "My work", "Approvals", "check"],
     ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],
     ["ADMIN", "/simulation", "System", "Simulated services", "sliders"],
+    ["ADMIN", "/automation", "System", "Automation controls", "sliders"],
     ["ADMIN", "/audit", "Compliance", "Audit log", "list"],
     ["COMPLIANCE", "/compliance/escalations", "Compliance", "AML escalations", "shieldAlert"],
     ["COMPLIANCE", "/compliance/escalations/0b6d", "Compliance", "AML escalations", "shieldAlert"],

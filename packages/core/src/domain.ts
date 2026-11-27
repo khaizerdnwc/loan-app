@@ -173,5 +173,6 @@ export const ServiceName = {
   CoreBanking: "CORE_BANKING",
   Disbursement: "DISBURSEMENT",
   ESignature: "E_SIGNATURE",
+  Fraud: "FRAUD",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

@@ -9,6 +9,7 @@ export {
 } from "./auth/auth.decorators";
 export { SESSION_COOKIE, type SessionUser } from "./auth/session";
 export { SessionGuard, sessionTokenFrom } from "./auth/session.guard";
+export { AutomationService } from "./automation/automation.service";
 export { assertReconciles } from "./cases/booking.service";
 export { CasesRepository } from "./cases/cases.repository";
 export { DecisionService } from "./cases/decision.service";
