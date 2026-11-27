@@ -125,4 +125,17 @@ describe("queue figures and the stage filter", () => {
     render(<Harness staffRole="LOAN_OFFICER" items={officerQueue} />);
     expect(figures().some((f) => f?.startsWith("Escalated"))).toBe(false);
   });
+
+  it("lays the figures out as the prototype's grid: one a row on a phone, two, then four", () => {
+    render(<Harness staffRole="LOAN_OFFICER" items={officerQueue} />);
+    const list = screen.getByRole("list", { name: "Queue figures" });
+    expect(list).toHaveAttribute("data-layout", "figures-grid");
+    expect(list.className).toMatch(/(^| )grid-cols-1( |$)/);
+    expect(list.className).toMatch(/min-\[521px\]:grid-cols-2/);
+    expect(list.className).toMatch(/min-\[1101px\]:grid-cols-4/);
+    // No fixed card width: a card fills its column at 390px.
+    for (const li of within(list).getAllByRole("listitem")) {
+      expect(li.className).not.toMatch(/max-w-/);
+    }
+  });
 });

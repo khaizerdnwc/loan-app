@@ -25,6 +25,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useShellCrumb } from "@/components/app-shell";
 import { ActionsPanel } from "@/components/case/actions-panel";
 import { ActivityTimeline } from "@/components/case/activity-timeline";
 import { ApprovedTermsNote } from "@/components/case/approved-terms-note";
@@ -44,6 +45,7 @@ export default function CasePage() {
   const [detail, setDetail] = useState<CaseDetail | null>(null);
   const [version, setVersion] = useState(0);
   const [showRecord, setShowRecord] = useState(false);
+  useShellCrumb(detail?.reference ?? null);
 
   useEffect(() => {
     if (loaded.data) setDetail(loaded.data);
@@ -63,13 +65,15 @@ export default function CasePage() {
           record on the right. Only the reference is monospace. */}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
-          <span className="mt-6 grid size-12 shrink-0 place-items-center rounded-btn border border-line bg-mist-100 text-ink-700">
+          <span className="mt-6 grid size-12 shrink-0 min-[860px]:mt-1 place-items-center rounded-btn border border-line bg-mist-100 text-ink-700">
             <Icon name="file" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm text-mist-500">
+            {/* The top bar shows this crumb from 860px; below that its crumb is hidden, so the
+                case header carries it, with the same wording. */}
+            <p data-crumb="case-header" className="text-sm text-mist-500 min-[860px]:hidden">
               <Link href="/cases" className="hover:text-ink-900">
-                Applications
+                All applications
               </Link>{" "}
               / <span className="font-mono text-xs">{c.reference}</span>
             </p>

@@ -51,18 +51,23 @@ export function QueueBody({
   const count = (s: CaseStatus) => items.filter((c) => c.status === s).length;
   return (
     <>
-      <ul aria-label="Queue figures" className="mb-4 flex flex-wrap gap-3">
-        <li className="max-w-[280px] min-w-[200px] flex-1">
+      {/* The prototype's .grid.g4: four figures a row, two under 1100px, one under 520px. */}
+      <ul
+        aria-label="Queue figures"
+        data-layout="figures-grid"
+        className="mb-4 grid grid-cols-1 gap-3 min-[521px]:grid-cols-2 min-[1101px]:grid-cols-4"
+      >
+        <li>
           <StatCard label="In my queue" value={items.length} />
         </li>
         {filtering &&
           stages.slice(0, 3).map((s) => (
-            <li key={s} className="max-w-[280px] min-w-[200px] flex-1">
+            <li key={s}>
               <StatCard label={STATUS_LABEL[s]} value={count(s)} />
             </li>
           ))}
         {staffRole === "APPROVER" && (
-          <li className="max-w-[280px] min-w-[200px] flex-1">
+          <li>
             <StatCard
               label="Escalated"
               value={items.filter((c) => c.escalated).length}
