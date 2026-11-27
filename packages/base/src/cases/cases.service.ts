@@ -369,14 +369,21 @@ export class CasesService {
       this.transition("RETURN", c.status);
       this.move(c, "RETURN", CaseStatus.Review);
       c.approvedBy = user.id;
+      // A returned case starts its approval afresh: the officer's next recommendation is a new
+      // request, so an earlier refusal above authority no longer applies.
+      const wasEscalated = c.escalated;
+      c.escalated = false;
       await this.repo.saveCase(m, c);
       await this.activity.record(m, {
         caseId: c.id,
         actor: user,
         action: "RETURNED",
-        summary: "Returned to the loan officer for another look.",
+        summary: wasEscalated
+          ? "Returned to the loan officer for another look; the escalation is cleared."
+          : "Returned to the loan officer for another look.",
         fromStatus: CaseStatus.Approval,
         toStatus: CaseStatus.Review,
+        details: { escalationCleared: wasEscalated },
       });
     });
     return this.get(user, id);

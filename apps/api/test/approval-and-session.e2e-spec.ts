@@ -67,7 +67,12 @@ describe("approver decline and return (APPROVAL → DECLINED | REVIEW)", () => {
     const res = await h.as("rina").post(`/cases/${c.id}/return`).expect(200);
     expect(res.body.status).toBe("REVIEW");
     const returned = (await activity(c.id)).find((e) => e.action === "RETURNED");
-    expect(returned).toMatchObject({ fromStatus: "APPROVAL", toStatus: "REVIEW" });
+    expect(returned).toMatchObject({
+      fromStatus: "APPROVAL",
+      toStatus: "REVIEW",
+      details: { escalationCleared: false },
+    });
+    expect(returned?.summary).not.toMatch(/escalation/);
     await h
       .as("paolo")
       .post(`/cases/${c.id}/recommendation`, {
@@ -78,6 +83,34 @@ describe("approver decline and return (APPROVAL → DECLINED | REVIEW)", () => {
         rationale: "Smaller amount after review.",
       })
       .expect(200);
+  });
+
+  it("returning an escalated case clears the escalation, and the event says so", async () => {
+    const c = await inApproval();
+    await h.as("ben").post(`/cases/${c.id}/approve`).expect(403);
+    expect((await h.as("rina").get(`/cases/${c.id}`).expect(200)).body.escalated).toBe(true);
+    const res = await h.as("rina").post(`/cases/${c.id}/return`).expect(200);
+    expect(res.body).toMatchObject({ status: "REVIEW", escalated: false });
+    const returned = (await activity(c.id)).find((e) => e.action === "RETURNED");
+    expect(returned).toMatchObject({ details: { escalationCleared: true } });
+    expect(returned?.summary).toMatch(/escalation is cleared/);
+
+    // The next recommendation is a new approval request: refused above Ben's authority again,
+    // it is escalated again, with a second ESCALATED event.
+    await h
+      .as("paolo")
+      .post(`/cases/${c.id}/recommendation`, {
+        type: "COUNTER_OFFER",
+        amount: "120000.00",
+        tenorMonths: 36,
+        overrideReason: "OV04",
+        rationale: "Same terms after the approver's questions.",
+      })
+      .expect(200);
+    await h.as("ben").post(`/cases/${c.id}/approve`).expect(403);
+    expect((await h.as("rina").get(`/cases/${c.id}`).expect(200)).body.escalated).toBe(true);
+    const escalations = (await activity(c.id)).filter((e) => e.action === "ESCALATED");
+    expect(escalations).toHaveLength(2);
   });
 
   it("the loan officer and compliance cannot decline or return", async () => {

@@ -25,8 +25,8 @@ export type StageFilter = CaseStatus | "ALL";
  *   total), and the filter likewise.
  * - "Escalated" only on the approver's queue: an approval refused above someone's authority
  *   stays in APPROVAL and moves to the queue of an approver whose authority covers it (R-6).
- *   The flag is never cleared, so a returned or approved case can carry it into other
- *   queues (the row's Escalated pill shows it); the card is only meaningful to approvers.
+ *   Returning the case clears the flag. An approved or declined case keeps it as history
+ *   (the row's Escalated pill shows it); the card is only meaningful to approvers.
  * - A chosen stage that is no longer in the queue falls back to All, so the table never
  *   hides everything behind a filter that is gone.
  */
