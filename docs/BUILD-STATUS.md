@@ -14,8 +14,8 @@ commit passed the review loop. Blocked items carry the evidence.
 | M5 | Application + decision API | done | F1-1..F1-2, F2-1..F2-2, A-1..A-6 passing (submit refuses a draft changed mid-decision) · M3–M7 commit |
 | M6 | Review + approval API | done | F2-3..F2-5, R-1..R-9 passing (decline/return covered) · M3–M7 commit |
 | M7 | Booking, maker-checker, idempotency, failure/retry (review packet 3) | done | B-1..B-9 + L-1 passing (lost reply, 5×3 concurrent checkers, reconciliation refusal) · 77 integration + 332 api unit + 72 base unit tests · docs/review-packets/3-booking-integrity.md · M3–M7 commit |
-| M8 | Backoffice screens (prototype look) | doing | branch build/backoffice: 5 reviews fixed (69 backoffice + 24 ui tests, build green); re-review, then merge into build/mvp |
-| M9 | Playwright F1/F2, Dockerfiles, full verify | todo | |
+| M8 | Backoffice screens (prototype look) | done | a663559 on build/backoffice, merged into build/mvp · five roles, three review rounds · backoffice 75 + ui 24 Vitest tests · next build green |
+| M9 | Playwright F1/F2, Dockerfiles, full verify | doing | build+e2e PR job red until the backoffice merge (no build to start) — expected |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 
@@ -42,6 +42,12 @@ commit passed the review loop. Blocked items carry the evidence.
   one bucket; `TRUST_PROXY_HOPS` lets a deployment with an appending load balancer key on the
   real address); a quoted instalment fetched from core on every case
   read; Swagger open on the API.
+- Deferred from the M8 reviews: display labels come from `@loan/core`, whose index also
+  pulls decimal.js into the client bundle (a `@loan/core/labels` subpath would avoid it); the
+  form's product limits and the score-band edges (600/700) are copied in the backoffice
+  instead of read from the API; dependency-cruiser has no `no-unresolvable` or
+  `ui-depends-only-on-core` rule yet; the /api proxy has no request body cap; the backoffice
+  env module is not marked `server-only` (package not installed).
 - Reviewer agents run as general-purpose agents that load `.claude/agents/<role>.md` in the
   session that created them (agents register at session start); later sessions use the
   native agents with the write-scope hook.

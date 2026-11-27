@@ -1,0 +1,83 @@
+@import "tailwindcss";
+
+/* The shared components live in packages/ui: let Tailwind see their classes. */
+@source "../../../../packages/ui/src";
+
+/*
+ * Design tokens, copied from the project team's prototype so the screens look the same; the
+ * whole look is restyled by editing this block. Tailwind's default palette is reset, so a
+ * component can only use these names (house/no-raw-colour keeps literals out of .tsx).
+ */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-ink-900: #1e1e29;
+  --color-ink-800: #2d2d3d;
+  --color-ink-700: #3b3b4e;
+  --color-ink-600: #4a4a5f;
+
+  --color-mist-600: #52526a;
+  --color-mist-500: #6e6e86;
+  --color-mist-400: #9a9aae;
+  --color-mist-300: #c4c4d2;
+  --color-mist-200: #dedee8;
+  --color-mist-100: #ececf2;
+  --color-mist-050: #f5f5f9;
+  --color-lav: #e4e4f2;
+
+  /* One step darker than the prototype's #a5631a / #2e7d5b, so small text on the 100 and
+     050 tints meets WCAG AA 4.5:1 (gold-700 on gold-100 4.75:1, ok-700 on ok-100 5.08:1). */
+  --color-gold-700: #94581a;
+  --color-gold-600: #be7320;
+  --color-gold-500: #d88728;
+  --color-gold-200: #f2d6a8;
+  --color-gold-100: #f8e8cd;
+  --color-gold-050: #fbf3e3;
+
+  --color-ok-700: #276d4f;
+  --color-ok-100: #d6eee2;
+  --color-ok-050: #eaf6f0;
+
+  --color-bad-700: #b23138;
+  --color-bad-500: #db4a52;
+  --color-bad-100: #f8d8da;
+  --color-bad-050: #fcecee;
+
+  --color-info-700: #435289;
+  --color-info-100: #dee3f3;
+  --color-info-050: #eef1f9;
+
+  --color-line: rgba(45, 45, 61, 0.12);
+
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-card: 14px;
+  --radius-btn: 12px;
+
+  --shadow-card: 0 1px 2px rgba(30, 30, 41, 0.04);
+  --shadow-modal: 0 24px 48px rgba(30, 30, 41, 0.18);
+}
+
+html,
+body {
+  background: var(--color-mist-050);
+  color: var(--color-mist-600);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-ink-900);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-gold-500);
+  outline-offset: 2px;
+}
