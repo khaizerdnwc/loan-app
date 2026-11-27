@@ -1,4 +1,5 @@
 export { Avatar, initials } from "./components/avatar";
+export { type Bar, BarList, type BarTone } from "./components/bar-list";
 export {
   Button,
   type ButtonProps,

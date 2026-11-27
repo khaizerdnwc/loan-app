@@ -29,6 +29,10 @@ export function navFor(role: Role): NavGroup[] {
   if (role === "LOAN_OFFICER")
     work.push({ href: "/cases/new", label: "New application", icon: "plus" });
   if (role !== "ADMIN") work.push({ href: "/cases", label: "All applications", icon: "file" });
+  // Booking exceptions and reconciliation (PRD BKG-005): loan operations' own screen.
+  if (role === "LOAN_OPERATIONS" || role === "LOAN_OPERATIONS_SUPERVISOR") {
+    work.push({ href: "/operations/exceptions", label: "Booking exceptions", icon: "alert" });
+  }
 
   const groups: NavGroup[] = [];
   if (work.length) groups.push({ heading: "My work", items: work });
@@ -45,7 +49,21 @@ export function navFor(role: Role): NavGroup[] {
   if (role === "COMPLIANCE" || role === "ADMIN") {
     compliance.push({ href: "/audit", label: "Audit log", icon: "list" });
   }
+  // Compliance reads the booking exceptions and reconciliation too (it does not run it).
+  if (role === "COMPLIANCE") {
+    compliance.push({ href: "/operations/exceptions", label: "Booking exceptions", icon: "alert" });
+  }
   if (compliance.length) groups.push({ heading: "Compliance", items: compliance });
+  // Reports (PRD RPT-001, RPT-003): counts only, for the roles that read decisions.
+  if (role === "LOAN_OFFICER" || role === "APPROVER" || role === "COMPLIANCE" || role === "ADMIN") {
+    groups.push({
+      heading: "Reports",
+      items: [
+        { href: "/reports/funnel", label: "Origination funnel", icon: "chart" },
+        { href: "/reports/decisions", label: "Decisioning", icon: "chart" },
+      ],
+    });
+  }
   const system: NavItem[] = [{ href: "/simulation", label: "Simulated services", icon: "sliders" }];
   // Automation controls (PRD §7.5): administrators change them, compliance reads them.
   if (role === "ADMIN" || role === "COMPLIANCE")

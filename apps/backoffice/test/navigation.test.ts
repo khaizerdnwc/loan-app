@@ -21,15 +21,46 @@ describe("where each role lands and what its sidebar offers", () => {
   });
 
   it("admin has no case screens and compliance has no queue", () => {
-    expect(hrefs("ADMIN")).toEqual(["/audit", "/simulation", "/automation"]);
+    expect(hrefs("ADMIN")).toEqual([
+      "/audit",
+      "/reports/funnel",
+      "/reports/decisions",
+      "/simulation",
+      "/automation",
+    ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
       "/compliance/escalations",
       "/audit",
+      "/operations/exceptions",
+      "/reports/funnel",
+      "/reports/decisions",
       "/simulation",
       "/automation",
     ]);
     expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
+  });
+
+  it("booking exceptions for loan operations and Compliance; reports for the roles that read decisions", () => {
+    for (const role of ["LOAN_OPERATIONS", "LOAN_OPERATIONS_SUPERVISOR"] as Role[]) {
+      expect(hrefs(role)).toContain("/operations/exceptions");
+      expect(hrefs(role)).not.toContain("/reports/funnel");
+    }
+    for (const role of ["LOAN_OFFICER", "APPROVER"] as Role[]) {
+      expect(hrefs(role)).not.toContain("/operations/exceptions");
+      expect(hrefs(role)).toEqual(
+        expect.arrayContaining(["/reports/funnel", "/reports/decisions"]),
+      );
+    }
+    expect(breadcrumbFor("LOAN_OPERATIONS", "/operations/exceptions")).toEqual({
+      section: "My work",
+      page: "Booking exceptions",
+    });
+    expect(breadcrumbFor("APPROVER", "/reports/decisions")).toEqual({
+      section: "Reports",
+      page: "Decisioning",
+    });
+    expect(pageIconFor("ADMIN", "/reports/funnel")).toBe("chart");
   });
 
   it("only compliance works AML escalations; compliance and admin read the audit log", () => {

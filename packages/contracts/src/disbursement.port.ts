@@ -19,9 +19,21 @@ export interface DisbursementReceipt {
   disbursedAt: string;
 }
 
+/** One payment as the rail's payment feed lists it (for reconciliation, PRD BKG-005). */
+export interface PaymentRecord {
+  mode: ProviderMode;
+  idempotencyKey: string;
+  reference: string;
+  loanAccountNumber: string;
+  amount: Money;
+  disbursedAt: string;
+}
+
 export interface Disbursement {
   /** Idempotent on `idempotencyKey`. Throws ProviderUnavailableError when it cannot answer. */
   disburse(request: DisbursementRequest): Promise<DisbursementReceipt>;
+  /** Every payment made (read-only). Throws ProviderUnavailableError when it cannot answer. */
+  listPayments(): Promise<PaymentRecord[]>;
 }
 
 export const DISBURSEMENT = "DISBURSEMENT_PORT";

@@ -3,6 +3,7 @@ import { type Rule, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
+import moneyColumnNumeric from "../src/rules/money-column-numeric.js";
 import moneyThroughFormatter from "../src/rules/money-through-formatter.js";
 import noArbitraryTextSize from "../src/rules/no-arbitrary-text-size.js";
 import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-assignment-outside-lifecycle.js";
@@ -742,6 +743,46 @@ ruleTester.run("no-reason-code-literal", asRule(noReasonCodeLiteral), {
       filename: at("packages/ui/src/components/pill.tsx"),
       code: `const outage = codes.includes("R10");`,
       errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+ruleTester.run("money-column-numeric", asRule(moneyColumnNumeric), {
+  valid: [
+    {
+      filename: WEB,
+      code: "const c = [{ key: 'a', header: 'Amount', numeric: true, render: (r) => formatPeso(r.a) }];",
+    },
+    { filename: WEB, code: "const c = [{ key: 'n', header: 'Name', render: (r) => r.name }];" },
+    {
+      filename: at("packages/base/src/reports/x.ts"),
+      code: "const c = [{ header: 'Amount', render: (r) => formatPeso(r.a) }];",
+    },
+    {
+      filename: WEB,
+      code: "const c = [{\n header: 'Note',\n // eslint-disable-next-line rule-to-test/money-column-numeric -- prose\n render: (r) => `Paid ${formatPeso(r.a)} late`,\n}];",
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: "const c = [{ key: 'a', header: 'Amount', render: (r) => formatPeso(r.a) }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "const c = [{ header: 'Amount', numeric: false, render: (r) => <span>{formatPeso(r.a)}</span> }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "function amounts(a, b) { return <p>{formatPeso(a)} {formatPeso(b)}</p>; }\nconst c = [{ header: 'Amounts', render: (f) => amounts(f.a, f.b) }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "const peso = (x) => formatPeso(x);\nconst two = (x) => peso(x);\nconst c = [{ header: 'Amount', render: (f) => two(f.a) }];",
+      errors: [{ messageId: "notNumeric" }],
     },
   ],
 });

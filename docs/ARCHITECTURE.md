@@ -20,6 +20,9 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        compliance/  AML escalations, screening again before disbursement
                        audit/       the hash-chained audit log (every case event, sign-ins,
                                     simulation changes) and its verification
+                       operations/  booking exceptions; reconciliation against core's
+                                    account feed and the payment feed (ports)
+                       reports/     decision mix and origination funnel (read-only)
                        decisioning/engine/  pure, versioned decide()
                        database/    data source, migrations, transaction runner
                        seed/        synthetic staff, applicants, product
@@ -52,6 +55,12 @@ services, and a separate module would only re-export them. The audit log is writ
 module. `cases/` and `compliance/` import each other's services (no file or DI cycle);
 `activity.service.ts` imports `audit/` only, never `compliance/`. Revisit when collections
 or a committee adds a real second aggregate.
+
+`operations/` stays inside for the same reason: it works on the booking and case aggregate
+(it reads `BookingRequestEntity` and `LoanCaseEntity`, uses `CasesRepository` and the same
+transaction runner), and its `reconciliation_run` table is an insert-only run log, not an
+aggregate of its own. `reports/` owns no state at all: it is read-only aggregate queries over
+the case, decision and activity tables.
 
 ## Ports and simulators
 

@@ -145,4 +145,10 @@ export function auditActionLabel(code: string): string {
   return AUDIT_ACTION_LABEL[code] ?? code;
 }
 
-export const PROVIDER_MODE_LABEL: Readonly<Record<string, string>> = { SIMULATED: "Simulated" };
+/** A reconciliation run whose feeds held no records carries no provider mode. */
+export const NO_FEED_RECORDS = "NO_RECORDS";
+
+export const PROVIDER_MODE_LABEL: Readonly<Record<string, string>> = {
+  SIMULATED: "Simulated",
+  [NO_FEED_RECORDS]: "No feed records",
+};

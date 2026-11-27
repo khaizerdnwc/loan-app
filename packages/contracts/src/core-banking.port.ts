@@ -53,6 +53,16 @@ export interface CoreLoanAccount {
   openedAt: string;
 }
 
+/** One loan account as core's account feed lists it (for reconciliation, PRD BKG-005). */
+export interface CoreAccountRecord {
+  mode: ProviderMode;
+  idempotencyKey: string;
+  accountNumber: string;
+  applicationId: string;
+  principal: Money;
+  openedAt: string;
+}
+
 export interface CoreBanking {
   /**
    * Quote the repayment for the terms without opening anything. Throws
@@ -65,6 +75,11 @@ export interface CoreBanking {
    * account may or may not exist in core; a retry with the same key resolves it.
    */
   bookLoan(request: BookingRequest): Promise<CoreLoanAccount>;
+  /**
+   * Every loan account core holds, as its daily account feed would list them (read-only).
+   * Throws ProviderUnavailableError on outage, timeout or a malformed reply.
+   */
+  listAccounts(): Promise<CoreAccountRecord[]>;
 }
 
 export const CORE_BANKING = "CORE_BANKING_PORT";

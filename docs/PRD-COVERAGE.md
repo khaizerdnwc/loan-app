@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 22 built, 39 partly built, 78 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
+Summary: 25 built, 38 partly built, 76 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -119,7 +119,7 @@ Summary: 22 built, 39 partly built, 78 not built (139 IDs, counted from the tabl
 | BKG-002 | Create core account, store reference | built | `booking.service.ts`, `GET /cases/:id/loan-account`, F1-4 | Simulated core. |
 | BKG-003 | Disburse to borrower or third party, split | partly built | `disbursement.port.ts`, F1-4, F2-6 | One tranche to the applicant's simulated deposit account. No third-party or split payments. |
 | BKG-004 | Idempotent booking | built | ADR 0020, B-1..B-3, B-6 | Key, unique constraints, row lock, idempotent providers. |
-| BKG-005 | Exception queue and reconciliation report | partly built | B-5, B-8, BOOKING_FAILED in the operations queue | Failure state and retry with the same key. No dedicated exception screen and no reconciliation report or job (BUILD-STATUS "Gaps"). |
+| BKG-005 | Exception queue and reconciliation report | built | REC-1..REC-7, `/operations/exceptions` | Booking exceptions screen (failed or held bookings, key, attempts, error, why a retry is blocked) and an on-demand reconciliation of lending's bookings against core's account feed and the payment feed by booking key, stored insert-only and audited; it finds open undisbursed core accounts after a lost reply, unrecorded payments, mismatches and orphans. Not scheduled (run by loan operations); closing an orphan or undisbursed core account is manual, outside this system. |
 | BKG-006 | Staged disbursement (P2) | not built | — | Phase 2. |
 
 ### 6.7 Borrower self-service (SS)
@@ -154,9 +154,9 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
-| RPT-001 | Origination funnel | not built | — | The case table has the data. |
+| RPT-001 | Origination funnel | built | RPT-2..RPT-4, `/reports/funnel` | Started, submitted, approved, disbursed with conversions, disbursed principal and current status, by business-date period. One product and one channel, so no product or channel split. |
 | RPT-002 | Turnaround and SLA | not built | — | `activity_event` timestamps would support it. |
-| RPT-003 | Decision mix with reason codes | not built | — | `decision_record` has outcome and reasons. |
+| RPT-003 | Decision mix with reason codes | built | RPT-1, RPT-3, RPT-4, `/reports/decisions` | Outcome mix, straight-through rate, reason codes, referral triggers, override rate and override reasons, by business-date period. No model or product split (one scorecard, one product). |
 | RPT-004 | Portfolio quality | not built | — | Needs repayment history (simulated core only). |
 | RPT-005 | Collections performance | not built | — | Depends on CLX. |
 | RPT-006 | Scheduled exports, warehouse feed | not built | — | |
@@ -292,14 +292,14 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 4 | ✅ Done (W-1, W-2). Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
 | 5 | ✅ Done (DC-1..DC-3). Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |
 | 6 | ✅ Done (CMP-1..CMP-10; export not built). Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
-| 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
+| 7 | ✅ Done (REC-1..REC-7; on demand, not scheduled). Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
 | 8 | ✅ Done (AUD-1..AUD-8). Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
 | 9 | ✅ Done (BK-1). Pre-booking checklist shown to loan operations and enforced by the API (approval, signature, conditions) | BKG-001 | S | Makes an existing guard visible and extends it to conditions. |
 | 10 | ✅ Done (AU-1..AU-3, D-13). Per-product automation mode (off, shadow, live) and a kill switch routing every new case to referral, recorded in the decision record | §7.5, AIS-007 (mode only), F8 | M | Part of the PRD rollout model. The engine change is small; the record must carry the mode for replay. |
 | 11 | ✅ Done (D-10..D-12, D-14, TR-1, TR-2). Missing referral triggers: income mismatch (declared vs verified), related-party flag, fraud flag (new simulated fraud port with failure modes) | DEC-006, CMP-006, F3 | M | F3 needs the income mismatch and CMP-006 needs mandatory referral. A new rule-set version keeps old decisions replayable. |
 | 12 | Walk-in and new-customer capture (name, birth date, employer, income, obligations) with pre-fill from a simulated core customer lookup; branch officer role | INT-005, INT-002, F3 | M | F3's entry point. Today only seeded applicants can be chosen. |
 | 13 | ✅ Done (IR-1). Indicative repayment before submission, from the core quote | INT-004 | S | The quote port already exists. It is shown after approval today. |
-| 14 | Decision-mix and origination-funnel reports (outcome, override and reason-code counts; stage drop-off) | RPT-003, RPT-001 | S | Measures the PRD's straight-through-processing metric. The data is already stored. |
+| 14 | ✅ Done (RPT-1..RPT-4). Decision-mix and origination-funnel reports (outcome, override and reason-code counts; stage drop-off) | RPT-003, RPT-001 | S | Measures the PRD's straight-through-processing metric. The data is already stored. |
 | 15 | SLA timers per stage with breach flags in the queues and a turnaround report | WF-003, RPT-002 | M | Measures the PRD's "referred decision within 1 business day" metric. Needs holiday-aware business time (PLT-005). |
 | 16 | Queue routing: pick, reassign, priority, round robin | WF-002 | M | Team operations. Less critical with one officer. |
 | 17 | Credit memo generated from the case, editable by the analyst, stored with versions | WF-008 | M | Part of F2 review in the PRD. |
@@ -355,10 +355,10 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Email and file intake | Bundle or spreadsheet upload, OCR drafts | INT-010, F4 | Not built (#30). |
 | Documents and signing | Templates and e-signature with certificate | DOC-004, DOC-005, CMP-002 | Simulated signature only (#18). |
 | Booking (maker, then supervisor check with "different user" guard, idempotency key), Disbursements | Booking | BKG-001..004, WF-005 | Built (F1-4, B-1..B-6, R-5, pre-booking checklist BK-1). Split and third-party disbursement not built. |
-| Booking exceptions with retry and a "Reconciliation · today" panel | Exceptions | BKG-005 | Retry built (B-5). No exception screen or reconciliation report (#7). |
+| Booking exceptions with retry and a "Reconciliation · today" panel | Exceptions | BKG-005 | Built (REC-1..REC-7): exceptions list and a reconciliation panel with a run history. |
 | Collateral register, collateral detail, Deposit holds | Secured lending | COL-001..006, PC-009 | Not built (#29). |
 | Delinquency overview, Collector queue, Restructuring, Write-off and recovery, Agency assignment (P2) | Collections | CLX-001..008 | Not built (#31). |
-| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Not built (#14, #15, #32). |
+| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Origination funnel and Decisioning dashboard built (RPT-1..RPT-4). Turnaround and SLA, portfolio, collections, scheduled and regulatory reports not built (#15, #32). |
 | Compliance: Audit log (searchable, tamper-evident) | Audit | PLT-004, CMP-010 | Built (AUD-1..AUD-8): `/audit` with filters and chain verification, for compliance and admin. |
 | Compliance: Consent records | Consent register | CMP-001 | Not built (#2). |
 | Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Built without export (CMP-1..CMP-5): list and detail, acknowledge, close with outcome and notes. |
