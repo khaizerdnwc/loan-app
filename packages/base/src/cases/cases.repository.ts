@@ -1,7 +1,7 @@
-import { CaseStatus, Role } from "@loan/core";
+import { CaseStatus, CLOSED_CASE_STATUSES, Role } from "@loan/core";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { type EntityManager, In, type Repository } from "typeorm";
+import { type EntityManager, In, Not, type Repository } from "typeorm";
 import type { SessionUser } from "../auth/session";
 import { ActivityEventEntity } from "./entities/activity-event.entity";
 import { ApplicantEntity } from "./entities/applicant.entity";
@@ -134,6 +134,22 @@ export class CasesRepository {
   }
 
   // --- history -----------------------------------------------------------------------------
+
+  /** The applicant's open application for the product (not declined or disbursed), if any. */
+  findOpenCase(
+    applicantId: string,
+    productCode: string,
+    manager?: EntityManager,
+  ): Promise<LoanCaseEntity | null> {
+    return (manager ?? this.cases.manager).getRepository(LoanCaseEntity).findOne({
+      where: {
+        applicantId,
+        productCode,
+        status: Not(In([...CLOSED_CASE_STATUSES])),
+      },
+      order: { createdAt: "ASC" },
+    });
+  }
 
   async insertConsent(
     manager: EntityManager,

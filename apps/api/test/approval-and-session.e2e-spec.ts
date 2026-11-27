@@ -1,8 +1,15 @@
-import { DecisionService, SEED_TEST_PASSWORD } from "@loan/base";
+import { CasesRepository, DecisionService, SEED_TEST_PASSWORD } from "@loan/base";
 import type { ActivityView, CaseDetail } from "@loan/core";
 import { JwtService } from "@nestjs/jwt";
 import request from "supertest";
-import { FULL_CONSENT, type Harness, STAFF, startHarness, submitCase } from "./support/harness";
+import {
+  FULL_CONSENT,
+  type Harness,
+  STAFF,
+  startHarness,
+  submitCase,
+  twin,
+} from "./support/harness";
 
 let h: Harness;
 beforeAll(async () => {
@@ -160,7 +167,7 @@ describe("the session is re-checked against the staff table on every request", (
       const res = await h
         .as("paolo")
         .post("/cases", {
-          applicantId: "APL-MARIA",
+          applicantId: await twin(h, "APL-MARIA"),
           amount: "60000.00",
           tenorMonths: 12,
           purpose: "x",
@@ -270,7 +277,7 @@ describe("submit decides the draft it read (data review: submit race)", () => {
       await h
         .as("paolo")
         .post("/cases", {
-          applicantId: "APL-MARIA",
+          applicantId: await twin(h, "APL-MARIA"),
           amount: "150000.00",
           tenorMonths: 24,
           purpose: "Home improvement",
@@ -324,7 +331,7 @@ describe("consent before the bureau check (C-1, PRD INT-006 / AIS-002)", () => {
       await h
         .as("paolo")
         .post("/cases", {
-          applicantId: "APL-MARIA",
+          applicantId: await twin(h, "APL-MARIA"),
           amount: "60000.00",
           tenorMonths: 12,
           purpose: "Home improvement",
@@ -364,7 +371,7 @@ describe("consent before the bureau check (C-1, PRD INT-006 / AIS-002)", () => {
     const res = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "60000.00",
         tenorMonths: 12,
         purpose: "Home improvement",
@@ -457,7 +464,7 @@ describe("consent before the bureau check (C-1, PRD INT-006 / AIS-002)", () => {
     const res = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "60000.00",
         tenorMonths: 12,
         purpose: "Home improvement",
@@ -499,5 +506,93 @@ describe("consent before the bureau check (C-1, PRD INT-006 / AIS-002)", () => {
     const res = await h.as("rina").patch(`/cases/${d.id}`, { consent: FULL_CONSENT }).expect(403);
     expect(res.body.code).toBe("FORBIDDEN_ROLE");
     expect((await h.as("paolo").get(`/cases/${d.id}`).expect(200)).body.consent).toBeNull();
+  });
+});
+
+describe("one open application per applicant and product (A-7, PRD INT-007)", () => {
+  const capture = (applicantId: string) =>
+    h.as("paolo").post("/cases", {
+      applicantId,
+      amount: "60000.00",
+      tenorMonths: 12,
+      purpose: "Home improvement",
+      submit: false,
+    });
+  const openCases = (applicantId: string) =>
+    h.ds
+      .query(
+        "SELECT count(*)::int AS n FROM loan_case WHERE applicant_id = $1 AND status NOT IN ('DECLINED', 'DISBURSED')",
+        [applicantId],
+      )
+      .then((r: { n: number }[]) => r[0]?.n);
+
+  it("A-7 a second open application is refused with 409 naming the open case, and nothing is stored", async () => {
+    const applicantId = await twin(h, "APL-MARIA");
+    const first = (await capture(applicantId).expect(201)).body as CaseDetail;
+    const res = await capture(applicantId).expect(409);
+    expect(res.body).toMatchObject({ code: "DUPLICATE_APPLICATION", status: 409 });
+    expect(res.body.detail).toContain(first.reference);
+    expect(res.body.detail).toMatch(/Maria Santos already has an open personal loan application/);
+    expect(await openCases(applicantId)).toBe(1);
+  });
+
+  it("a declined application does not block a new one", async () => {
+    const applicantId = await twin(h, "APL-RAMON");
+    const declined = (
+      await h
+        .as("paolo")
+        .post("/cases", {
+          applicantId,
+          amount: "50000.00",
+          tenorMonths: 12,
+          purpose: "Home improvement",
+          submit: true,
+          consent: FULL_CONSENT,
+        })
+        .expect(201)
+    ).body as CaseDetail;
+    expect(declined.status).toBe("DECLINED");
+    const next = (await capture(applicantId).expect(201)).body as CaseDetail;
+    expect(next.status).toBe("DRAFT");
+    expect(next.reference).not.toBe(declined.reference);
+    expect(await openCases(applicantId)).toBe(1);
+  });
+
+  it("a disbursed loan does not block a new application", async () => {
+    const applicantId = await twin(h, "APL-MARIA");
+    const first = (await capture(applicantId).expect(201)).body as CaseDetail;
+    // Stand-in for a completed booking (the full path is covered by F1 and B-1..B-8).
+    await h.ds.query("UPDATE loan_case SET status = 'DISBURSED' WHERE id = $1", [first.id]);
+    const next = (await capture(applicantId).expect(201)).body as CaseDetail;
+    expect(next).toMatchObject({ status: "DRAFT" });
+    expect(next.reference).not.toBe(first.reference);
+    expect(await openCases(applicantId)).toBe(1);
+  });
+
+  it("when the pre-check misses a concurrent winner, the index refusal still answers 409 naming it", async () => {
+    const applicantId = await twin(h, "APL-MARIA");
+    const first = (await capture(applicantId).expect(201)).body as CaseDetail;
+    const repo = h.app.get(CasesRepository);
+    const original = repo.findOpenCase.bind(repo);
+    // The pre-check sees nothing (as if the winner had not committed yet); the index refuses.
+    const spy = jest.spyOn(repo, "findOpenCase").mockResolvedValueOnce(null);
+    try {
+      const res = await capture(applicantId).expect(409);
+      expect(res.body.code).toBe("DUPLICATE_APPLICATION");
+      expect(res.body.detail).toContain(first.reference);
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await original(applicantId, "PL")).toMatchObject({ id: first.id });
+    expect(await openCases(applicantId)).toBe(1);
+  });
+
+  it("two captures at once make exactly one open application (the database index holds the race)", async () => {
+    const applicantId = await twin(h, "APL-MARIA");
+    const results = await Promise.all([capture(applicantId), capture(applicantId)]);
+    expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
+    const refused = results.find((r) => r.status === 409);
+    expect(refused?.body.code).toBe("DUPLICATE_APPLICATION");
+    expect(await openCases(applicantId)).toBe(1);
   });
 });

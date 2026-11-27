@@ -5,6 +5,7 @@ import {
   readyForChecker,
   startHarness,
   submitCase,
+  twin,
 } from "./support/harness";
 
 let h: Harness;
@@ -131,7 +132,7 @@ describe("roles and segregation of duties (backend-enforced)", () => {
     const draft = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "50000.00",
         tenorMonths: 12,
         purpose: "Tuition",
@@ -166,7 +167,7 @@ describe("application capture and validation", () => {
       const res = await h
         .as("paolo")
         .post("/cases", {
-          applicantId: "APL-MARIA",
+          applicantId: await twin(h, "APL-MARIA"),
           amount,
           tenorMonths,
           purpose: "Test",
@@ -185,7 +186,7 @@ describe("application capture and validation", () => {
     const res = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "50000.00",
         tenorMonths: 12.5,
         purpose: "Test",
@@ -223,7 +224,7 @@ describe("application capture and validation", () => {
     const res = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "50000.00",
         tenorMonths: 12,
         purpose: "x",
@@ -238,7 +239,7 @@ describe("application capture and validation", () => {
     const created = await h
       .as("paolo")
       .post("/cases", {
-        applicantId: "APL-MARIA",
+        applicantId: await twin(h, "APL-MARIA"),
         amount: "75000.50",
         tenorMonths: 18,
         purpose: "Car repair",

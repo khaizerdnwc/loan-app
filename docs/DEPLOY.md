@@ -59,6 +59,19 @@ The seed sets the published test password (`Password123!`, docs/TEST-ACCOUNTS.md
 staff account. The repository is public, so a deployed environment seeded this way is open to
 anyone who reads it. That is acceptable for this synthetic-data demo and for nothing else.
 
+## Before upgrading an existing database
+
+Migration 1764300000005 adds a partial unique index: one open application per applicant and
+product (INT-007). It fails if the database already holds duplicates. Check first, and
+decline or finish the extra cases before migrating:
+
+```sql
+SELECT applicant_id, product_code, count(*) FROM loan_case
+WHERE status NOT IN ('DECLINED', 'DISBURSED') GROUP BY 1, 2 HAVING count(*) > 1;
+```
+
+A fresh environment has nothing to check: the seed creates no cases.
+
 ## Rollback
 
 Redeploy the previous image tags. The migrations only add (no destructive `down` is run on

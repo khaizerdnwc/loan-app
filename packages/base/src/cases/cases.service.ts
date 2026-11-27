@@ -109,28 +109,40 @@ export class CasesService {
     if (body.consent) this.checkConsentInput(body.consent);
     // Capture-and-submit without full consent would leave a draft behind a 400: refuse first.
     if (body.submit && !consentComplete(body.consent ?? null)) throw consentRequired();
-    const id = await this.tx.run(async (m) => {
-      const c = new LoanCaseEntity();
-      c.reference = await this.repo.nextReference(m);
-      c.applicant = applicant;
-      c.applicantId = applicant.id;
-      c.productCode = PERSONAL_LOAN.code;
-      c.requestedAmount = amount;
-      c.requestedTenorMonths = body.tenorMonths;
-      c.purpose = body.purpose.trim();
-      startDraft(c);
-      c.createdBy = user.id;
-      const saved = await this.repo.saveCase(m, c);
-      await this.activity.record(m, {
-        caseId: saved.id,
-        actor: user,
-        action: "CASE_CREATED",
-        summary: `Created draft ${saved.reference}: ₱${amount.toString()} over ${body.tenorMonths} months for ${applicant.fullName}.`,
-        toStatus: CaseStatus.Draft,
+    const id = await this.tx
+      .run(async (m) => {
+        // One open application per applicant and product (INT-007). The partial unique index
+        // holds it under a race; this names the open case for the officer.
+        const open = await this.repo.findOpenCase(applicant.id, PERSONAL_LOAN.code, m);
+        if (open) throw duplicateApplication(applicant.fullName, open.reference);
+        const c = new LoanCaseEntity();
+        c.reference = await this.repo.nextReference(m);
+        c.applicant = applicant;
+        c.applicantId = applicant.id;
+        c.productCode = PERSONAL_LOAN.code;
+        c.requestedAmount = amount;
+        c.requestedTenorMonths = body.tenorMonths;
+        c.purpose = body.purpose.trim();
+        startDraft(c);
+        c.createdBy = user.id;
+        const saved = await this.repo.saveCase(m, c);
+        await this.activity.record(m, {
+          caseId: saved.id,
+          actor: user,
+          action: "CASE_CREATED",
+          summary: `Created draft ${saved.reference}: ₱${amount.toString()} over ${body.tenorMonths} months for ${applicant.fullName}.`,
+          toStatus: CaseStatus.Draft,
+        });
+        if (body.consent) await this.recordConsent(m, user, saved, body.consent);
+        return saved.id;
+      })
+      .catch(async (err: unknown) => {
+        // A race the pre-check could not see: the partial unique index refused the second insert.
+        // Mapped outside the rolled-back transaction, so the lookup does not hold two connections.
+        if (!isUniqueViolation(err, OPEN_APPLICATION_INDEX)) throw err;
+        const winner = await this.repo.findOpenCase(applicant.id, PERSONAL_LOAN.code);
+        throw duplicateApplication(applicant.fullName, winner?.reference ?? "another case");
       });
-      if (body.consent) await this.recordConsent(m, user, saved, body.consent);
-      return saved.id;
-    });
     return body.submit ? this.submit(user, id) : this.get(user, id);
   }
 
@@ -631,6 +643,23 @@ function asInvalidState(check: () => void): void {
     if (err instanceof InvalidTransitionError) throw invalidState(err.message);
     throw err;
   }
+}
+
+/** The partial unique index behind INT-007 (migration 1764300000005). */
+export const OPEN_APPLICATION_INDEX = "UQ_loan_case_open_per_applicant_product";
+
+function duplicateApplication(name: string, reference: string): DomainError {
+  return new DomainError(
+    409,
+    ProblemCode.DuplicateApplication,
+    `${name} already has an open ${PERSONAL_LOAN.name.toLowerCase()} application (${reference}). Continue that one, or decline it first.`,
+  );
+}
+
+/** A Postgres unique violation (23505) on the named constraint or index. */
+function isUniqueViolation(err: unknown, constraint: string): boolean {
+  const driver = (err as { driverError?: { code?: string; constraint?: string } }).driverError;
+  return driver?.code === "23505" && driver.constraint === constraint;
 }
 
 function consentRequired(): DomainError {

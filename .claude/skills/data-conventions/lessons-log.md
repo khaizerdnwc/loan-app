@@ -4,6 +4,22 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-unique-violation-mapping-forced-test
+
+When a service checks for a duplicate and then relies on a unique index to cover the race,
+the code that turns the index's unique violation (23505 on the named index) into a domain 409
+must be pinned by a test that **forces** that path: stub or spy the pre-check so it misses once,
+or insert the competing row directly in SQL between the check and the insert. Map the violation
+after `tx.run` rejects (outside the callback), not inside it. Why: in INT-007 (one open
+application, 28 Nov 2026) the race test fired two captures with `Promise.all`. It passes
+whether the requests overlap (index path) or run one after the other (pre-check path), so the
+catch branch can go untested and a typo in the index name turns a race into a 500 with a green
+suite. The catch also read the winner through the default manager while the aborted transaction
+still held its connection: two pool connections per request, so a burst of racing captures can
+exhaust the pool (max 20, 5 s acquire timeout) instead of answering 409. Nearest deterministic
+alternative: a test-candidate per mapping; a check could list every `isUniqueViolation(…, name)`
+and require that name to appear in a test.
+
 ## data-20261127-precondition-reread-under-lock
 
 A precondition that a service checks before its locked transaction (because providers are

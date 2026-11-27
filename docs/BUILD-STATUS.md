@@ -20,6 +20,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | M9c | One published test password (`Password123!`) for every account; no account list on the sign-in page and no public staff list endpoint; docs/TEST-ACCOUNTS.md | done | R-10 updated (API, unit, component, browser) · M9c commit |
 | P1 | PRD backlog #1: re-decide a case referred during a provider outage (NFR-005) | done | B-10 (integration) · lifecycle REDECIDE edges (unit) · officer's "Decide again" action · PRD-COVERAGE updated |
 | P2 | PRD backlog #2: consent before the bureau check (INT-006, AIS-002) | done | C-1 (integration, unit, browser) · migration 1764300000004 (insert-only, FK to the case) · consent card on New application and a Consent panel on the case |
+| P3 | PRD backlog #3: one open application per applicant and product (INT-007) | done | A-7 (integration: refusal, declined and disbursed free the applicant, forced index path, concurrent race) · migration 1764300000005 (partial unique index) rehearsed on the used dev database (migrate, revert, migrate) · pre-flight query in docs/DEPLOY.md · three more synthetic applicants for independent browser journeys |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 

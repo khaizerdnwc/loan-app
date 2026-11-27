@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import "reflect-metadata";
 import { SEED_TEST_PASSWORD } from "@loan/base";
 import { type CaseDetail, CONSENT_TERMS_VERSION, type CreateCaseRequest } from "@loan/core";
@@ -105,11 +106,36 @@ export const FULL_CONSENT = {
   termsVersion: CONSENT_TERMS_VERSION,
 } as const;
 
-/** Create and submit an application as the loan officer, with the applicant's consent. */
+/**
+ * A new synthetic applicant with the same profile as a seeded one (and the same simulated
+ * bureau and screening answers), so a test gets its own applicant: one applicant may have only
+ * one open application per product (INT-007). The name stays the same.
+ */
+export async function twin(h: Harness, seededId: string): Promise<string> {
+  const id = `${seededId}-${randomUUID().slice(0, 8)}`;
+  await h.ds.query(
+    `INSERT INTO applicant SELECT (jsonb_populate_record(NULL::applicant, to_jsonb(a) || jsonb_build_object('id', $2::text))).*
+     FROM applicant a WHERE a.id = $1`,
+    [seededId, id],
+  );
+  await h.ds.query(
+    `INSERT INTO sim.persona_profile (applicant_id, bureau, screening)
+     SELECT $2, bureau, screening FROM sim.persona_profile WHERE applicant_id = $1`,
+    [seededId, id],
+  );
+  return id;
+}
+
+/**
+ * Create and submit an application as the loan officer, with the applicant's consent. Each
+ * call uses a twin of the named applicant unless `sameApplicant` is set.
+ */
 export async function submitCase(
   h: Harness,
   body: Partial<CreateCaseRequest> & { applicantId: string },
+  options: { sameApplicant?: boolean } = {},
 ): Promise<CaseDetail> {
+  const applicantId = options.sameApplicant ? body.applicantId : await twin(h, body.applicantId);
   const res = await h
     .as("paolo")
     .post("/cases", {
@@ -119,6 +145,7 @@ export async function submitCase(
       submit: true,
       consent: FULL_CONSENT,
       ...body,
+      applicantId,
     })
     .expect(201);
   return res.body as CaseDetail;

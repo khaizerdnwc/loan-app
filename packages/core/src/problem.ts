@@ -22,6 +22,7 @@ export interface ProblemDetails {
 /** Stable error codes the backoffice can branch on. */
 export const ProblemCode = {
   Validation: "VALIDATION_FAILED",
+  DuplicateApplication: "DUPLICATE_APPLICATION",
   Unauthenticated: "UNAUTHENTICATED",
   Forbidden: "FORBIDDEN_ROLE",
   MakerChecker: "MAKER_CHECKER_VIOLATION",

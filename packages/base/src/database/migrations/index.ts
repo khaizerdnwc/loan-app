@@ -3,6 +3,7 @@ import { SimulatorsSchema1764300000001 } from "./1764300000001-SimulatorsSchema"
 import { InsertOnlyRecords1764300000002 } from "./1764300000002-InsertOnlyRecords";
 import { StaffSignIn1764300000003 } from "./1764300000003-StaffSignIn";
 import { ConsentRecords1764300000004 } from "./1764300000004-ConsentRecords";
+import { OneOpenApplication1764300000005 } from "./1764300000005-OneOpenApplication";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -16,4 +17,5 @@ export const MIGRATIONS = [
   InsertOnlyRecords1764300000002,
   StaffSignIn1764300000003,
   ConsentRecords1764300000004,
+  OneOpenApplication1764300000005,
 ];

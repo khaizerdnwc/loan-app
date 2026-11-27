@@ -1,11 +1,14 @@
 import { expect, test } from "@playwright/test";
 import { signIn } from "./support";
 
-/** C-1 in the browser: no consent, no submission; the case then shows who recorded it. */
+/**
+ * C-1 in the browser: no consent, no submission; the case then shows who recorded it. Uses Ana
+ * (Maria's twin profile) so it never shares an applicant with F1: one open application each.
+ */
 test("C-1 submitting needs both consents; the case shows who captured them", async ({ page }) => {
   await signIn(page, "paolo");
   await page.goto("/cases/new");
-  await page.getByLabel("Applicant", { exact: true }).selectOption("APL-MARIA");
+  await page.getByLabel("Applicant", { exact: true }).selectOption("APL-ANA");
   await page.getByLabel("Amount (pesos)").fill("60000");
   await page.getByLabel("Tenor (months)").fill("12");
   await page.getByLabel("Purpose").fill("Home improvement");

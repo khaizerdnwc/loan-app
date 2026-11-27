@@ -1,6 +1,10 @@
 import { expect, type Locator, type Page } from "@playwright/test";
 
 /**
+ * Each journey uses its own seeded applicant (one open application per applicant, INT-007).
+ * The verify e2e stage starts a fresh throwaway database each run; against a long-lived
+ * database, reseed (`pnpm db:reset`) before running the journeys again.
+ *
  * Shared steps for the browser journeys. Every step goes through the real screens and the
  * same-origin /api proxy; the session is the cookie the API sets in the browser.
  */

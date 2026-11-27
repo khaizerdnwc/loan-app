@@ -26,7 +26,7 @@ test("B-7 with the bureau in outage, an application is referred, never declined"
     page.getByRole("status").filter({ hasText: "Simulated failure active" }),
   ).toContainText("Credit bureau");
 
-  await submitApplication(page, "APL-MARIA", "60000", "12");
+  await submitApplication(page, "APL-LIZA", "60000", "12");
   await expect(page.getByText("Referred to human review.")).toBeVisible();
   await expect(page.getByText(/Credit bureau unavailable/).first()).toBeVisible();
   await expect(page.getByText(/Not scored/)).toBeVisible();
@@ -36,7 +36,7 @@ test("B-7 with the bureau in outage, an application is referred, never declined"
 test("B-5 a core banking timeout fails the booking; a retry with the same key books once", async ({
   page,
 }) => {
-  const path = await submitApplication(page, "APL-MARIA", "150000", "24");
+  const path = await submitApplication(page, "APL-GRACE", "150000", "24");
   await expect(page.getByText("Auto-approved.")).toBeVisible();
   await openCase(page, "marco", path);
   await act(page, "Record borrower e-signature");

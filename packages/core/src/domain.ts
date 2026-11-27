@@ -36,6 +36,15 @@ export const CaseStatus = {
 } as const;
 export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
 
+/**
+ * Statuses a case never leaves: a closed case no longer counts as the applicant's open
+ * application (INT-007). The lifecycle draws no edge out of either.
+ */
+export const CLOSED_CASE_STATUSES: readonly CaseStatus[] = [
+  CaseStatus.Declined,
+  CaseStatus.Disbursed,
+];
+
 /** Every case status in lifecycle order (the declaration order above). */
 export const CASE_STATUSES: readonly CaseStatus[] = Object.values(CaseStatus);
 

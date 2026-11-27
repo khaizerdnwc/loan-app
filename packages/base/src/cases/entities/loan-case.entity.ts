@@ -1,5 +1,6 @@
 import {
   CaseStatus,
+  CLOSED_CASE_STATUSES,
   type Grade,
   type Money,
   type OverrideReason,
@@ -25,6 +26,14 @@ import { ApplicantEntity } from "./applicant.entity";
  * event. Human decisions are fields here; the automated decision is an insert-only record.
  */
 @Entity({ name: "loan_case" })
+/**
+ * One open application per applicant and product (PRD INT-007): closed cases (declined,
+ * disbursed) do not count. The service answers 409 first; this index makes it hold under a race.
+ */
+@Index("UQ_loan_case_open_per_applicant_product", ["applicantId", "productCode"], {
+  unique: true,
+  where: `"status" NOT IN (${CLOSED_CASE_STATUSES.map((st) => `'${st}'`).join(", ")})`,
+})
 @Index(["status"])
 export class LoanCaseEntity {
   @PrimaryGeneratedColumn("uuid")
