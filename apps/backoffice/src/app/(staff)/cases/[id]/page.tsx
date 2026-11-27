@@ -5,6 +5,7 @@ import {
   DECLINE_REASON_LABEL,
   OVERRIDE_REASON_LABEL,
   productLabel,
+  WITHDRAW_REASON_LABEL,
 } from "@loan/core";
 import {
   Button,
@@ -25,6 +26,7 @@ import { ConsentPanel } from "@/components/case/consent-panel";
 import { DecisionPanel } from "@/components/case/decision-panel";
 import { DecisionRecordDialog } from "@/components/case/decision-record-dialog";
 import { LoanAccountPanel } from "@/components/case/loan-account-panel";
+import { OutcomeBanner } from "@/components/case/outcome-banner";
 import { LoadState } from "@/components/load-state";
 import { useApi } from "@/lib/use-api";
 
@@ -70,7 +72,7 @@ export default function CasePage() {
         </div>
       </header>
 
-      <StageBar status={c.status} wasReferred={referred} />
+      <StageBar status={c.status} wasReferred={referred} closedFrom={c.closedFrom} />
       <OutcomeBanner detail={c} />
 
       <div className="grid gap-5 min-[1100px]:grid-cols-[2fr_1fr]">
@@ -84,6 +86,7 @@ export default function CasePage() {
               </p>
             </Card>
           )}
+          {c.withdrawal && <WithdrawalPanel withdrawal={c.withdrawal} />}
           {(c.recommendation || c.approved || c.decline) && <TermsPanel detail={c} />}
           {c.booking && <BookingPanel detail={c} />}
           {c.loanAccountId && <LoanAccountPanel caseId={c.id} />}
@@ -118,31 +121,6 @@ export default function CasePage() {
           onClose={() => setShowRecord(false)}
         />
       )}
-    </div>
-  );
-}
-
-function OutcomeBanner({ detail: c }: { detail: CaseDetail }) {
-  if (!c.decision) return null;
-  const { outcome, score, grade, referralTriggers, reasonCodes } = c.decision;
-  if (outcome === "AUTO_APPROVE") {
-    return (
-      <div className="rounded-card bg-ok-050 px-5 py-3 text-sm text-ok-700">
-        <strong>Auto-approved.</strong> Score {score} ({grade}) in the approve band; every policy
-        rule passed.
-      </div>
-    );
-  }
-  if (outcome === "REFER") {
-    return (
-      <div className="rounded-card bg-gold-050 px-5 py-3 text-sm text-gold-700">
-        <strong>Referred to human review.</strong> {referralTriggers.join(" · ")}
-      </div>
-    );
-  }
-  return (
-    <div className="rounded-card bg-bad-050 px-5 py-3 text-sm text-bad-700">
-      <strong>Auto-declined.</strong> {reasonCodes.map((r) => r.staff).join(" · ")}
     </div>
   );
 }
@@ -243,6 +221,27 @@ function TermsPanel({ detail: c }: { detail: CaseDetail }) {
           {c.decline.note && ` — ${c.decline.note}`}
         </p>
       )}
+    </Card>
+  );
+}
+
+function WithdrawalPanel({ withdrawal: w }: { withdrawal: NonNullable<CaseDetail["withdrawal"]> }) {
+  return (
+    <Card title="Withdrawal">
+      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
+        <dt className="text-mist-500">Reason</dt>
+        <dd className="text-ink-900">{WITHDRAW_REASON_LABEL[w.reasonCode]}</dd>
+        <dt className="text-mist-500">Withdrawn by</dt>
+        <dd className="text-ink-900">
+          {w.byName} · {formatDateTime(w.at)}
+        </dd>
+        {w.note && (
+          <>
+            <dt className="text-mist-500">Note</dt>
+            <dd className="text-ink-900">“{w.note}”</dd>
+          </>
+        )}
+      </dl>
     </Card>
   );
 }

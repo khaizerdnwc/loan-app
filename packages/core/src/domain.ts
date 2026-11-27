@@ -33,16 +33,20 @@ export const CaseStatus = {
   BookingFailed: "BOOKING_FAILED",
   Disbursed: "DISBURSED",
   Declined: "DECLINED",
+  Withdrawn: "WITHDRAWN",
+  Expired: "EXPIRED",
 } as const;
 export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
 
 /**
  * Statuses a case never leaves: a closed case no longer counts as the applicant's open
- * application (INT-007). The lifecycle draws no edge out of either.
+ * application (INT-007). The lifecycle draws no edge out of any of them.
  */
 export const CLOSED_CASE_STATUSES: readonly CaseStatus[] = [
   CaseStatus.Declined,
   CaseStatus.Disbursed,
+  CaseStatus.Withdrawn,
+  CaseStatus.Expired,
 ];
 
 /** Every case status in lifecycle order (the declaration order above). */
@@ -58,6 +62,8 @@ export const STATUS_LABEL: Record<CaseStatus, string> = {
   BOOKING_FAILED: "Booking failed",
   DISBURSED: "Disbursed",
   DECLINED: "Declined",
+  WITHDRAWN: "Withdrawn",
+  EXPIRED: "Expired",
 };
 
 /** Product display names by product code (one product in this release). */
@@ -120,6 +126,20 @@ export const DECLINE_REASON_LABEL: Record<DeclineReason, string> = {
   DR02: "Debt-to-income above policy",
   DR03: "Unable to verify information",
   DR04: "Credit history does not meet policy",
+};
+
+/** Reason codes a loan officer gives when withdrawing an application (PRD WF-012). */
+export const WithdrawReason = {
+  ApplicantRequest: "APPLICANT_REQUEST",
+  DuplicateApplication: "DUPLICATE_APPLICATION",
+  NotProceeding: "NOT_PROCEEDING",
+} as const;
+export type WithdrawReason = (typeof WithdrawReason)[keyof typeof WithdrawReason];
+
+export const WITHDRAW_REASON_LABEL: Record<WithdrawReason, string> = {
+  APPLICANT_REQUEST: "Applicant withdrew",
+  DUPLICATE_APPLICATION: "Duplicate application",
+  NOT_PROCEEDING: "Not proceeding (other)",
 };
 
 /**

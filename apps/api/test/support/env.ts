@@ -20,3 +20,5 @@ process.env.JWT_SECRET = "test-dummy-secret-at-least-32-characters-long";
 process.env.SIMULATION_TIMEOUT_MS = "20";
 process.env.SIMULATION_AUTO_RESET_MINUTES = "15";
 process.env.MIGRATE_ON_BOOT = "false";
+// The tests run the expiry sweep by hand (ExpiryService.expireStale), never on a timer.
+process.env.EXPIRY_SWEEP_SECONDS = "0";

@@ -239,6 +239,34 @@ describe("status presentation", () => {
     expect(screen.queryByText("Review")).not.toBeInTheDocument();
     expect(screen.getByText("Booking")).toHaveAttribute("aria-current", "step");
   });
+
+  it.each([
+    ["WITHDRAWN", "Withdrawn"],
+    ["EXPIRED", "Expired"],
+  ] as const)("names the closed status %s in its neutral pill", (status, label) => {
+    render(<StagePill status={status} />);
+    const pill = screen.getByText(label);
+    expect(pill.className).toContain("bg-mist-100");
+    expect(pill.className).not.toContain("bg-bad-100");
+  });
+
+  it("shows a withdrawn or expired case stopped at the stage it closed from", () => {
+    const { rerender } = render(<StageBar status="WITHDRAWN" wasReferred closedFrom="APPROVAL" />);
+    const stopped = screen.getByText("Withdrawn");
+    expect(stopped).toHaveAttribute("aria-current", "step");
+    expect(screen.queryByText("Approval")).not.toBeInTheDocument();
+    expect(screen.getByText("Review").className).toContain("bg-ok-100");
+    expect(screen.getByText("Offer").className).toContain("bg-mist-100");
+
+    rerender(<StageBar status="EXPIRED" wasReferred={false} closedFrom="OFFER" />);
+    expect(screen.getByText("Expired")).toHaveAttribute("aria-current", "step");
+    expect(screen.getByText("Decision").className).toContain("bg-ok-100");
+    expect(screen.getByText("Booking").className).toContain("bg-mist-100");
+
+    rerender(<StageBar status="EXPIRED" wasReferred={false} closedFrom={null} />);
+    expect(screen.getByText("Expired")).toHaveAttribute("aria-current", "step");
+    expect(screen.queryByText("Submitted")).not.toBeInTheDocument();
+  });
 });
 
 describe("Table", () => {

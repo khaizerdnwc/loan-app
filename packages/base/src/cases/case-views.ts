@@ -10,7 +10,7 @@ import type {
   LoanAccountView,
   ProblemCode,
 } from "@loan/core";
-import { Money } from "@loan/core";
+import { CaseStatus, Money } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
@@ -23,6 +23,7 @@ import type { ApplicantEntity } from "./entities/applicant.entity";
 import type { BookingRequestEntity } from "./entities/booking.entities";
 import type { DecisionRecordEntity } from "./entities/decision-record.entity";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
+import { expiryOf } from "./product";
 
 /** Entities → the HTTP contract (packages/core/src/api.ts). Money always leaves as strings. */
 @Injectable()
@@ -47,6 +48,13 @@ export class CaseViews {
     const account = await this.repo.findLoanAccount(c.id);
     const me = await this.staff.findById(user.id);
     const consent = await this.repo.latestConsent(c.id);
+    // Who withdrew or expired the case, when, and from which status, is its closing event
+    // (written in the same transaction as the move).
+    const closing =
+      c.status === CaseStatus.Withdrawn || c.status === CaseStatus.Expired
+        ? await this.repo.lastEvent(c.id, c.status)
+        : null;
+    const withdrawn = c.status === CaseStatus.Withdrawn ? closing : null;
     const names = await this.staff.namesById(
       [c.recommendedBy, c.approvedBy, booking?.makerId, consent?.capturedBy].filter(
         (x): x is string => Boolean(x),
@@ -101,6 +109,18 @@ export class CaseViews {
               note: c.declineNote,
             }
           : null,
+      withdrawal:
+        c.withdrawReason && withdrawn
+          ? {
+              reasonCode: c.withdrawReason,
+              note: c.withdrawNote,
+              by: withdrawn.actorId,
+              byName: withdrawn.actorName,
+              at: withdrawn.createdAt.toISOString(),
+            }
+          : null,
+      closedFrom: closing?.fromStatus ?? null,
+      expiresAt: expiryOf(c)?.toISOString() ?? null,
       signatureEnvelopeId: c.signatureEnvelopeId,
       consent: consent
         ? {

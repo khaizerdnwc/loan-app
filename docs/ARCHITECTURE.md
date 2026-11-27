@@ -44,7 +44,15 @@ DRAFT ─submit─▶ OFFER | REVIEW | DECLINED
 REVIEW ─recommend─▶ APPROVAL ─approve─▶ OFFER · ─decline─▶ DECLINED · ─return─▶ REVIEW
 OFFER ─sign─▶ BOOKING ─submit booking─▶ PENDING_CHECKER
 PENDING_CHECKER | BOOKING_FAILED ─approve booking─▶ DISBURSED | BOOKING_FAILED
+DRAFT | REVIEW | APPROVAL | OFFER ─withdraw (loan officer)─▶ WITHDRAWN
+DRAFT | OFFER ─expire (sweep)─▶ EXPIRED
 ```
+
+DECLINED, DISBURSED, WITHDRAWN and EXPIRED are closed: no edge leaves them. The expiry sweep
+is a timer at the composition root (`apps/api/src/expiry-sweep.ts`) calling
+`ExpiryService.expireStale` (`cases/expiry.service.ts`, the one service `LendingModule` exports
+beyond auth); the domain has no scheduler. The periods (`DRAFT_EXPIRY_DAYS`,
+`OFFER_EXPIRY_DAYS`) live in `packages/core`, read by the API and the backoffice alike.
 
 The transition table in `cases/lifecycle.ts` is the only code that writes a status, through
 `moveTo(c, event, to)` (both ends checked) and `startDraft`. A lint rule enforces it. Every

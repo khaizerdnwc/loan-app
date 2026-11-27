@@ -13,6 +13,7 @@ import { OPERATIONS_STAGES } from "./cases.repository";
 import type { BookingRequestEntity } from "./entities/booking.entities";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
 import { canHappen } from "./lifecycle";
+import { expiryRefusal } from "./product";
 
 /**
  * Who may see a case (docs/API.md). Outside this, the API answers 404 so the case's
@@ -58,7 +59,7 @@ export function authorityProblem(approver: StaffEntity, c: LoanCaseEntity): stri
 }
 
 const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
-  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "REDECIDE", "RECOMMEND", "REPRODUCE_DECISION"],
+  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "REDECIDE", "RECOMMEND", "WITHDRAW", "REPRODUCE_DECISION"],
   APPROVER: ["APPROVE", "DECLINE", "RETURN", "REPRODUCE_DECISION"],
   LOAN_OPERATIONS: ["SIGN", "SUBMIT_BOOKING"],
   LOAN_OPERATIONS_SUPERVISOR: ["SIGN", "SUBMIT_BOOKING", "APPROVE_BOOKING", "RETRY_BOOKING"],
@@ -75,6 +76,7 @@ const ACTION_EVENT: Partial<Record<CaseAction, Parameters<typeof canHappen>[0]>>
   RETURN: "RETURN",
   SIGN: "SIGN",
   SUBMIT_BOOKING: "SUBMIT_BOOKING",
+  WITHDRAW: "WITHDRAW",
 };
 
 /**
@@ -106,6 +108,20 @@ export function allowedActions(
         blockedBy: ProblemCode.Validation,
         detail:
           "This case has no complete consent on record, so the bureau cannot be checked again. Recommend a decline instead.",
+      });
+      continue;
+    }
+    // One expiry gate for every write on a draft or offer: the same wording as the API's 409.
+    const expired =
+      action === "EDIT_DRAFT" || action === "SUBMIT" || action === "SIGN"
+        ? expiryRefusal(c, new Date())
+        : null;
+    if (expired) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.InvalidTransition,
+        detail: expired,
       });
       continue;
     }

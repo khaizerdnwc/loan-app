@@ -4,6 +4,7 @@ import { InsertOnlyRecords1764300000002 } from "./1764300000002-InsertOnlyRecord
 import { StaffSignIn1764300000003 } from "./1764300000003-StaffSignIn";
 import { ConsentRecords1764300000004 } from "./1764300000004-ConsentRecords";
 import { OneOpenApplication1764300000005 } from "./1764300000005-OneOpenApplication";
+import { WithdrawAndExpiry1764300000006 } from "./1764300000006-WithdrawAndExpiry";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -18,4 +19,5 @@ export const MIGRATIONS = [
   StaffSignIn1764300000003,
   ConsentRecords1764300000004,
   OneOpenApplication1764300000005,
+  WithdrawAndExpiry1764300000006,
 ];

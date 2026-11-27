@@ -48,7 +48,7 @@ this (`pnpm deps:check`, part of the `static` stage).
   folders `auth/`, `cases/`, `simulation/` and the pure `decisioning/engine/`. Every service
   works on one aggregate (the loan case) through one repository and one transaction runner,
   so splitting into per-feature modules would only re-export that repository. Split when a
-  second aggregate appears (e.g. collections). It exports only `SessionGuard` and `JwtModule`.
+  second aggregate appears (e.g. collections). It exports only `SessionGuard`, `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
 - The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written

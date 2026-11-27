@@ -36,6 +36,9 @@ const STATUS_TONE: Record<CaseStatus, Tone> = {
   BOOKING_FAILED: "bad",
   DISBURSED: "ok",
   DECLINED: "bad",
+  // Closed without a decision against the applicant: neutral, not a failure.
+  WITHDRAWN: "neutral",
+  EXPIRED: "neutral",
 };
 
 /** The case stage, in the one wording and colour used everywhere. */

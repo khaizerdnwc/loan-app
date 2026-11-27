@@ -387,6 +387,28 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  {
+    id: "APL-ROSA",
+    fullName: "Rosa Dizon",
+    birthDate: "1995-05-10",
+    governmentIdLast4: "8465",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0021-8853",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: CLEAR,
+  },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */

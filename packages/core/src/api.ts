@@ -10,6 +10,7 @@ import type {
   Role,
   ServiceName,
   SimulationMode,
+  WithdrawReason,
 } from "./domain";
 import type { ProblemCode } from "./problem";
 
@@ -206,6 +207,21 @@ export interface CaseDetail extends CaseSummary {
     reasonCode: DeclineReason;
     note: string | null;
   } | null;
+  /** The loan officer's withdrawal (PRD WF-012), or null if the case was not withdrawn. */
+  withdrawal: {
+    reasonCode: WithdrawReason;
+    note: string | null;
+    by: string;
+    byName: string;
+    at: string;
+  } | null;
+  /** For a withdrawn or expired case, the status it was in when it closed; otherwise null. */
+  closedFrom: CaseStatus | null;
+  /**
+   * When a draft (DRAFT_EXPIRY_DAYS after its last change) or an offer (OFFER_EXPIRY_DAYS
+   * after it was made) expires; null in every other status.
+   */
+  expiresAt: string | null;
   signatureEnvelopeId: string | null;
   /** The latest consent recorded for this application, or null if none yet. */
   consent: ConsentView | null;
@@ -227,6 +243,7 @@ export type CaseAction =
   | "SUBMIT_BOOKING"
   | "APPROVE_BOOKING"
   | "RETRY_BOOKING"
+  | "WITHDRAW"
   | "REPRODUCE_DECISION";
 
 interface SimulationServiceBase {
@@ -256,6 +273,12 @@ export interface CaseList {
 
 /** The terms and conditions version the applicant agrees to in this release. */
 export const CONSENT_TERMS_VERSION = "1.0";
+
+/** A draft unchanged for this many days expires (PRD INT-003), counted from its last change. */
+export const DRAFT_EXPIRY_DAYS = 30;
+
+/** An offer not signed this many days after it was made expires (prototype workflow). */
+export const OFFER_EXPIRY_DAYS = 5;
 
 /** The applicant's consents, captured by staff on their behalf (PRD INT-006). */
 export interface ConsentInput {
@@ -305,6 +328,12 @@ export interface RecommendRequest {
 
 export interface DeclineRequest {
   reasonCode: DeclineReason;
+  note?: string;
+}
+
+/** The loan officer closes an application before it is booked (PRD WF-012). */
+export interface WithdrawRequest {
+  reasonCode: WithdrawReason;
   note?: string;
 }
 

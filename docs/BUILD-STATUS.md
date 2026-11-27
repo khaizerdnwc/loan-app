@@ -21,6 +21,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | P1 | PRD backlog #1: re-decide a case referred during a provider outage (NFR-005) | done | B-10 (integration) · lifecycle REDECIDE edges (unit) · officer's "Decide again" action · PRD-COVERAGE updated |
 | P2 | PRD backlog #2: consent before the bureau check (INT-006, AIS-002) | done | C-1 (integration, unit, browser) · migration 1764300000004 (insert-only, FK to the case) · consent card on New application and a Consent panel on the case |
 | P3 | PRD backlog #3: one open application per applicant and product (INT-007) | done | A-7 (integration: refusal, declined and disbursed free the applicant, forced index path, concurrent race) · migration 1764300000005 (partial unique index) rehearsed on the used dev database (migrate, revert, migrate) · pre-flight query in docs/DEPLOY.md · three more synthetic applicants for independent browser journeys |
+| P4 | PRD backlog #4: withdrawal and expiry (WF-012, INT-003) | done | W-1 (integration, component, browser), W-2 (integration, api unit for the sweep) · lifecycle WITHDRAW/EXPIRE edges (unit) · migration 1764300000006 (offered_at, withdraw reason/note, open-application index recreated with the closed set) rehearsed on a seeded database at the prior head (migrate, revert, migrate; revert refused with a withdrawn case) · `EXPIRY_SWEEP_SECONDS` |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 

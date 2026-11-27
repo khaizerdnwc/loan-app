@@ -14,6 +14,8 @@ import {
   type RecommendRequest,
   Role,
   type UpdateDraftRequest,
+  WITHDRAW_REASON_LABEL,
+  type WithdrawRequest,
 } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
@@ -43,18 +45,13 @@ import {
   moveTo,
   startDraft,
 } from "./lifecycle";
-import { PERSONAL_LOAN, termErrors } from "./product";
+import { businessDate, expiryRefusal, PERSONAL_LOAN, termErrors } from "./product";
 
 const OUTCOME_STATUS: Record<DecisionOutcome, CaseStatus> = {
   AUTO_APPROVE: CaseStatus.Offer,
   REFER: CaseStatus.Review,
   AUTO_DECLINE: CaseStatus.Declined,
 };
-
-/** Today as YYYY-MM-DD in the Philippines (UTC+8), the bank's business date. */
-export function businessDate(now = new Date()): string {
-  return new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
-}
 
 /**
  * Application capture, the automated decision, referral review, approval and signing.
@@ -151,6 +148,9 @@ export class CasesService {
     await this.tx.run(async (m) => {
       const c = await this.lockOrFail(m, user, id);
       if (c.status !== CaseStatus.Draft) throw invalidState("Only a draft can be edited.");
+      // One expiry gate for every write on a draft (a consent-only edit too): an expired draft
+      // is closed by the sweep, never revived by an edit that would reset its age.
+      refuseIfExpired(c, new Date());
       if (body.consent) await this.recordConsent(m, user, c, body.consent);
       const changesTerms =
         body.amount !== undefined || body.tenorMonths !== undefined || body.purpose !== undefined;
@@ -190,6 +190,7 @@ export class CasesService {
     const draft = await this.visible(user, id);
     if (draft.status !== CaseStatus.Draft)
       throw invalidState("This application has already been submitted.");
+    refuseIfExpired(draft, new Date());
     // No consent, no bureau pull (PRD INT-006, AIS-002): checked before any provider call.
     if (!consentComplete(await this.repo.latestConsent(draft.id))) throw consentRequired();
     // Providers are called before the transaction: no row lock is held while they answer.
@@ -203,6 +204,8 @@ export class CasesService {
       if (c.version !== draft.version) {
         throw invalidState("The draft changed while it was being decided. Submit it again.");
       }
+      // Re-checked under the lock: the draft may have reached its expiry while the providers answered.
+      refuseIfExpired(c, new Date());
       // Consent edits do not change the case's version, so read it again under the lock: a
       // consent withdrawn while the providers answered stops the decision (INT-006).
       if (!consentComplete(await this.repo.latestConsent(c.id, m))) {
@@ -211,6 +214,7 @@ export class CasesService {
       const { record, result } = await this.decisions.decideAndRecord(m, c, inputs, user.id);
       const to = OUTCOME_STATUS[result.outcome];
       this.move(c, "SUBMIT", to);
+      if (to === CaseStatus.Offer) c.offeredAt = new Date();
       c.decisionId = record.id;
       c.grade = result.grade;
       if (result.outcome === DecisionOutcome.Approve && result.monthlyRate) {
@@ -284,6 +288,7 @@ export class CasesService {
       const { record, result } = await this.decisions.decideAndRecord(m, c, inputs, user.id);
       const to = OUTCOME_STATUS[result.outcome];
       this.move(c, "REDECIDE", to);
+      if (to === CaseStatus.Offer) c.offeredAt = new Date();
       // The new automated decision starts the case afresh: nobody has recommended, approved
       // or escalated it under this decision (the earlier actors are kept in the event).
       const cleared = {
@@ -452,6 +457,7 @@ export class CasesService {
       c.approvedTenorMonths = c.recommendedTenorMonths;
       c.approvedMonthlyRate = rate;
       this.move(c, "APPROVE", CaseStatus.Offer);
+      c.offeredAt = new Date();
       await this.repo.saveCase(m, c);
       await this.activity.record(m, {
         caseId: c.id,
@@ -527,6 +533,8 @@ export class CasesService {
   async sign(user: SessionUser, id: string): Promise<CaseDetail> {
     const c0 = await this.visible(user, id);
     this.transition("SIGN", c0.status);
+    // An expired offer is never sent for signature; the sweep closes it as EXPIRED.
+    refuseIfExpired(c0, new Date());
     let envelope: string;
     try {
       const result = await this.eSignature.sign({
@@ -549,6 +557,8 @@ export class CasesService {
     await this.tx.run(async (m) => {
       const c = await this.lockOrFail(m, user, id);
       this.transition("SIGN", c.status);
+      // Re-checked under the lock: the offer may have expired while e-signature answered.
+      refuseIfExpired(c, new Date());
       c.signatureEnvelopeId = envelope;
       this.move(c, "SIGN", CaseStatus.Booking);
       await this.repo.saveCase(m, c);
@@ -559,6 +569,36 @@ export class CasesService {
         summary: `Borrower signed the loan agreement (simulated e-signature, envelope ${envelope}).`,
         fromStatus: CaseStatus.Offer,
         toStatus: CaseStatus.Booking,
+      });
+    });
+    return this.get(user, id);
+  }
+
+  // --- withdrawal (loan officer); expiry is ExpiryService ------------------------------------
+
+  /**
+   * The loan officer closes an application that will not go ahead (PRD WF-012), from any
+   * status before signing: DRAFT, REVIEW, APPROVAL or OFFER. The case leaves the applicant's
+   * open applications, so a new one can be captured (INT-007).
+   */
+  async withdraw(user: SessionUser, id: string, body: WithdrawRequest): Promise<CaseDetail> {
+    await this.tx.run(async (m) => {
+      const c = await this.lockOrFail(m, user, id);
+      this.transition("WITHDRAW", c.status);
+      const from = c.status;
+      const note = body.note?.trim() || null;
+      c.withdrawReason = body.reasonCode;
+      c.withdrawNote = note;
+      this.move(c, "WITHDRAW", CaseStatus.Withdrawn);
+      await this.repo.saveCase(m, c);
+      await this.activity.record(m, {
+        caseId: c.id,
+        actor: user,
+        action: "WITHDRAWN",
+        summary: `Withdrew the application: ${WITHDRAW_REASON_LABEL[body.reasonCode]}.`,
+        fromStatus: from,
+        toStatus: CaseStatus.Withdrawn,
+        details: { reasonCode: body.reasonCode, note },
       });
     });
     return this.get(user, id);
@@ -652,7 +692,7 @@ function duplicateApplication(name: string, reference: string): DomainError {
   return new DomainError(
     409,
     ProblemCode.DuplicateApplication,
-    `${name} already has an open ${PERSONAL_LOAN.name.toLowerCase()} application (${reference}). Continue that one, or decline it first.`,
+    `${name} already has an open ${PERSONAL_LOAN.name.toLowerCase()} application (${reference}). Continue that one, or withdraw it first.`,
   );
 }
 
@@ -660,6 +700,12 @@ function duplicateApplication(name: string, reference: string): DomainError {
 function isUniqueViolation(err: unknown, constraint: string): boolean {
   const driver = (err as { driverError?: { code?: string; constraint?: string } }).driverError;
   return driver?.code === "23505" && driver.constraint === constraint;
+}
+
+/** Refuses (409) a write on a draft or offer that has expired but the sweep has not closed yet. */
+function refuseIfExpired(c: LoanCaseEntity, now: Date): void {
+  const refusal = expiryRefusal(c, now);
+  if (refusal) throw invalidState(refusal);
 }
 
 function consentRequired(): DomainError {

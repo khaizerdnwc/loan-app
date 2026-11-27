@@ -12,6 +12,7 @@ export { assertReconciles } from "./cases/booking.service";
 export { CasesRepository } from "./cases/cases.repository";
 export { DecisionService } from "./cases/decision.service";
 export { DomainError } from "./cases/domain-error";
+export { ExpiryService } from "./cases/expiry.service";
 export {
   createDataSource,
   dataSourceOptions,

@@ -12,6 +12,8 @@ export interface ActivityInput {
   fromStatus?: CaseStatus | null;
   toStatus?: CaseStatus | null;
   details?: Record<string, unknown>;
+  /** The name shown for a SYSTEM actor (default: the decision engine). */
+  systemName?: string;
 }
 
 /**
@@ -27,7 +29,7 @@ export class ActivityService {
     const event = repo.create();
     event.caseId = input.caseId;
     event.actorId = system ? "SYSTEM" : actor.id;
-    event.actorName = system ? "Decision engine" : actor.fullName;
+    event.actorName = system ? (input.systemName ?? "Decision engine") : actor.fullName;
     event.actorRole = system ? "SYSTEM" : actor.role;
     event.action = input.action;
     event.summary = input.summary;

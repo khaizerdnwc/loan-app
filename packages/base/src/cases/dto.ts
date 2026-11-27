@@ -3,6 +3,7 @@ import {
   DeclineReason,
   OverrideReason,
   Recommendation,
+  WithdrawReason,
 } from "@loan/core";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
@@ -136,6 +137,18 @@ export class DeclineDto {
   @ApiProperty({ enum: Object.values(DeclineReason) })
   @IsIn(Object.values(DeclineReason))
   reasonCode!: DeclineReason;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  note?: string;
+}
+
+export class WithdrawDto {
+  @ApiProperty({ enum: Object.values(WithdrawReason) })
+  @IsIn(Object.values(WithdrawReason))
+  reasonCode!: WithdrawReason;
 
   @ApiPropertyOptional()
   @IsOptional()
