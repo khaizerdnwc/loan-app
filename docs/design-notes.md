@@ -24,8 +24,11 @@ configuration screens; SLA timers and notifications; MFA/SSO; multi-tenancy; san
 live provider modes; real AML list screening (the mechanics forbid real providers).
 
 **Success criteria** — every acceptance criterion in `docs/ACCEPTANCE.md` names a passing
-test (40 criteria, all ☑ for the API); the full gate is green on the pull request; F1, F2,
-an authority breach, a bureau outage and a lost core banking reply work in the browser.
+test (46 criteria, all ☑); the full gate is green on the pull request (security, static,
+unit, integration on a fresh Postgres, build and Playwright); F1, F2, an authority breach, a
+bureau outage and a failed-then-retried booking pass as browser journeys. Evidence today: 78
+API integration tests, 545 unit tests (API 332, domain 72, backoffice 78, UI 24, money 37,
+contracts 2) and 6 browser journeys.
 
 **Key assumptions** (`docs/ASSUMPTIONS.md` has the full list): the prototype's product
 (₱20,000–₱500,000, 6–36 months, ₱300,000 auto-approval limit), knockouts (age 21–65,
