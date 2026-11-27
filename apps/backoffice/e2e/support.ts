@@ -16,10 +16,19 @@ export const PERSONA = {
 } as const;
 export type Persona = keyof typeof PERSONA;
 
-/** Sign in through the persona picker and wait for the role's landing screen. */
+/** The seeded test password for a username (packages/base/src/seed/seed.ts, docs/ASSUMPTIONS.md). */
+export const testPassword = (username: string): string => `${username}-test-2026`;
+
+/**
+ * Sign in with a test account: the shortcut fills the username, the password is typed, as a
+ * user would. Waits for the role's landing screen.
+ */
 export async function signIn(page: Page, persona: Persona): Promise<void> {
   await page.goto("/sign-in");
-  await page.getByRole("button", { name: `Sign in as ${PERSONA[persona]}` }).click();
+  await page.getByRole("button", { name: `Use ${PERSONA[persona]}'s username` }).click();
+  await expect(page.getByRole("textbox", { name: "Username" })).toHaveValue(persona);
+  await page.getByLabel("Password", { exact: true }).fill(testPassword(persona));
+  await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/sign-in/);
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
 }

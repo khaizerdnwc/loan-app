@@ -51,7 +51,7 @@ project team's prototype; values marked *ours* are our own.
 | Above authority | Blocked with the reason; the case stays in Approval, flagged escalated, visible to an approver whose authority covers it | ours (committee deferred) |
 | Override | Every recommendation needs a rationale. A counter-offer that changes the scored amount or tenor, or a recommendation to decline, is an override and also needs a reason code (OV01–OV06); approving as requested is not. The approver must be a different user. | PRD 7.4, mechanics 1c, ours (definition) |
 | Booking maker-checker | Loan operations submits; a loan operations supervisor (a different user) approves, which books and disburses | PRD §4, prototype |
-| Sign-in | Demo persona picker issuing a signed, httpOnly session cookie; no passwords or MFA | mechanics 1a ("test sign-in or equivalent") |
+| Sign-in | Test sign-in: each seeded staff member has a username (paolo, rina, ben, marco, ella, lito, diane, leo) and the test password `<username>-test-2026`, stored only as a scrypt hash. A wrong password and an unknown user get the same 401; there is no password-less route. The session is a signed, httpOnly cookie. No MFA. These are published test credentials for synthetic data, not secrets; the deployed demo uses them on purpose (seeded roles, mechanics 1a). Sign-in is limited to 20 attempts a minute per account and 60 per source address | mechanics 1a ("test sign-in … for at least three seeded roles") |
 
 ## Journey simplifications
 

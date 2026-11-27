@@ -139,8 +139,8 @@ sets would become published, immutable data.
 
 ## 7. Limitations and next steps
 
-**Limitations.** Demo sign-in has no password (anyone with the URL can pick a persona;
-data is synthetic); sign-out clears the cookie but a copied token stays valid until it
+**Limitations.** Sign-in uses published test passwords for seeded staff (no MFA, no
+password change, no lockout beyond 20 attempts a minute); sign-out clears the cookie but a copied token stays valid until it
 expires (8 h), though role changes apply at once; Swagger at `/docs` is open on the API
 (the backoffice proxy does not forward it). A case referred during a bureau outage has no grade and cannot be
 approved until re-decided (not built). Simulators share the lending database (separate

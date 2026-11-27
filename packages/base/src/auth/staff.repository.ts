@@ -11,6 +11,15 @@ export class StaffRepository {
     return this.repo.find({ order: { role: "ASC", fullName: "ASC" } });
   }
 
+  /** The member with this username, including the password hash (selected only here). */
+  findForSignIn(username: string): Promise<StaffEntity | null> {
+    return this.repo
+      .createQueryBuilder("s")
+      .addSelect("s.passwordHash")
+      .where("s.username = :username", { username })
+      .getOne();
+  }
+
   findById(id: string, manager?: EntityManager): Promise<StaffEntity | null> {
     return (manager?.getRepository(StaffEntity) ?? this.repo).findOne({ where: { id } });
   }

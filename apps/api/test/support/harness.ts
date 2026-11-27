@@ -1,4 +1,5 @@
 import "reflect-metadata";
+import { SEED_TEST_PASSWORD } from "@loan/base";
 import type { CaseDetail, CreateCaseRequest } from "@loan/core";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -52,8 +53,8 @@ export async function startHarness(): Promise<Harness> {
   const cookies = new Map<Persona, string>();
   for (const persona of Object.keys(STAFF) as Persona[]) {
     const res = await request(app.getHttpServer())
-      .post("/auth/demo-login")
-      .send({ staffId: STAFF[persona] })
+      .post("/auth/sign-in")
+      .send({ username: persona, password: SEED_TEST_PASSWORD(persona) })
       .expect(200);
     const setCookie = ([] as string[]).concat(res.headers["set-cookie"] ?? []);
     const session = setCookie.find((c) => c.startsWith("session="))?.split(";")[0];

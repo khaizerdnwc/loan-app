@@ -1,4 +1,4 @@
-import { DecisionService } from "@loan/base";
+import { DecisionService, SEED_TEST_PASSWORD } from "@loan/base";
 import type { ActivityView, CaseDetail } from "@loan/core";
 import { JwtService } from "@nestjs/jwt";
 import request from "supertest";
@@ -141,11 +141,62 @@ describe("the session is re-checked against the staff table on every request", (
   });
 });
 
+describe("test sign-in (Program Mechanics 1a)", () => {
+  const signIn = (username: string, password: string) =>
+    request(h.app.getHttpServer()).post("/auth/sign-in").send({ username, password });
+
+  it("signs in with a seeded username and its test password, case-insensitively", async () => {
+    const res = await signIn("Rina", SEED_TEST_PASSWORD("rina")).expect(200);
+    expect(res.body).toMatchObject({ id: STAFF.rina, username: "rina", role: "APPROVER" });
+    expect(JSON.stringify(res.body)).not.toMatch(/scrypt|password/i);
+  });
+
+  it("a wrong password and an unknown username get the same 401", async () => {
+    const wrong = await signIn("rina", "not-her-password").expect(401);
+    const unknown = await signIn("nobody", "whatever").expect(401);
+    expect(wrong.body).toMatchObject({
+      code: "UNAUTHENTICATED",
+      detail: "The username or password is not correct.",
+    });
+    expect(unknown.body).toEqual(wrong.body);
+    expect(wrong.headers["set-cookie"]).toBeUndefined();
+  });
+
+  it("sign-in is throttled per username: the 21st wrong guess in a minute gets 429, other accounts still work", async () => {
+    for (let i = 0; i < 20; i++) await signIn("mallory", `guess-${i}`).expect(401);
+    const limited = await signIn("mallory", "guess-21").expect(429);
+    expect(limited.body.code).toBe("RATE_LIMITED");
+    const other = await signIn("diane", SEED_TEST_PASSWORD("diane")).expect(200);
+    expect(other.body.username).toBe("diane");
+  });
+
+  it("there is no password-less sign-in route", async () => {
+    await request(h.app.getHttpServer())
+      .post("/auth/demo-login")
+      .send({ staffId: STAFF.ella })
+      .expect(404);
+  });
+
+  it("the persona list carries usernames but never a password or hash", async () => {
+    const res = await request(h.app.getHttpServer()).get("/auth/personas").expect(200);
+    expect(res.body.map((p: { username: string }) => p.username)).toContain("ella");
+    expect(JSON.stringify(res.body)).not.toMatch(/scrypt|passwordHash|test-2026/);
+  });
+
+  it("stores each test password only as a scrypt hash", async () => {
+    const rows = (await h.ds.query("SELECT password_hash FROM staff")) as {
+      password_hash: string;
+    }[];
+    expect(rows.length).toBe(8);
+    for (const r of rows) expect(r.password_hash).toMatch(/^scrypt\$16384\$8\$1\$/);
+  });
+});
+
 describe("the session cookie", () => {
   it("is httpOnly and SameSite=Lax, and carries only the staff id", async () => {
     const res = await request(h.app.getHttpServer())
-      .post("/auth/demo-login")
-      .send({ staffId: STAFF.paolo })
+      .post("/auth/sign-in")
+      .send({ username: "paolo", password: SEED_TEST_PASSWORD("paolo") })
       .expect(200);
     const cookie = ([] as string[])
       .concat(res.headers["set-cookie"] ?? [])
@@ -210,5 +261,19 @@ describe("submit decides the draft it read (data review: submit race)", () => {
     const decided = (await h.as("paolo").post(`/cases/${draft.id}/submit`).expect(200))
       .body as CaseDetail;
     expect(decided.status).toBe("REVIEW");
+  });
+});
+
+describe("sign-in source cap (last in this file: it uses up this address's sign-in budget)", () => {
+  it("rotating usernames from one address reaches 429", async () => {
+    let limited = false;
+    for (let i = 0; i < 61 && !limited; i++) {
+      const res = await request(h.app.getHttpServer())
+        .post("/auth/sign-in")
+        .send({ username: `spray-${i}`, password: "guess" });
+      expect([401, 429]).toContain(res.status);
+      limited = res.status === 429;
+    }
+    expect(limited).toBe(true);
   });
 });

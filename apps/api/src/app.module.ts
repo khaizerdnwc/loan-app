@@ -1,4 +1,11 @@
-import { dataSourceOptions, LendingModule, Public, SessionGuard } from "@loan/base";
+import {
+  dataSourceOptions,
+  LendingModule,
+  Public,
+  SessionGuard,
+  SIGN_IN_KEY,
+  SIGN_IN_LIMITS,
+} from "@loan/base";
 import { Controller, Get, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
 import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
@@ -25,7 +32,24 @@ class HealthController {
     TypeOrmModule.forRootAsync({
       useFactory: () => dataSourceOptions(env().DATABASE_URL, env().MIGRATE_ON_BOOT),
     }),
-    ThrottlerModule.forRoot([{ name: "default", ttl: 60_000, limit: 300 }]),
+    ThrottlerModule.forRoot([
+      // Every route, per caller address.
+      { name: "default", ttl: 60_000, limit: 300 },
+      // Sign-in only (@SignInRoute), per address + username: guessing one account's password
+      // is capped, and one person's typos do not lock out the others behind the proxy.
+      {
+        name: "signInAccount",
+        ttl: SIGN_IN_LIMITS.ttlMs,
+        limit: SIGN_IN_LIMITS.perAccount,
+        skipIf: (ctx) => Reflect.getMetadata(SIGN_IN_KEY, ctx.getHandler()) !== true,
+        getTracker: (req) => {
+          const username = (req as { body?: { username?: unknown } }).body?.username;
+          const account =
+            typeof username === "string" ? username.trim().toLowerCase().slice(0, 40) : "";
+          return `${(req as { ip?: string }).ip ?? "unknown"}|${account}`;
+        },
+      },
+    ]),
     SimulatedProvidersModule,
     LendingModule.register({
       jwtSecret: env().JWT_SECRET,

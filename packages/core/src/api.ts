@@ -21,6 +21,8 @@ import type { ProblemCode } from "./problem";
 
 export interface StaffView {
   id: string;
+  /** Test sign-in name. */
+  username: string;
   fullName: string;
   role: Role;
   title: string;

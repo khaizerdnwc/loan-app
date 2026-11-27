@@ -49,7 +49,8 @@ backoffice proxy. The gate's e2e stage covers the same path from built sources.
 ## Checks after deploying
 
 1. `GET <api>/health` → `{"status":"ok"}`.
-2. Sign in as each persona and run F1 (Maria) and F2 (Joel) as in `docs/ACCEPTANCE.md`.
+2. Sign in with each test account (username and `<username>-test-2026`, docs/ASSUMPTIONS.md)
+   and run F1 (Maria) and F2 (Joel) as in `docs/ACCEPTANCE.md`.
 3. As Leo, switch a simulator to OUTAGE and back. A non-OK mode resets itself after 15
    minutes, so a reviewer cannot leave the demo broken.
 

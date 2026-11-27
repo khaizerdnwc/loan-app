@@ -1,5 +1,6 @@
 import { Money } from "@loan/core";
 import type { DataSource } from "typeorm";
+import { hashPassword } from "../auth/password";
 import { StaffEntity } from "../auth/staff.entity";
 import { ApplicantEntity } from "../cases/entities/applicant.entity";
 
@@ -10,6 +11,8 @@ import { ApplicantEntity } from "../cases/entities/applicant.entity";
  */
 interface StaffSeed {
   id: string;
+  /** Test sign-in name; the test password is `<username>-test-2026` (SEED_TEST_PASSWORD). */
+  username: string;
   fullName: string;
   role: StaffEntity["role"];
   title: string;
@@ -17,9 +20,16 @@ interface StaffSeed {
   approvalGrades: StaffEntity["approvalGrades"];
 }
 
+/**
+ * Every seeded staff member's TEST password: synthetic demo accounts only, published in
+ * docs/ASSUMPTIONS.md, never a real credential. Stored only as a scrypt hash.
+ */
+export const SEED_TEST_PASSWORD = (username: string): string => `${username}-test-2026`;
+
 export const SEED_STAFF: StaffSeed[] = [
   {
     id: "STF-PAOLO",
+    username: "paolo",
     fullName: "Paolo Tan",
     role: "LOAN_OFFICER",
     title: "Loan officer / credit analyst",
@@ -28,6 +38,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-RINA",
+    username: "rina",
     fullName: "Rina Aquino",
     role: "APPROVER",
     title: "Approver · ₱1,000,000 · grades A–C",
@@ -36,6 +47,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-BEN",
+    username: "ben",
     fullName: "Ben Castro",
     role: "APPROVER",
     title: "Approver · ₱100,000 · grades A–B",
@@ -44,6 +56,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-MARCO",
+    username: "marco",
     fullName: "Marco Bautista",
     role: "LOAN_OPERATIONS",
     title: "Loan operations (booking maker)",
@@ -52,6 +65,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-ELLA",
+    username: "ella",
     fullName: "Ella Reyes",
     role: "LOAN_OPERATIONS_SUPERVISOR",
     title: "Loan operations supervisor (checker)",
@@ -60,6 +74,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-LITO",
+    username: "lito",
     fullName: "Lito Garcia",
     role: "LOAN_OPERATIONS_SUPERVISOR",
     title: "Loan operations supervisor (checker)",
@@ -68,6 +83,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-DIANE",
+    username: "diane",
     fullName: "Diane Yu",
     role: "COMPLIANCE",
     title: "Compliance / audit (read-only)",
@@ -76,6 +92,7 @@ export const SEED_STAFF: StaffSeed[] = [
   },
   {
     id: "STF-LEO",
+    username: "leo",
     fullName: "Leo Santiago",
     role: "ADMIN",
     title: "Administrator (simulation controls)",
@@ -306,13 +323,15 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */
 export async function seed(ds: DataSource): Promise<{ staff: number; applicants: number }> {
   await ds.transaction(async (m) => {
-    await m.getRepository(StaffEntity).upsert(
-      SEED_STAFF.map((s) => ({
+    const staff = [];
+    for (const s of SEED_STAFF) {
+      staff.push({
         ...s,
+        passwordHash: await hashPassword(SEED_TEST_PASSWORD(s.username)),
         approvalLimit: s.approvalLimit ? Money.of(s.approvalLimit) : null,
-      })),
-      ["id"],
-    );
+      });
+    }
+    await m.getRepository(StaffEntity).upsert(staff, ["id"]);
     await m.getRepository(ApplicantEntity).upsert(
       SEED_APPLICANTS.map(({ bureau: _b, screening: _s, ...a }) => ({
         ...a,

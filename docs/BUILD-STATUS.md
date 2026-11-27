@@ -16,6 +16,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | M7 | Booking, maker-checker, idempotency, failure/retry (review packet 3) | done | B-1..B-9 + L-1 passing (lost reply, 5×3 concurrent checkers, reconciliation refusal) · 77 integration + 332 api unit + 72 base unit tests · docs/review-packets/3-booking-integrity.md · M3–M7 commit |
 | M8 | Backoffice screens (prototype look) | done | a663559 on build/backoffice, merged into build/mvp · five roles, three review rounds · backoffice 75 + ui 24 Vitest tests · next build green |
 | M9 | Playwright F1/F2, Dockerfiles, full verify | done | 6 browser journeys (F1, F2 + R-6, B-7, B-5, sign-out) green in verify build,e2e · Dockerfile (api + web targets, Node pinned by digest) + docker-compose.yml rehearsed: migrate, seed, health, proxy · docs/DEPLOY.md · M9 commit |
+| M9b | Test sign-in (username + scrypt-hashed test password) replacing the persona picker; no password-less route | done | R-10 (API, unit, browser, component) · sign-in throttled per account (20/min) and per source (60/min) · migration 1764300000003 rehearsed on the seeded dev database (upgrade, seed, revert, upgrade) · docs/ASSUMPTIONS.md Sign-in · M9b commit |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 

@@ -37,6 +37,7 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 | R-7 | Compliance can read every case and history but every write returns 403 (all 11 write routes) | `apps/api/test/access-and-validation.e2e-spec.ts` | ☑ |
 | R-8 | An approver can decline (with a reason code) or return a case; each writes its event; the officer and compliance get 403; a recommendation to decline cannot be approved (409) | `apps/api/test/approval-and-session.e2e-spec.ts` | ☑ |
 | R-9 | Role and identity are re-read from the staff table on every request: a token for a removed staff id gets 401, and a changed role loses the old role's access at once | `apps/api/test/approval-and-session.e2e-spec.ts` | ☑ |
+| R-10 | Staff sign in with a seeded username and test password; a wrong password and an unknown user get the same 401 and no cookie; there is no password-less route; passwords are stored only as scrypt hashes and never returned | `apps/api/test/approval-and-session.e2e-spec.ts`, `packages/base/test/auth-password.test.ts` + browser: `apps/backoffice/e2e/sign-in.spec.ts` | ☑ |
 
 ## Application capture and validation
 

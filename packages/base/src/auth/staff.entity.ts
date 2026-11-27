@@ -1,12 +1,21 @@
 import { type Grade, type Money, Role } from "@loan/core";
-import { Column, Entity, PrimaryColumn } from "typeorm";
+import { Column, Entity, PrimaryColumn, Unique } from "typeorm";
 import { moneyColumn } from "../database/money.transformer";
 
-/** A seeded staff member. Demo sign-in picks one of these; there are no passwords. */
+/** A seeded staff member with a test sign-in (username + scrypt-hashed test password). */
 @Entity({ name: "staff" })
+@Unique("UQ_staff_username", ["username"])
 export class StaffEntity {
   @PrimaryColumn({ type: "varchar", length: 40 })
   id!: string;
+
+  /** Sign-in name, unique (e.g. "paolo"). */
+  @Column({ type: "varchar", length: 40 })
+  username!: string;
+
+  /** scrypt hash (auth/password.ts); never returned by the API or logged. */
+  @Column({ name: "password_hash", type: "varchar", length: 200, select: false })
+  passwordHash!: string;
 
   @Column({ name: "full_name", type: "varchar", length: 120 })
   fullName!: string;

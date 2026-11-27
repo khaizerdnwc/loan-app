@@ -102,7 +102,7 @@ describe("the /api/* proxy", () => {
     upstreamHeaders.append("set-cookie", "session=new; HttpOnly");
     upstreamHeaders.append("set-cookie", "other=2");
     fetchMock.mockResolvedValueOnce(new Response("{}", { status: 200, headers: upstreamHeaders }));
-    const res = await call(POST, ["auth", "demo-login"], { method: "POST", body: "{}" });
+    const res = await call(POST, ["auth", "sign-in"], { method: "POST", body: "{}" });
     expect(res.headers.getSetCookie()).toEqual(["session=new; HttpOnly", "other=2"]);
     expect(res.headers.get("x-powered-by")).toBeNull();
   });

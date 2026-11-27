@@ -4,6 +4,7 @@ import type { StaffEntity } from "./staff.entity";
 export function toStaffView(s: StaffEntity): StaffView {
   return {
     id: s.id,
+    username: s.username,
     fullName: s.fullName,
     role: s.role,
     title: s.title,

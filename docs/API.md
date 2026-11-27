@@ -4,7 +4,8 @@ The NestJS API (apps/api, port 3101 in development). Request and response shapes
 types in `packages/core/src/api.ts`. Swagger UI is served at `/docs`. Every error is an
 RFC 9457 problem body (`packages/core/src/problem.ts`) with a stable `code`.
 
-Authentication: `POST /auth/demo-login` sets an httpOnly `session` cookie (a signed JWT).
+Authentication: `POST /auth/sign-in` checks a username and test password and sets an httpOnly
+`session` cookie (a signed JWT carrying only the staff id). There is no password-less route.
 The backoffice never calls the API from the browser directly: its `/api/*` route forwards
 to the API with the cookie, so the session stays first-party. Tests may send
 `Authorization: Bearer <token>` instead.
@@ -13,7 +14,7 @@ to the API with the cookie, so the session stays first-party. Tests may send
 |---|---|---|---|
 | GET | /health | public | `{ status: "ok" }` |
 | GET | /auth/personas | public | `StaffView[]` |
-| POST | /auth/demo-login | public (throttled) | `{ staffId }` → `StaffView` + cookie |
+| POST | /auth/sign-in | public (throttled 20/min) | `{ username, password }` → `StaffView` + cookie; 401 for an unknown user or a wrong password alike |
 | POST | /auth/logout | any signed-in | 204, clears the cookie |
 | GET | /auth/me | any signed-in | `StaffView` |
 | GET | /products/PL | any signed-in | `ProductView` |

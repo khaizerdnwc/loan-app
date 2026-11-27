@@ -4,6 +4,23 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261127-migration-backfill-needs-populated-run
+
+A migration that backfills existing rows (UPDATE … then SET NOT NULL / ADD UNIQUE) or whose
+down() matters must be exercised against a database at the previous head *holding seed data*,
+then reverted — not only "from empty". Why: the `db` gate stage and the integration
+global-setup both migrate an empty database, so the backfill UPDATE touches zero rows and
+down() never runs; a collision under the new UNIQUE, a NULL left behind, or a broken down()
+reaches every developer's existing database untested. Nearest deterministic gate: a db-stage
+step (migrate to N-1, seed, migrate, seed, revert last, migrate) or a check that a migration
+containing UPDATE has a matching upgrade test.
+
+- 2026-11-27 — StaffSignIn (1764300000003) backfilled username from id and set a placeholder
+  hash, then NOT NULL + UQ_staff_username. Reviewed correct by reasoning (8 seeded ids map to
+  8 distinct usernames that equal the seed's, migration runs in its own transaction), but the
+  "verify --only db passed" evidence never executed the UPDATE or down(). Found by the data
+  reviewer.
+
 ## data-20261127-money-parse-limit-matches-column
 
 Gate: test: packages/core/test/money.test.ts

@@ -10,7 +10,7 @@ packages/core        Money, domain enums and labels, the HTTP contract types, RF
 packages/contracts   port interfaces: CreditBureau, KycAml, CoreBanking, Disbursement,
                      ESignature, SimulationControl (each with its Nest token)
 packages/base        the lending domain — one Nest module (lending.module.ts):
-                       auth/        demo sign-in, SessionGuard (global, fails closed)
+                       auth/        test sign-in (scrypt), SessionGuard (global, fails closed)
                        cases/       capture, decision, review, approval, signing, booking,
                                     activity, views; lifecycle.ts is the transition table
                        simulation/  admin switches for the simulators
