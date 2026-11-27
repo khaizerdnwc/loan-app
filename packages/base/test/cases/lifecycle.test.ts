@@ -18,6 +18,9 @@ describe("the case transition table", () => {
     ["SUBMIT", CaseStatus.Draft, CaseStatus.Offer],
     ["SUBMIT", CaseStatus.Draft, CaseStatus.Review],
     ["SUBMIT", CaseStatus.Draft, CaseStatus.Declined],
+    ["REDECIDE", CaseStatus.Review, CaseStatus.Offer],
+    ["REDECIDE", CaseStatus.Review, CaseStatus.Review],
+    ["REDECIDE", CaseStatus.Review, CaseStatus.Declined],
     ["RECOMMEND", CaseStatus.Review, CaseStatus.Approval],
     ["APPROVE", CaseStatus.Approval, CaseStatus.Offer],
     ["DECLINE", CaseStatus.Approval, CaseStatus.Declined],
@@ -46,6 +49,19 @@ describe("the case transition table", () => {
     expect(() => moveTo(c, "APPROVE", CaseStatus.Disbursed)).toThrow(/from APPROVAL to DISBURSED/);
     expect(c.status).toBe(CaseStatus.Approval);
     expect(() => assertTransition("SUBMIT", CaseStatus.Draft, CaseStatus.Booking)).toThrow(
+      InvalidTransitionError,
+    );
+  });
+
+  it.each(Object.values(CaseStatus).filter((s) => s !== CaseStatus.Review))(
+    "REDECIDE is refused from %s",
+    (from) => {
+      expect(canHappen("REDECIDE", from)).toBe(false);
+    },
+  );
+
+  it("REDECIDE cannot take a case to approval", () => {
+    expect(() => assertTransition("REDECIDE", CaseStatus.Review, CaseStatus.Approval)).toThrow(
       InvalidTransitionError,
     );
   });

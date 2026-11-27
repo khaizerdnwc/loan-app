@@ -216,6 +216,90 @@ export class CasesService {
     return this.get(user, id);
   }
 
+  /**
+   * Decide a referred case again once the providers answer (PRD NFR-005): a case referred
+   * because the bureau or screening was down has no score or grade, so nobody could approve
+   * it. Only such a case may be re-decided; the earlier record stays (insert-only) and the
+   * case points to the new one, whose outcome moves the case as a submission would.
+   */
+  async redecide(user: SessionUser, id: string): Promise<CaseDetail> {
+    const current = await this.visible(user, id);
+    this.transition("REDECIDE", current.status);
+    const previous = current.decisionId ? await this.repo.findDecision(current.decisionId) : null;
+    if (!DecisionService.decidedDuringOutage(previous)) {
+      throw invalidState(
+        "This case was decided with every provider answering; there is nothing to decide again.",
+      );
+    }
+    const inputs = await this.decisions.gatherInputs(current, businessDate());
+    if (inputs.bureau.status === "UNAVAILABLE" || inputs.screening.status === "UNAVAILABLE") {
+      // Nothing is written: another outage record would add nothing, and each try is a
+      // provider call (a bureau inquiry, with a real bureau).
+      throw new DomainError(
+        503,
+        ProblemCode.ProviderUnavailable,
+        `${inputs.bureau.status === "UNAVAILABLE" ? "The credit bureau" : "KYC/AML screening"} still cannot answer. Decide the case again once it is back.`,
+      );
+    }
+
+    await this.tx.run(async (m) => {
+      const c = await this.lockOrFail(m, user, id);
+      this.transition("REDECIDE", c.status);
+      if (c.version !== current.version) {
+        throw invalidState("The case changed while it was being decided. Try again.");
+      }
+      const { record, result } = await this.decisions.decideAndRecord(m, c, inputs, user.id);
+      const to = OUTCOME_STATUS[result.outcome];
+      this.move(c, "REDECIDE", to);
+      // The new automated decision starts the case afresh: nobody has recommended, approved
+      // or escalated it under this decision (the earlier actors are kept in the event).
+      const cleared = {
+        recommendation: c.recommendation,
+        recommendedBy: c.recommendedBy,
+        approvedBy: c.approvedBy,
+        escalated: c.escalated,
+      };
+      c.recommendation = null;
+      c.recommendedBy = null;
+      c.recommendedAmount = null;
+      c.recommendedTenorMonths = null;
+      c.isOverride = false;
+      c.overrideReason = null;
+      c.recommendationRationale = null;
+      c.approvedBy = null;
+      c.escalated = false;
+      c.decisionId = record.id;
+      c.grade = result.grade;
+      if (result.outcome === DecisionOutcome.Approve && result.monthlyRate) {
+        c.approvedAmount = c.requestedAmount;
+        c.approvedTenorMonths = c.requestedTenorMonths;
+        c.approvedMonthlyRate = result.monthlyRate;
+      }
+      await this.repo.saveCase(m, c);
+      await this.activity.record(m, {
+        caseId: c.id,
+        actor: user,
+        action: "REDECIDED",
+        summary: `Decided again after a provider outage. ${describeDecision(
+          result.outcome,
+          result.score,
+          result.grade,
+          result.reasonCodes.map((r) => r.code),
+        )}`,
+        fromStatus: CaseStatus.Review,
+        toStatus: to,
+        details: {
+          decisionId: record.id,
+          previousDecisionId: previous?.id ?? null,
+          ruleSet: record.ruleSetVersion,
+          scorecard: record.scorecardVersion,
+          cleared,
+        },
+      });
+    });
+    return this.get(user, id);
+  }
+
   // --- referral review (officer) -----------------------------------------------------------
 
   async recommend(user: SessionUser, id: string, body: RecommendRequest): Promise<CaseDetail> {
@@ -226,6 +310,14 @@ export class CasesService {
         throw validation("Explain the recommendation.", [
           { field: "rationale", message: "Enter a rationale." },
         ]);
+      }
+      if (body.type !== Recommendation.Decline && c.decisionId) {
+        const decision = await this.repo.findDecision(c.decisionId);
+        if (DecisionService.decidedDuringOutage(decision)) {
+          throw invalidState(
+            "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be recommended for approval. Decide it again once the provider is back, or recommend a decline.",
+          );
+        }
       }
       let amount: Money | null = null;
       let tenor: number | null = null;
@@ -292,6 +384,14 @@ export class CasesService {
       if (c.recommendation === Recommendation.Decline) {
         throw invalidState(
           "The recommendation is to decline: confirm the decline or return the case.",
+        );
+      }
+      // Defence in depth: recommend already refuses this, but nothing decided during an
+      // outage may be approved, whatever path brought it to APPROVAL.
+      const decision = c.decisionId ? await this.repo.findDecision(c.decisionId) : null;
+      if (DecisionService.decidedDuringOutage(decision)) {
+        throw invalidState(
+          "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be approved. Return it so the loan officer can decide it again.",
         );
       }
       const me = await this.staff.findById(user.id, m);

@@ -16,7 +16,7 @@ import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { allowedActions } from "./case-access";
 import { CasesRepository } from "./cases.repository";
-import { ageOn } from "./decision.service";
+import { ageOn, DecisionService } from "./decision.service";
 import type { ActivityEventEntity } from "./entities/activity-event.entity";
 import type { ApplicantEntity } from "./entities/applicant.entity";
 import type { BookingRequestEntity } from "./entities/booking.entities";
@@ -100,7 +100,13 @@ export class CaseViews {
       signatureEnvelopeId: c.signatureEnvelopeId,
       booking: booking ? bookingView(booking, names.get(booking.makerId) ?? booking.makerId) : null,
       loanAccountId: account?.id ?? null,
-      allowedActions: allowedActions(user, c, me, booking),
+      allowedActions: allowedActions(
+        user,
+        c,
+        me,
+        booking,
+        DecisionService.decidedDuringOutage(decision),
+      ),
     };
   }
 

@@ -25,7 +25,8 @@ interface SimpleAction {
   variant: "primary" | "accent" | "danger" | "secondary";
   title: (c: CaseDetail) => string;
   describe: (c: CaseDetail) => ReactNode;
-  done: string;
+  /** The toast after success, worded from the case the API returned. */
+  done: string | ((next: CaseDetail) => string);
 }
 
 const amountOf = (c: CaseDetail) =>
@@ -69,6 +70,20 @@ const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
     describe: (c) =>
       `The borrower side is simulated: the e-signature service signs the agreement for ${formatPeso(amountOf(c))} over ${tenorOf(c)} months at once, and the case moves to booking.`,
     done: "Signed — ready to book",
+  },
+  REDECIDE: {
+    label: "Decide again",
+    path: (id) => `/cases/${id}/redecide`,
+    variant: "primary",
+    title: (c) => `Decide ${c.applicant.fullName}'s application again?`,
+    describe: (c) =>
+      `${formatPeso(c.requestedAmount)} over ${c.requestedTenorMonths} months. It was referred because a provider could not answer. The simulated bureau and screening are asked again and the decision rules run on their answers: it may be approved at once, referred to you again, or declined. The earlier decision record is kept.`,
+    done: (next) =>
+      next.outcome === "AUTO_APPROVE"
+        ? "Decided again — approved; waiting for the borrower's e-signature"
+        : next.outcome === "AUTO_DECLINE"
+          ? "Decided again — declined"
+          : "Decided again — still referred for review",
   },
   SUBMIT_BOOKING: {
     label: "Submit booking for checker",
@@ -133,14 +148,16 @@ export function ActionsPanel({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const actions = detail.allowedActions.filter((a) => a.action !== "EDIT_DRAFT");
+  // While a re-decision is offered it is the next step; recommending is secondary.
+  const redecideOffered = actions.some((a) => a.action === "REDECIDE" && a.enabled);
 
-  async function run(path: string, body: unknown, done: string) {
+  async function run(path: string, body: unknown, done: SimpleAction["done"]) {
     setBusy(true);
     setError(null);
     setFieldErrors({});
     try {
       const next = await api<CaseDetail>(path, { method: "POST", body });
-      toast(done);
+      toast(typeof done === "string" ? done : done(next));
       setOpen(null);
       onChanged(next);
       refreshShell();
@@ -193,7 +210,7 @@ export function ActionsPanel({
             <li key={a.action}>
               <Button
                 className="w-full"
-                variant={a.enabled ? (SIMPLE[a.action]?.variant ?? "primary") : "secondary"}
+                variant={variantFor(a, redecideOffered)}
                 disabled={!a.enabled && !canAttempt(a)}
                 aria-describedby={a.enabled ? undefined : `${a.action}-blocked`}
                 onClick={() => start(a)}
@@ -260,6 +277,17 @@ function canAttempt(a: ActionAvailability): boolean {
   return !a.enabled && a.action === "APPROVE" && a.blockedBy === ProblemCode.AuthorityLimit;
 }
 
+/** The case's decision was made while the bureau (R10) or screening (R13) could not answer. */
+function decidedDuringOutage(c: CaseDetail): boolean {
+  return c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13") ?? false;
+}
+
+function variantFor(a: ActionAvailability, redecideOffered: boolean): SimpleAction["variant"] {
+  if (!a.enabled) return "secondary";
+  if (a.action === "RECOMMEND" && redecideOffered) return "secondary";
+  return SIMPLE[a.action]?.variant ?? "primary";
+}
+
 function labelOf(action: CaseAction): string {
   if (action === "RECOMMEND") return "Recommend a decision";
   if (action === "DECLINE") return "Decline";
@@ -273,7 +301,9 @@ function waitingFor(c: CaseDetail): string {
     case "DRAFT":
       return "Draft: nothing has been checked yet. The loan officer submits it for decision.";
     case "REVIEW":
-      return "Referred: a loan officer reviews the evidence and recommends a decision.";
+      return decidedDuringOutage(c)
+        ? "Referred because a provider could not answer: the loan officer decides it again once the provider is back."
+        : "Referred: a loan officer reviews the evidence and recommends a decision.";
     case "APPROVAL":
       return c.escalated
         ? "Waiting for an approver whose authority covers this amount and grade."

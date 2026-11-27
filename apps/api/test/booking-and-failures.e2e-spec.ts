@@ -291,3 +291,238 @@ describe("decision records", () => {
     }
   });
 });
+
+describe("re-deciding a case referred during an outage (B-10, PRD NFR-005)", () => {
+  const records = (id: string) =>
+    count(h.ds, "SELECT count(*) AS n FROM decision_record WHERE case_id = $1", [id]);
+  const redecidedEvents = (id: string) =>
+    count(
+      h.ds,
+      "SELECT count(*) AS n FROM activity_event WHERE case_id = $1 AND action = 'REDECIDED'",
+      [id],
+    );
+  async function referredDuringOutage(service = "CREDIT_BUREAU"): Promise<CaseDetail> {
+    await setMode(h, service, "OUTAGE");
+    const c = await submitCase(h, {
+      applicantId: "APL-MARIA",
+      amount: "60000.00",
+      tenorMonths: 12,
+    });
+    expect(c.status).toBe("REVIEW");
+    // A bureau outage leaves no score; a screening outage leaves a score but no screening.
+    if (service === "CREDIT_BUREAU") expect(c.grade).toBeNull();
+    expect(c.allowedActions).toContainEqual({ action: "REDECIDE", enabled: true });
+    return c;
+  }
+
+  it("B-10 once the bureau answers again, the officer re-decides: Maria is scored and auto-approved; the first record stays", async () => {
+    const referred = await referredDuringOutage();
+    const firstDecision = referred.decision?.id;
+
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const res = await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(200);
+    const after = res.body as CaseDetail;
+    expect(after).toMatchObject({ status: "OFFER", outcome: "AUTO_APPROVE", grade: "A" });
+    expect(after.decision?.score).toBe(742);
+    expect(after.decision?.id).not.toBe(firstDecision);
+    expect(after.allowedActions.map((a) => a.action)).not.toContain("REDECIDE");
+    expect(after.approved).toMatchObject({ amount: "60000.00", tenorMonths: 12, by: null });
+    expect(await records(referred.id)).toBe(2);
+
+    const history = (await h.as("diane").get(`/cases/${referred.id}/activity`).expect(200))
+      .body as {
+      action: string;
+      fromStatus: string;
+      toStatus: string;
+      details: Record<string, unknown>;
+    }[];
+    expect(history).toContainEqual(
+      expect.objectContaining({
+        action: "REDECIDED",
+        fromStatus: "REVIEW",
+        toStatus: "OFFER",
+        details: expect.objectContaining({ previousDecisionId: firstDecision }),
+      }),
+    );
+    const reproduced = await h
+      .as("diane")
+      .post(`/decisions/${firstDecision}/reproduce`)
+      .expect(200);
+    expect(reproduced.body.match).toBe(true);
+  });
+
+  it("works the same after a KYC/AML screening outage", async () => {
+    const referred = await referredDuringOutage("KYC_AML");
+    await setMode(h, "KYC_AML", "OK");
+    const after = (await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(200))
+      .body as CaseDetail;
+    expect(after).toMatchObject({ status: "OFFER", grade: "A" });
+  });
+
+  it("while the provider is still down, re-deciding answers 503 and writes nothing", async () => {
+    const referred = await referredDuringOutage();
+    const res = await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(503);
+    expect(res.body).toMatchObject({ code: "PROVIDER_UNAVAILABLE" });
+    expect(res.body.detail).toMatch(/credit bureau still cannot answer/);
+    expect([await records(referred.id), await redecidedEvents(referred.id)]).toEqual([1, 0]);
+    const still = (await h.as("paolo").get(`/cases/${referred.id}`).expect(200)).body as CaseDetail;
+    expect(still.allowedActions).toContainEqual({ action: "REDECIDE", enabled: true });
+  });
+
+  it("a re-decision can refer again for a rule, which ends the re-decide option", async () => {
+    await setMode(h, "CREDIT_BUREAU", "OUTAGE");
+    const joel = await submitCase(h, {
+      applicantId: "APL-JOEL",
+      amount: "200000.00",
+      tenorMonths: 36,
+    });
+    expect(joel).toMatchObject({ status: "REVIEW", grade: null });
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const after = (await h.as("paolo").post(`/cases/${joel.id}/redecide`).expect(200))
+      .body as CaseDetail;
+    expect(after).toMatchObject({ status: "REVIEW", grade: "C" });
+    expect(after.decision?.score).toBe(612);
+    expect(after.allowedActions.map((a) => a.action)).not.toContain("REDECIDE");
+    expect(await records(joel.id)).toBe(2);
+  });
+
+  it.each([
+    ["CREDIT_BUREAU", { type: "APPROVE", rationale: "Looks fine." }],
+    ["KYC_AML", { type: "APPROVE", rationale: "Looks fine." }],
+    [
+      "CREDIT_BUREAU",
+      {
+        type: "COUNTER_OFFER",
+        amount: "50000.00",
+        tenorMonths: 12,
+        overrideReason: "OV04",
+        rationale: "Smaller.",
+      },
+    ],
+  ])(
+    "after a %s outage the case cannot be recommended for approval (%o), and nothing is written",
+    async (service, body) => {
+      const referred = await referredDuringOutage(service);
+      const res = await h
+        .as("paolo")
+        .post(`/cases/${referred.id}/recommendation`, body)
+        .expect(409);
+      expect(res.body.detail).toMatch(/could not answer/);
+      const after = (await h.as("paolo").get(`/cases/${referred.id}`).expect(200))
+        .body as CaseDetail;
+      expect(after).toMatchObject({ status: "REVIEW", recommendation: null });
+      const recommended = await count(
+        h.ds,
+        "SELECT count(*) AS n FROM activity_event WHERE case_id = $1 AND action LIKE 'RECOMMENDED%'",
+        [referred.id],
+      );
+      expect(recommended).toBe(0);
+    },
+  );
+
+  it("re-deciding after a recommendation, a return and recovery clears the earlier actors", async () => {
+    const referred = await referredDuringOutage();
+    await h
+      .as("paolo")
+      .post(`/cases/${referred.id}/recommendation`, {
+        type: "DECLINE",
+        overrideReason: "OV04",
+        rationale: "Cannot verify without the bureau.",
+      })
+      .expect(200);
+    await h.as("rina").post(`/cases/${referred.id}/return`).expect(200);
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const after = (await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(200))
+      .body as CaseDetail;
+    expect(after).toMatchObject({ status: "OFFER", recommendation: null });
+    expect(after.approved?.by).toBeNull();
+    const event = (
+      (await h.as("diane").get(`/cases/${referred.id}/activity`).expect(200)).body as {
+        action: string;
+        details: { cleared?: Record<string, unknown> };
+      }[]
+    ).find((e) => e.action === "REDECIDED");
+    expect(event?.details.cleared).toMatchObject({
+      recommendation: "DECLINE",
+      recommendedBy: "STF-PAOLO",
+      approvedBy: "STF-RINA",
+    });
+  });
+
+  it("a case decided during an outage cannot be approved, however it reached APPROVAL", async () => {
+    const referred = await referredDuringOutage("KYC_AML");
+    // Simulates a path into APPROVAL that skips the recommend guard (e.g. data from before it).
+    await h.ds.query(
+      `UPDATE loan_case SET status = 'APPROVAL', recommendation = 'APPROVE', recommended_by = 'STF-PAOLO',
+         recommended_amount = requested_amount, recommended_tenor_months = requested_tenor_months
+       WHERE id = $1`,
+      [referred.id],
+    );
+    const view = (await h.as("rina").get(`/cases/${referred.id}`).expect(200)).body as CaseDetail;
+    expect(view.allowedActions).toContainEqual(
+      expect.objectContaining({
+        action: "APPROVE",
+        enabled: false,
+        blockedBy: "INVALID_STATE_TRANSITION",
+      }),
+    );
+    const res = await h.as("rina").post(`/cases/${referred.id}/approve`).expect(409);
+    expect(res.body.detail).toMatch(/cannot be approved/);
+    const after = (await h.as("rina").get(`/cases/${referred.id}`).expect(200)).body as CaseDetail;
+    expect(after).toMatchObject({ status: "APPROVAL", approved: null });
+  });
+
+  it("REDECIDE is refused outside REVIEW, and nothing is written", async () => {
+    const referred = await referredDuringOutage();
+    await h
+      .as("paolo")
+      .post(`/cases/${referred.id}/recommendation`, {
+        type: "DECLINE",
+        overrideReason: "OV04",
+        rationale: "Cannot verify without the bureau.",
+      })
+      .expect(200);
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const res = await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(409);
+    expect(res.body.code).toBe("INVALID_STATE_TRANSITION");
+    expect(await records(referred.id)).toBe(1);
+    expect((await h.as("paolo").get(`/cases/${referred.id}`).expect(200)).body.status).toBe(
+      "APPROVAL",
+    );
+  });
+
+  it("a case decided with every provider answering cannot be re-decided, and nothing is written", async () => {
+    const joel = await submitCase(h, {
+      applicantId: "APL-JOEL",
+      amount: "200000.00",
+      tenorMonths: 36,
+    });
+    expect(joel.allowedActions.map((a) => a.action)).not.toContain("REDECIDE");
+    const res = await h.as("paolo").post(`/cases/${joel.id}/redecide`).expect(409);
+    expect(res.body.code).toBe("INVALID_STATE_TRANSITION");
+    expect([await records(joel.id), await redecidedEvents(joel.id)]).toEqual([1, 0]);
+  });
+
+  it("two re-decides at once make exactly one new record", async () => {
+    const referred = await referredDuringOutage();
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const results = await Promise.all([
+      h.as("paolo").post(`/cases/${referred.id}/redecide`),
+      h.as("paolo").post(`/cases/${referred.id}/redecide`),
+    ]);
+    expect(results.map((r) => r.status).sort()).toEqual([200, 409]);
+    expect([await records(referred.id), await redecidedEvents(referred.id)]).toEqual([2, 1]);
+  });
+
+  it("only the loan officer may re-decide", async () => {
+    const c = await referredDuringOutage();
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    for (const persona of ["rina", "diane", "marco", "ella"] as const) {
+      const res = await h.as(persona).post(`/cases/${c.id}/redecide`).expect(403);
+      expect(res.body.code).toBe("FORBIDDEN_ROLE");
+    }
+    const still = (await h.as("paolo").get(`/cases/${c.id}`).expect(200)).body as CaseDetail;
+    expect(still).toMatchObject({ status: "REVIEW", grade: null });
+    expect(await records(c.id)).toBe(1);
+  });
+});

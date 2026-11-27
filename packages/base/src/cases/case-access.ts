@@ -58,7 +58,7 @@ export function authorityProblem(approver: StaffEntity, c: LoanCaseEntity): stri
 }
 
 const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
-  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "RECOMMEND", "REPRODUCE_DECISION"],
+  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "REDECIDE", "RECOMMEND", "REPRODUCE_DECISION"],
   APPROVER: ["APPROVE", "DECLINE", "RETURN", "REPRODUCE_DECISION"],
   LOAN_OPERATIONS: ["SIGN", "SUBMIT_BOOKING"],
   LOAN_OPERATIONS_SUPERVISOR: ["SIGN", "SUBMIT_BOOKING", "APPROVE_BOOKING", "RETRY_BOOKING"],
@@ -68,6 +68,7 @@ const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
 
 const ACTION_EVENT: Partial<Record<CaseAction, Parameters<typeof canHappen>[0]>> = {
   SUBMIT: "SUBMIT",
+  REDECIDE: "REDECIDE",
   RECOMMEND: "RECOMMEND",
   APPROVE: "APPROVE",
   DECLINE: "DECLINE",
@@ -86,6 +87,8 @@ export function allowedActions(
   c: LoanCaseEntity,
   staff: StaffEntity | null,
   booking: BookingRequestEntity | null,
+  /** The case's current decision was made while a provider could not answer. */
+  decidedDuringOutage = false,
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -93,10 +96,21 @@ export function allowedActions(
     if (event && !canHappen(event, c.status)) continue;
     if (action === "EDIT_DRAFT" && c.status !== CaseStatus.Draft) continue;
     if (action === "REPRODUCE_DECISION" && !c.decisionId) continue;
+    if (action === "REDECIDE" && !decidedDuringOutage) continue;
     if (action === "APPROVE_BOOKING" && c.status !== CaseStatus.PendingChecker) continue;
     if (action === "RETRY_BOOKING" && c.status !== CaseStatus.BookingFailed) continue;
 
     if (action === "APPROVE") {
+      if (decidedDuringOutage) {
+        out.push({
+          action,
+          enabled: false,
+          blockedBy: ProblemCode.InvalidTransition,
+          detail:
+            "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be approved. Return it so the loan officer can decide it again.",
+        });
+        continue;
+      }
       if (c.recommendation === Recommendation.Decline) {
         out.push({
           action,

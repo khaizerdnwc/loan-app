@@ -196,6 +196,50 @@ describe("ActionsPanel shows only what the API allows", () => {
     ).toBeInTheDocument();
   });
 
+  it("offers Decide again for an outage referral, posts to /redecide, and reports the new outcome (B-10)", async () => {
+    const referred = detail({
+      status: "REVIEW",
+      grade: null,
+      decision: {
+        reasonCodes: [{ code: "R10", staffText: "Credit bureau unavailable", borrowerText: "" }],
+      } as unknown as CaseDetail["decision"],
+      allowedActions: [
+        { action: "REDECIDE", enabled: true },
+        { action: "RECOMMEND", enabled: true },
+      ],
+    });
+    const decided = detail({
+      status: "OFFER",
+      outcome: "AUTO_APPROVE",
+      grade: "A",
+      allowedActions: [],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify(decided), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onChanged = vi.fn();
+    renderPanel(referred, onChanged);
+
+    expect(screen.getByText(/decides it again once the provider is back/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Recommend a decision" })).toHaveClass("bg-white");
+    await userEvent.click(screen.getByRole("button", { name: "Decide again" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Joel Reyes");
+    expect(dialog).toHaveTextContent("₱200,000.00 over 36 months");
+    expect(dialog).toHaveTextContent(/approved at once, referred to you again, or declined/);
+    const confirm = screen.getAllByRole("button", { name: "Decide again" });
+    await userEvent.click(confirm[confirm.length - 1] as HTMLElement);
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledWith(decided));
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/cases/case-1/redecide",
+      expect.objectContaining({ method: "POST" }),
+    );
+    expect(
+      await screen.findByText("Decided again — approved; waiting for the borrower's e-signature"),
+    ).toBeInTheDocument();
+  });
+
   it("offers no action the API did not list", () => {
     renderPanel(detail({ allowedActions: [] }));
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

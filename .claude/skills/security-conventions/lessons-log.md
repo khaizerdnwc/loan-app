@@ -4,6 +4,24 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## security-20261127-re-entry-clears-earlier-actors
+
+Gate: test: apps/api/test/booking-and-failures.e2e-spec.ts ("re-deciding after a recommendation, a return and recovery clears the earlier actors")
+
+When a transition lets a case leave a state it may have re-entered (REVIEW after RETURN), and
+the new outcome is not made by a person (an automated decision), clear the actor fields an
+earlier pass set (`approvedBy`, `recommendedBy`, `recommendation`, `isOverride`) or the view
+names someone as the approver of a loan they never approved. Why: the PRD NFR-005 re-decide
+(`POST /cases/:id/redecide`) copies `submit`, which runs from DRAFT where those fields are
+always null. From REVIEW they are not: an ungraded outage case can be recommended, then
+returned by an approver (`returnToReview` sets `approvedBy` to that approver); re-deciding it
+to AUTO_APPROVE then shows `approved.by` = the approver who returned it, alongside a stale
+recommendation, and keeps the case in that approver's list. In a segregation-of-duties record,
+"who approved" must be exactly the person who did. The previous values belong in the
+activity event's details, not on the case. Nearest gate: an integration test that recommends,
+returns and re-decides an outage case and asserts `approved.by` is null and `recommendation`
+is null.
+
 ## security-20261127-gitleaks-allowlist-literal-must-be-anchored
 
 When `.gitleaks.toml` allowlists one published, non-secret value, write the regex anchored

@@ -123,6 +123,16 @@ export class CasesController {
     return this.cases.submit(user, id);
   }
 
+  @Post("cases/:id/redecide")
+  @Roles(Role.LoanOfficer)
+  @HttpCode(200)
+  redecide(
+    @CurrentUser() user: SessionUser,
+    @Param("id", ParseUUIDPipe) id: string,
+  ): Promise<CaseDetail> {
+    return this.cases.redecide(user, id);
+  }
+
   @Get("cases/:id/activity")
   @Roles(...CASE_READERS)
   async activity(

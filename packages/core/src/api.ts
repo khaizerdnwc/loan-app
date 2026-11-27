@@ -216,6 +216,7 @@ export interface CaseDetail extends CaseSummary {
 export type CaseAction =
   | "EDIT_DRAFT"
   | "SUBMIT"
+  | "REDECIDE"
   | "RECOMMEND"
   | "APPROVE"
   | "DECLINE"

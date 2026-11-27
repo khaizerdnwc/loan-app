@@ -94,6 +94,15 @@ export class DecisionService {
     };
   }
 
+  /** Whether a stored decision was made while the bureau or screening could not answer. */
+  static decidedDuringOutage(record: DecisionRecordEntity | null): boolean {
+    if (!record) return false;
+    return (
+      record.inputs.bureau.status === "UNAVAILABLE" ||
+      record.inputs.screening.status === "UNAVAILABLE"
+    );
+  }
+
   /** Decide and store the record in the caller's transaction. */
   async decideAndRecord(
     manager: EntityManager,

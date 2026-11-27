@@ -62,7 +62,7 @@ project team's prototype; values marked *ours* are our own.
 | Information requests, documents, OCR, credit memo, committee | Deferred (PRD flows F2 step 3–4 shortened: the officer reviews and recommends directly) |
 | Disbursement | Single tranche to the applicant's (simulated) WhiteBank account, in the same step as booking |
 
-| Ungraded referrals | A case referred because the bureau was down has no score or grade; no approver's grade list covers it, so it cannot be approved until it is decided again. Re-running a decision is not in this release (recorded as a limitation). | ours |
+| Ungraded referrals | A case referred because a provider was down has no score (bureau outage) or no sanctions screening (KYC/AML outage), so it must not be approved as it stands. Once the provider answers, the loan officer re-decides it (`POST /cases/:id/redecide`): the inputs are gathered again, a new insert-only decision record is made with the current versions, and its outcome moves the case as a submission would. Only a case whose current decision was made during an outage can be re-decided; while the provider is still down nothing is written (503). The new decision starts the case afresh: any earlier recommendation, approver and escalation are cleared and kept in the event. Until then the case cannot be recommended for approval (it has no score or no sanctions screening), only for decline. | ours (PRD NFR-005) |
 | Business date | Ages, booking dates and due dates use the Philippine calendar date (UTC+8). | ours |
 | Case visibility | A case outside a role's view answers 404 (not 403), so its existence is not revealed. | ours |
 

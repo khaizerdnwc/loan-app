@@ -6,6 +6,7 @@ import { CaseStatus } from "@loan/core";
  * move a case along an edge this table does not draw (house/no-case-status-assignment-outside-lifecycle).
  *
  *   DRAFT ──submit──▶ OFFER (auto-approve) | REVIEW (refer) | DECLINED (auto-decline)
+ *   REVIEW ──re-decide (a provider was unavailable)──▶ OFFER | REVIEW | DECLINED
  *   REVIEW ──recommend──▶ APPROVAL
  *   APPROVAL ──approve──▶ OFFER · ──decline──▶ DECLINED · ──return──▶ REVIEW
  *   OFFER ──sign──▶ BOOKING
@@ -15,6 +16,7 @@ import { CaseStatus } from "@loan/core";
  */
 export type CaseEvent =
   | "SUBMIT"
+  | "REDECIDE"
   | "RECOMMEND"
   | "APPROVE"
   | "DECLINE"
@@ -27,6 +29,10 @@ export type CaseEvent =
 const TRANSITIONS: Readonly<Record<CaseEvent, { from: CaseStatus[]; to: CaseStatus[] }>> = {
   SUBMIT: {
     from: [CaseStatus.Draft],
+    to: [CaseStatus.Offer, CaseStatus.Review, CaseStatus.Declined],
+  },
+  REDECIDE: {
+    from: [CaseStatus.Review],
     to: [CaseStatus.Offer, CaseStatus.Review, CaseStatus.Declined],
   },
   RECOMMEND: { from: [CaseStatus.Review], to: [CaseStatus.Approval] },

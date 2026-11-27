@@ -22,6 +22,7 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | POST | /cases | loan officer | `CreateCaseRequest` → `CaseDetail` (submit=true runs the decision) |
 | PATCH | /cases/:id | loan officer (draft only) | `UpdateDraftRequest` → `CaseDetail` |
 | POST | /cases/:id/submit | loan officer (draft only) | → `CaseDetail` |
+| POST | /cases/:id/redecide | loan officer | Re-run the decision on a case referred while a provider was down → `CaseDetail`. 503 while a provider still cannot answer (nothing written); 409 outside REVIEW or if its decision had every provider answering. Clears the earlier recommendation, approver and escalation |
 | GET | /cases/:id | roles that can see the case's stage, and compliance | `CaseDetail` |
 | GET | /cases/:id/activity | same as the case | `ActivityView[]` |
 | GET | /cases/:id/decision | same as the case | `DecisionRecordView` |
@@ -59,6 +60,7 @@ refuses it now:
 | APPROVE | amount above the approver's limit, or grade outside their grades | AUTHORITY_LIMIT_EXCEEDED |
 | APPROVE | the approver made the recommendation (defence in depth: one person holds one role today, so the role guard already refuses this) | MAKER_CHECKER_VIOLATION |
 | APPROVE | the recommendation is to decline (decline or return it instead) | INVALID_STATE_TRANSITION |
+| APPROVE | the case was decided while a provider could not answer (return it to be decided again) | INVALID_STATE_TRANSITION |
 | APPROVE_BOOKING / RETRY_BOOKING | the supervisor submitted the booking | MAKER_CHECKER_VIOLATION |
 
 A disabled APPROVE can still be posted: the API refuses it with that code and, for the

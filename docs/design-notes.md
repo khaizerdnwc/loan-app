@@ -142,11 +142,10 @@ sets would become published, immutable data.
 **Limitations.** Sign-in uses published test passwords for seeded staff (no MFA, no
 password change, no lockout beyond 20 attempts a minute); sign-out clears the cookie but a copied token stays valid until it
 expires (8 h), though role changes apply at once; Swagger at `/docs` is open on the API
-(the backoffice proxy does not forward it). A case referred during a bureau outage has no grade and cannot be
-approved until re-decided (not built). Simulators share the lending database (separate
+(the backoffice proxy does not forward it). Simulators share the lending database (separate
 schema and statements). No reconciliation job; no SLA timers. The scorecard is a demonstration, not a validated model.
 
-**Next most valuable.** (1) Re-decide a referred case when a provider recovers. (2) A
+**Next most valuable.** (1) Consent capture before the bureau pull. (2) A
 reconciliation job comparing core accounts with lending records. (3) Real sign-in with MFA
 and per-branch visibility. (4) Credit committee for amounts above individual authority.
 (5) Information requests and documents for the referral path.
