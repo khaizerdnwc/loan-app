@@ -99,3 +99,9 @@ export function formatDateTime(value: string | null | undefined): string {
   const date = new Date(value);
   return Number.isNaN(date.getTime()) ? value : DATE_TIME.format(date);
 }
+
+/** A duration in milliseconds as seconds with one decimal ("1.2 s"); a dash when absent. */
+export function formatSeconds(ms: number | null | undefined): string {
+  if (ms === null || ms === undefined) return "—";
+  return `${(Math.round(ms / 100) / 10).toFixed(1)} s`;
+}

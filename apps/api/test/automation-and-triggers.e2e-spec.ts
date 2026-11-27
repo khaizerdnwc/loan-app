@@ -429,7 +429,7 @@ describe("TR-1 RS-PL-2 referral triggers through the API", () => {
         outcome: "REFER",
         score: 742,
         grade: "A",
-        ruleSetVersion: "RS-PL-2",
+        ruleSetVersion: "RS-PL-3",
       });
       expect(d.reasonCodes.map((r) => r.code)).toEqual([code]);
       expect(d.ruleResults.find((r) => r.id === ruleId)?.result).toBe("FAIL");

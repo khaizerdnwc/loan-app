@@ -14,6 +14,7 @@ import {
 import { useState } from "react";
 import { PageHeader, useShellRefresh } from "@/components/app-shell";
 import { LoadState } from "@/components/load-state";
+import { ProviderUsage } from "@/components/provider-usage";
 import { api, errorMessage } from "@/lib/api";
 import { useSession } from "@/lib/session";
 import { MODE_EFFECT, MODE_LABEL } from "@/lib/simulation";
@@ -110,6 +111,7 @@ export default function SimulationPage() {
           ))}
         </div>
       )}
+      {(me.role === "ADMIN" || me.role === "COMPLIANCE") && <ProviderUsage />}
       <ConfirmDialog
         open={change !== null}
         title={change ? `Set ${change.service.label} to “${MODE_LABEL[change.mode]}”?` : ""}

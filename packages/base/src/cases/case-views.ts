@@ -374,6 +374,9 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     killSwitch: r.killSwitch,
     // Records from before automation modes ran live: the engine's outcome is the outcome.
     engineOutcome: r.engineOutcome ?? r.outcome,
+    pd: r.pd,
+    recommendedAmount: r.recommendedAmount?.toString() ?? null,
+    latencyMs: r.latencyMs,
   };
 }
 

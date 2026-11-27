@@ -15,6 +15,8 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        cases/       capture, decision, review, approval, signing, booking,
                                     activity, views; lifecycle.ts is the transition table
                        simulation/  admin switches for the simulators
+                       providers/   the decision's provider gateway: retry with backoff,
+                                    circuit breaker, 30-day bureau reuse, per-call cost
                        automation/  per-product automation mode and kill switch
                                     (maker-checker between two administrators)
                        compliance/  AML escalations, screening again before disbursement

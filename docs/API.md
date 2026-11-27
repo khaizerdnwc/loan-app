@@ -69,6 +69,8 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /audit/events?actor=&action=&from=&to=&case=&before=&limit= | compliance, admin | `AuditLogPage` (newest first; `from`/`to` are business dates, inclusive; `before` pages by seq; limit 1–200, default 50). `case` is Compliance only (403 for admin). On a case entry the admin gets `caseHidden: true` and `caseId`, `caseReference`, `summary` and `details` null |
 | GET | /audit/actions | compliance, admin | `string[]`: the action codes in the log |
 | GET | /audit/verify | compliance, admin | `AuditChainVerification`: recomputes every hash from entry 1 |
+| GET | /providers/usage?days= | admin, compliance | `ProviderUsageView`: per decision service (bureau, KYC/AML, fraud) the attempts, failures, calls not made (open circuit), reused bureau reports, simulated cost and circuit state, over `days` (1–366, default 30) |
+| GET | /decisions/latency?days= | admin, compliance | `DecisionLatencyView`: decisions measured, p50, p95 and max milliseconds, against the 60 s target |
 | GET | /automation | admin, compliance | `AutomationView[]`: each product's mode (OFF, SHADOW, LIVE), kill switch, the change waiting for approval, and the caller's `allowedActions` (none for compliance) |
 | GET | /automation/:product/history | admin, compliance | `AutomationEventView[]`, newest first: who changed what, when, before and after |
 | POST | /automation/:product/changes | admin | `AutomationChangeRequest` (`{ kind: "SET_MODE", mode, reason }` or `{ kind: "KILL_SWITCH_OFF", reason }`) → `AutomationView[]` (201). Drafts a change for a different administrator; nothing changes yet. 409 `CONFLICT` while another change waits; 400 for the current mode or a blank reason; 409 to turn off a switch that is off |
@@ -97,6 +99,9 @@ approver who acted on it); it leaves the operations stages.
 
 A case outside the caller's view answers 404, not 403, so its existence is not revealed.
 An approver's `view=all` shows every APPROVAL case, including ones above their authority.
+
+Decision records also carry `pd` and `recommendedAmount` (null before SC-PL-2 / RS-PL-3 or
+without a grade) and `latencyMs` (null on older records; not compared by reproduce).
 
 Decision records (`DecisionRecordView`) carry `automationMode`, `killSwitch` and `engineOutcome`:
 the mode the decision ran under and what the engine decided before the mode applied

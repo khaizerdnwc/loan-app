@@ -53,4 +53,5 @@ export {
   formatNumber,
   formatPeso,
   formatRatioPercent,
+  formatSeconds,
 } from "./lib/format";

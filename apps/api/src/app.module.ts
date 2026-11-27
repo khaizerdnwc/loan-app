@@ -65,6 +65,13 @@ class HealthController {
     LendingModule.register({
       jwtSecret: env().JWT_SECRET,
       cookieSecure: env().NODE_ENV === "production",
+      resilience: {
+        retryAttempts: env().PROVIDER_RETRY_ATTEMPTS,
+        retryBaseMs: env().PROVIDER_RETRY_BASE_MS,
+        circuitThreshold: env().PROVIDER_CIRCUIT_THRESHOLD,
+        circuitOpenMs: env().PROVIDER_CIRCUIT_OPEN_MS,
+        bureauCacheDays: env().BUREAU_CACHE_DAYS,
+      },
     }),
   ],
   controllers: [HealthController],

@@ -12,6 +12,19 @@ reported as a finding, or reported as an orphan. It never drops a record through
 the rail's payment under that key. A payout with no account behind it, which is exactly what
 reconciliation exists to catch, would leave no trace, and the summary would still add up.
 Pin it with a unit property: matched + findings referencing each feed record = feed length.
+## data-20261128-input-cache-keyed-on-provenance
+
+A cache whose entries become decision inputs must be keyed (or filtered) on every attribute
+the decision record asserts about where its inputs came from — at least the provider mode —
+and not only on the subject. Why: the record's `provider_mode` is taken from the wiring at
+decision time, while a cache hit returns whatever was stored, possibly by a differently wired
+process. The record then states a provenance its inputs do not have, and reproduce cannot
+detect it (it replays the stored inputs, which are internally consistent). Nearest
+deterministic alternative: a test that seeds a cache row with another mode and asserts a miss.
+
+- 2026-11-28 — Lane C batch 2 (bureau reuse, IH-005). `bureau_report_cache` is keyed on
+  `applicant_id` only; `report.mode` is stored in the JSON but never compared with the
+  gateway's mode on read. Found by the data reviewer.
 
 ## data-20261128-engine-step-needs-a-version
 

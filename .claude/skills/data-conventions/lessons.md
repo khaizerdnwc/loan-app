@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role data`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [data-20261128-input-cache-keyed-on-provenance] paths: packages/base/src/providers/**, packages/base/src/cases/decision.service.ts · shape: test-candidate · A cache feeding a decision snapshot is keyed on what the record states about the source (provider mode). Check: a cached report from another mode is a miss.
 - [data-20261128-engine-step-needs-a-version] paths: packages/base/src/decisioning/engine/** · shape: test-candidate · Engine logic outside a rule set (a post-step, a mode overlay) is gated by a versioned flag, or the current version has a frozen replay fixture. Check: changing the step fails a stored-record replay.
 - [data-20261128-reconcile-every-feed-record] paths: packages/base/src/operations/** · shape: test-candidate · Reconciliation accounts for every feed record once (matched, finding or orphan); no branch drops one. Check: each `continue` path; a test sums records per feed.
 - [data-20261128-unique-violation-mapping-forced-test] paths: packages/base/src/**/*.service.ts, apps/api/test/** · shape: test-candidate · A unique-violation→409 mapping has a test that forces the index path, and maps after tx.run rejects. Check: catch branch hit deterministically; no 2nd connection inside the tx.

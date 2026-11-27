@@ -1,9 +1,9 @@
 import { createHash } from "node:crypto";
-import { AutomationMode, DecisionOutcome, Money } from "@loan/core";
+import { AutomationMode, DecisionOutcome, type Grade, Money } from "@loan/core";
 import { ratioAsPercent } from "./ratio";
 import { REASONS } from "./reason-codes";
 import { type RuleSet, ruleSet } from "./rule-sets";
-import { score, scorecard } from "./scorecards";
+import { type Scorecard, score, scorecard } from "./scorecards";
 import type {
   DecisionInputs,
   DecisionResult,
@@ -35,10 +35,67 @@ export function decide(inputs: DecisionInputs, versions: DecisionVersions): Deci
   if (!rs.automationModes && inputs.automation) {
     throw new Error(`Rule set ${rs.version} does not apply automation modes`);
   }
-  return applyAutomation({ ...byRules, engineOutcome: byRules.outcome }, inputs.automation);
+  const sc = scorecard(versions.scorecard);
+  const withEstimates: DecisionResult = {
+    ...byRules,
+    engineOutcome: byRules.outcome,
+    ...estimates(byRules.grade, inputs, rs, sc),
+  };
+  return applyAutomation(withEstimates, inputs.automation);
 }
 
-type RulesResult = Omit<DecisionResult, "engineOutcome">;
+type RulesResult = Omit<DecisionResult, "engineOutcome" | "pd" | "recommendedAmount">;
+
+/**
+ * The probability of default and the recommended amount (PRD AIS-001), each switched on by its
+ * own version: PD by the scorecard (`pdByGrade`, SC-PL-2 on), the amount by the rule set
+ * (`recommendedAmount`, RS-PL-3 on). Earlier versions give null for both, so their records
+ * replay unchanged. Nothing is estimated without a grade (knockout, bureau outage).
+ */
+function estimates(
+  grade: Grade | null,
+  inputs: DecisionInputs,
+  rs: RuleSet,
+  sc: Scorecard,
+): { pd: string | null; recommendedAmount: string | null } {
+  if (!grade) return { pd: null, recommendedAmount: null };
+  return {
+    pd: sc.pdByGrade?.[grade] ?? null,
+    recommendedAmount: rs.recommendedAmount
+      ? recommendedAmount(inputs, rs.monthlyRate[grade], rs.recommendedAmount)
+      : null,
+  };
+}
+
+/**
+ * The largest amount, at most the one requested, whose average add-on instalment keeps the
+ * monthly debt service within `maxDebtServiceRatio` of income: obligations + amount × (1/n + r)
+ * ≤ income × ratio, so amount ≤ (income × ratio − obligations) × n ÷ (1 + r·n). The policy is
+ * on the average instalment: the schedule's last one absorbs rounding (ADR 0019) and can be a
+ * few centavos higher. Exact decimal arithmetic, rounded down to `roundDownTo` pesos; "0.00"
+ * when nothing is affordable.
+ */
+function recommendedAmount(
+  inputs: DecisionInputs,
+  monthlyRate: string,
+  policy: NonNullable<RuleSet["recommendedAmount"]>,
+): string {
+  const { applicant, application } = inputs;
+  const n = application.tenorMonths;
+  const available = Money.of(applicant.monthlyIncome)
+    .times(policy.maxDebtServiceRatio)
+    .minus(Money.of(applicant.monthlyObligations));
+  if (available.isNegative() || available.isZero()) return "0.00";
+  // 1 + r·n as an integer over 10,000: the rate has exactly four decimals ("0.0160" → 160).
+  if (!/^0\.\d{4}$/.test(monthlyRate)) throw new Error(`Unexpected monthly rate ${monthlyRate}`);
+  const rateBp = Number.parseInt(monthlyRate.slice(2), 10);
+  const affordable = available.times(n * 10_000).dividedBy(10_000 + rateBp * n);
+  // Round down to a multiple of `roundDownTo`: divide so the step is one centavo, round down.
+  const step = policy.roundDownTo * 100;
+  const floored = affordable.dividedBy(step).round("DOWN").times(step);
+  const requested = Money.of(application.amount);
+  return (floored.lessThan(requested) ? floored : requested).toString();
+}
 
 function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): RulesResult {
   const rs = ruleSet(versions.ruleSet);

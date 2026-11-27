@@ -9,6 +9,7 @@ import { InfoRequestAndDocuments1764300001000 } from "./1764300001000-InfoReques
 import { AuditLogAndAmlEscalations1764300002000 } from "./1764300002000-AuditLogAndAmlEscalations";
 import { ReconciliationRuns1764300002001 } from "./1764300002001-ReconciliationRuns";
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
+import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -28,4 +29,5 @@ export const MIGRATIONS = [
   AuditLogAndAmlEscalations1764300002000,
   ReconciliationRuns1764300002001,
   AutomationAndTriggers1764300003000,
+  ProviderResilienceAndEstimates1764300003001,
 ];

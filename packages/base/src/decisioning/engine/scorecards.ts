@@ -33,58 +33,74 @@ export interface Scorecard {
   delinquencies: { atMost: number | null; points: number }[];
   employmentMonths: Band[];
   relationship: { newToBank: number; under24Months: number; from24Months: number };
+  /**
+   * 12-month probability of default per grade (decimal strings). Absent on SC-PL-1, whose
+   * records carry no PD; a change to it is a new scorecard version.
+   */
+  pdByGrade?: Record<Grade, string>;
 }
 
+const SC_PL_1: Scorecard = {
+  version: "SC-PL-1",
+  basePoints: 307,
+  min: 450,
+  max: 820,
+  grades: [
+    { grade: "A", from: 740 },
+    { grade: "B", from: 700 },
+    { grade: "C", from: 600 },
+    { grade: "D", from: 560 },
+    { grade: "E", from: 0 },
+  ],
+  bureauScore: [
+    { from: 740, points: 200, label: "740 and above" },
+    { from: 680, points: 170, label: "680–739" },
+    { from: 620, points: 130, label: "620–679" },
+    { from: 560, points: 90, label: "560–619" },
+    { from: 0, points: 40, label: "below 560" },
+  ],
+  noBureauScorePoints: 60,
+  fileDepth: { FULL: 60, THIN: 0, NO_HIT: -20 },
+  debtToIncome: [
+    { below: "0.20", points: 80, label: "under 20%" },
+    { below: "0.30", points: 60, label: "20–30%" },
+    { below: "0.40", points: 30, label: "30–40%" },
+    { below: null, points: -20, label: "40% and above" },
+  ],
+  utilisation: [
+    { below: 30, points: 40 },
+    { below: 50, points: 25 },
+    { below: 75, points: 10 },
+    { below: null, points: 0 },
+  ],
+  delinquencies: [
+    { atMost: 0, points: 30 },
+    { atMost: 1, points: 0 },
+    { atMost: null, points: -60 },
+  ],
+  employmentMonths: [
+    { from: 36, points: 40, label: "3 years or more" },
+    { from: 12, points: 25, label: "1–3 years" },
+    { from: 6, points: 10, label: "6–12 months" },
+    { from: 0, points: 0, label: "under 6 months" },
+  ],
+  relationship: { newToBank: 0, under24Months: 15, from24Months: 30 },
+};
+
 export const SCORECARDS: Readonly<Record<string, Scorecard>> = {
-  "SC-PL-1": {
-    version: "SC-PL-1",
-    basePoints: 307,
-    min: 450,
-    max: 820,
-    grades: [
-      { grade: "A", from: 740 },
-      { grade: "B", from: 700 },
-      { grade: "C", from: 600 },
-      { grade: "D", from: 560 },
-      { grade: "E", from: 0 },
-    ],
-    bureauScore: [
-      { from: 740, points: 200, label: "740 and above" },
-      { from: 680, points: 170, label: "680–739" },
-      { from: 620, points: 130, label: "620–679" },
-      { from: 560, points: 90, label: "560–619" },
-      { from: 0, points: 40, label: "below 560" },
-    ],
-    noBureauScorePoints: 60,
-    fileDepth: { FULL: 60, THIN: 0, NO_HIT: -20 },
-    debtToIncome: [
-      { below: "0.20", points: 80, label: "under 20%" },
-      { below: "0.30", points: 60, label: "20–30%" },
-      { below: "0.40", points: 30, label: "30–40%" },
-      { below: null, points: -20, label: "40% and above" },
-    ],
-    utilisation: [
-      { below: 30, points: 40 },
-      { below: 50, points: 25 },
-      { below: 75, points: 10 },
-      { below: null, points: 0 },
-    ],
-    delinquencies: [
-      { atMost: 0, points: 30 },
-      { atMost: 1, points: 0 },
-      { atMost: null, points: -60 },
-    ],
-    employmentMonths: [
-      { from: 36, points: 40, label: "3 years or more" },
-      { from: 12, points: 25, label: "1–3 years" },
-      { from: 6, points: 10, label: "6–12 months" },
-      { from: 0, points: 0, label: "under 6 months" },
-    ],
-    relationship: { newToBank: 0, under24Months: 15, from24Months: 30 },
+  "SC-PL-1": SC_PL_1,
+  /**
+   * SC-PL-1's points, unchanged, plus a 12-month PD per grade. Demonstration values, not a
+   * calibrated model (docs/ASSUMPTIONS.md).
+   */
+  "SC-PL-2": {
+    ...SC_PL_1,
+    version: "SC-PL-2",
+    pdByGrade: { A: "0.0080", B: "0.0150", C: "0.0300", D: "0.0600", E: "0.1200" },
   },
 };
 
-export const CURRENT_SCORECARD = "SC-PL-1";
+export const CURRENT_SCORECARD = "SC-PL-2";
 
 export function scorecard(version: string): Scorecard {
   const sc = SCORECARDS[version];

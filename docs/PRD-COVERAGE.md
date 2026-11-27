@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 25 built, 38 partly built, 76 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
+Summary: 28 built, 37 partly built, 74 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -199,7 +199,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
-| AIS-001 | Score, grade, PD, terms, reasons in 2 s p95 | partly built | `scorecards.ts`, decision record | Score, grade, rate and reasons. No PD and no recommended amount, and latency is not measured. |
+| AIS-001 | Score, grade, PD, terms, reasons in 2 s p95 | partly built | `scorecards.ts`, `decide.ts`, D-16, D-17, PR-5 | Score, grade, rate, reasons, a 12-month PD per grade (SC-PL-2) and a recommended amount (RS-PL-3, affordability), on every decision record; each record carries its latency and `GET /decisions/latency` reports p50/p95. Missing: a load test that proves the 2 s p95 under volume; the PD table is a demonstration, not a calibrated model. |
 | AIS-002 | Features from bureau, application, core, subject to consent | partly built | `DecisionInputs` snapshot | Bureau, application and relationship months are used. Consent is not checked (see INT-006). |
 | AIS-003 | Plain-language reasons mapped to borrower-safe declines | built | `reason-codes.ts` | |
 | AIS-004 | Cold-start: bureau score plus expert scorecard | built | `scorecards.ts` (SC-PL-1), D-1..D-9 | An additive expert scorecard that includes the bureau score band. This is the only model mode. |
@@ -227,10 +227,10 @@ These are PRD sections, not requirement IDs.
 |---|---|---|---|---|
 | IH-001 | Adapter framework, standard contract per category | built | `packages/contracts/src/*.port.ts`, `simulated-providers.module.ts` | Five ports. Swapping a provider changes one binding. |
 | IH-002 | Per-tenant provider selection, secrets vault | not built (**OOR**) | — | Needs real providers and a vault. |
-| IH-003 | Timeouts, retries, circuit breakers, fallbacks | partly built | `failure.ts`, B-5, B-7 | Timeouts fail and the decision falls back to referral. Booking is retried manually with the same key. No automatic retry with backoff and no circuit breaker. |
+| IH-003 | Timeouts, retries, circuit breakers, fallbacks | built | `providers/resilience.ts`, `provider-gateway.service.ts`, PR-1, PR-3 | The decision's providers (bureau, KYC/AML, fraud): three attempts with exponential backoff and jitter, a per-service circuit breaker (opens after five failed calls, one trial call after 30 s), and the fallback is a referral (NFR-005). Booking keeps its manual retry with the same idempotency key (ADR 0020). Circuits live in each API instance's memory. |
 | IH-004 | Raw request/response logging, masked | not built | — | No applicant data is logged at all (AGENTS §2.8). |
-| IH-005 | Result caching (30-day bureau reuse) | not built | — | |
-| IH-006 | Per-call cost tracking | not built | — | |
+| IH-005 | Result caching (30-day bureau reuse) | built | `bureau_report_cache`, PR-2 | A bureau report is reused for the same applicant for 30 days (even while the bureau is down), recorded in the decision snapshot (`fromCache`, `retrievedAt`). |
+| IH-006 | Per-call cost tracking | built | `provider_call`, PR-1, PR-4, `GET /providers/usage` | Every decision provider attempt, cache hit and circuit refusal is counted with a simulated price; usage and cost per service on the Simulated services screen (admin, compliance). Booking providers are not counted yet. |
 | IH-007 | Simulated provider for every adapter | built | `apps/api/src/adapters/simulated/*`, `apps/api/test/simulators.e2e-spec.ts` | Bureau, KYC/AML, fraud check, core, disbursement, e-signature and document intake, with ok, outage, timeout and malformed modes (plus lost reply for core). There are no OCR, SMS or appraisal adapters yet. |
 | IH-008 | Provider mode, live blocked outside production, labelled | partly built (**OOR** for sandbox and live) | `ProviderMode` in `packages/core/src/domain.ts`, the decision record's `provider_mode` | Simulated output is labelled and recorded. Sandbox and live need real providers. |
 | IH-009 | Conformance test suite per category | built | `apps/api/test/simulators.e2e-spec.ts` | Runs against the simulators. Moving the suites into `packages/contracts` is deferred (BUILD-STATUS). |
@@ -258,7 +258,7 @@ These are PRD sections, not requirement IDs.
 |---|---|---|---|---|
 | NFR-001 | 99.9% availability | not built (**OOR**) | — | Operational. |
 | NFR-002 | Borrower API p95 < 500 ms | not built | — | Not measured, and there is no borrower API. |
-| NFR-003 | Automated decision p95 < 60 s | partly built | synchronous submit | Not measured. A load or latency test against the simulators would cover it. |
+| NFR-003 | Automated decision p95 < 60 s | partly built | `decision_record.latency_ms`, PR-5 | Every decision's latency (inputs gathered to record written) is stored and the p50/p95 reported against the 60 s target. Missing: a load test at volume. |
 | NFR-004 | 10,000 apps/day, 500 staff | not built | — | No load test. |
 | NFR-005 | No lost applications; outages refer, never decline | built | B-7, B-10 | Outages refer; once the provider answers, the officer re-decides the case (new decision record, the old one kept). |
 | NFR-006 | RPO ≤ 15 min, RTO ≤ 4 h | not built (**OOR**) | — | Operational. |
@@ -312,8 +312,8 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 24 | Tenant ID on every record | NFR-007 | M | A Phase 1 NFR. Cheaper before more tables exist. |
 | 25 | Field-level encryption of financial fields; MFA (TOTP) for staff | NFR-008, NFR-009 | M | Security NFRs not blocked by mechanics. |
 | 26 | Model registry, override and drift monitoring, prohibited-features list checked at scoring | AIS-008, AIS-009, AIS-011, AIS-012, CMP-007, CMP-008 | L | Governance around the scorecard. Meaningful only with volume. |
-| 27 | PD and recommended amount from the scorecard; latency measurement | AIS-001, NFR-003 | S | Completes the AIS-001 output. |
-| 28 | Provider resilience: automatic retry with backoff, circuit breaker, bureau result cache, per-call cost counter | IH-003, IH-005, IH-006 | M | Platform hardening. |
+| 27 | ✅ Done (D-16, D-17, PR-5). PD and recommended amount from the scorecard; latency measurement | AIS-001, NFR-003 | S | Completes the AIS-001 output. |
+| 28 | ✅ Done (PR-1..PR-4). Provider resilience: automatic retry with backoff, circuit breaker, bureau result cache, per-call cost counter | IH-003, IH-005, IH-006 | M | Platform hardening. |
 | 29 | Secured lending: collateral register, simulated appraisal, LTV enforcement, liens and insurance, deposit holds in simulated core; home-loan product | COL-001..006, PC-009, F5 | L | Second Phase 1 wave in the PRD ("then secured lending"). |
 | 30 | Email and file intake with simulated OCR producing drafts; OCR on captured documents; statement analysis | INT-010, DOC-002, DOC-007, F4 | L | Needs #5 first. |
 | 31 | Collections: simulated core delinquency feed, buckets, strategies, collector queue, PTP, contact rules, restructuring and write-off workflows | CLX-001..005, CLX-007, CLX-008, CMP-009, F7 | L | Third Phase 1 wave in the PRD ("then collections"). |

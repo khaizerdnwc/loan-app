@@ -5,6 +5,7 @@ import {
   formatNumber,
   formatPeso,
   formatRatioPercent,
+  formatSeconds,
 } from "../src/lib/format";
 
 describe("formatPeso — formats the decimal string itself, never a float", () => {
@@ -97,5 +98,22 @@ describe("formatAmountsInText — amounts in the API's sentences read like every
   it("returns an empty string for nothing", () => {
     expect(formatAmountsInText(null)).toBe("");
     expect(formatAmountsInText(undefined)).toBe("");
+  });
+});
+
+describe("formatSeconds — one rounding for every latency on screen", () => {
+  it.each([
+    [0, "0.0 s"],
+    [420, "0.4 s"],
+    [1234, "1.2 s"],
+    [1850, "1.9 s"],
+    [60_000, "60.0 s"],
+  ])("%d ms reads %s", (ms, text) => {
+    expect(formatSeconds(ms)).toBe(text);
+  });
+
+  it("shows a dash when there is no measurement", () => {
+    expect(formatSeconds(null)).toBe("—");
+    expect(formatSeconds(undefined)).toBe("—");
   });
 });

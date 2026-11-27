@@ -18,6 +18,9 @@ process.env.DATABASE_URL = url;
 process.env.NODE_ENV = "test";
 process.env.JWT_SECRET = "test-dummy-secret-at-least-32-characters-long";
 process.env.SIMULATION_TIMEOUT_MS = "20";
+// Short backoff and a short open circuit, so retries and the breaker run in test time.
+process.env.PROVIDER_RETRY_BASE_MS = "5";
+process.env.PROVIDER_CIRCUIT_OPEN_MS = "300";
 process.env.SIMULATION_AUTO_RESET_MINUTES = "15";
 process.env.MIGRATE_ON_BOOT = "false";
 // The tests run the expiry sweep by hand (ExpiryService.expireStale), never on a timer.

@@ -44,6 +44,11 @@ Docker (API `node_modules` 123 MB; backoffice `node_modules` 385 MB, `.next` 12 
 | api | `NODE_ENV` | `production` (the image sets it): the session cookie is then `Secure`, so serve over HTTPS |
 | api | `TRUST_PROXY_HOPS` | `0` unless an appending load balancer sits in front of the API |
 | api | `EXPIRY_SWEEP_SECONDS` | `300` (default): seconds between expiry sweeps (drafts after 30 days, offers after 5). `0` turns the sweep off; run one API instance with it on, or accept that two instances sweep (each case is still expired once, under a row lock) |
+| api | `PROVIDER_RETRY_ATTEMPTS` | `3` (default, 1–5): attempts per decision provider call (bureau, KYC/AML, fraud), the first included; `1` = no retry |
+| api | `PROVIDER_RETRY_BASE_MS` | `200` (default): backoff before retry k is base × 2ᵏ⁻¹ plus up to base of jitter; `0` = retry at once. Keep attempts × (provider timeout + backoff) well under the 60 s decision target (NFR-003): the defaults give about 10 s per service at a 3 s timeout, the maximum settings far more |
+| api | `PROVIDER_CIRCUIT_THRESHOLD` | `5` (default): failed calls in a row that pause a service (its circuit opens; applications are referred meanwhile) |
+| api | `PROVIDER_CIRCUIT_OPEN_MS` | `30000` (default): how long a paused service is skipped before one trial call; `0` = the next call is always a trial, so the breaker never skips a call. The circuit is per API instance and in memory: a restart or a rolling deploy closes it, and with several replicas each counts its own failures, so one replica's open circuit does not stop the others (a best-effort breaker, not a global one) |
+| api | `BUREAU_CACHE_DAYS` | `30` (default): days a bureau report is reused for the same applicant and provider mode (PRD IH-005); `0` = never reuse (every decision pulls) |
 | api | `SWAGGER_ENABLED` | leave unset (off). `true` serves Swagger at `/docs`; only local development's `.env.example` sets it |
 | web | `API_URL` | the API's internal URL, e.g. `http://api:3101` (required in production) |
 
