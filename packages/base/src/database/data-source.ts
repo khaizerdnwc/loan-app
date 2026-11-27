@@ -14,6 +14,7 @@ import {
   LoanAccountEntity,
   ScheduleLineEntity,
 } from "../cases/entities/booking.entities";
+import { CaseDocumentEntity } from "../cases/entities/case-document.entity";
 import { ConsentRecordEntity } from "../cases/entities/consent-record.entity";
 import { DecisionRecordEntity } from "../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
@@ -37,6 +38,7 @@ export const ENTITIES = [
   ProductAutomationEntity,
   AutomationChangeEntity,
   AutomationEventEntity,
+  CaseDocumentEntity,
 ];
 
 /**

@@ -75,6 +75,14 @@ WHERE status NOT IN ('DECLINED', 'DISBURSED') GROUP BY 1, 2 HAVING count(*) > 1;
 
 A fresh environment has nothing to check: the seed creates no cases.
 
+Migrations are listed in timestamp order, but lanes merged in a different order: a database
+that already ran 1764300002000 (audit log, AML escalations) and 1764300003000 (automation)
+before 1764300001000 (requests for information, document checklist) existed applies 1000
+afterwards. That is safe: the three touch different tables (1000 adds columns to `loan_case`
+and new tables; 2000 and 3000 neither alter those columns nor the open-application index).
+`migration:revert` undoes migrations in the order they were executed, not by timestamp, so on
+such a database the first revert undoes 1000.
+
 ## Rollback
 
 Redeploy the previous image tags. The migrations only add (no destructive `down` is run on

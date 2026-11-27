@@ -98,6 +98,8 @@ describe("amounts in server-written sentences (U-2)", () => {
         lastErrorDetail: "Core banking did not confirm ₱150000.00 in time.",
       },
       loanAccountId: null,
+      documents: [],
+      infoRequest: null,
       allowedActions: [],
     } as unknown as CaseDetail;
     vi.stubGlobal(

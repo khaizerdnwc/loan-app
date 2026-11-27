@@ -8,7 +8,8 @@ The short reference for agents and reviewers. The longer narrative, with diagram
 ```
 packages/core        Money, domain enums and labels, the HTTP contract types, RFC 9457 shape
 packages/contracts   port interfaces: CreditBureau, KycAml, FraudCheck, CoreBanking,
-                     Disbursement, ESignature, SimulationControl (each with its Nest token)
+                     Disbursement, ESignature, DocumentIntake, SimulationControl (each with its
+                     Nest token)
 packages/base        the lending domain — one Nest module (lending.module.ts):
                        auth/        test sign-in (scrypt), SessionGuard (global, fails closed)
                        cases/       capture, decision, review, approval, signing, booking,
@@ -66,10 +67,11 @@ or its result.
 
 ```
 DRAFT ─submit─▶ OFFER | REVIEW | DECLINED
+REVIEW ─request information─▶ INFO_REQUESTED ─last requested document received─▶ REVIEW
 REVIEW ─recommend─▶ APPROVAL ─approve─▶ OFFER · ─decline─▶ DECLINED · ─return─▶ REVIEW
 OFFER ─sign─▶ BOOKING ─submit booking─▶ PENDING_CHECKER
 PENDING_CHECKER | BOOKING_FAILED ─approve booking─▶ DISBURSED | BOOKING_FAILED
-DRAFT | REVIEW | APPROVAL | OFFER ─withdraw (loan officer)─▶ WITHDRAWN
+DRAFT | REVIEW | INFO_REQUESTED | APPROVAL | OFFER ─withdraw (loan officer)─▶ WITHDRAWN
 DRAFT | OFFER ─expire (sweep)─▶ EXPIRED
 ```
 

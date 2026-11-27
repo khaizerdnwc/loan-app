@@ -111,6 +111,7 @@ export async function resetModes(page: Page): Promise<void> {
       "DISBURSEMENT",
       "E_SIGNATURE",
       "FRAUD",
+      "DOCUMENT_INTAKE",
     ];
     const out: number[] = [];
     for (const s of services) {
@@ -123,5 +124,5 @@ export async function resetModes(page: Page): Promise<void> {
     }
     return out;
   });
-  expect(statuses).toEqual([200, 200, 200, 200, 200, 200]);
+  expect(statuses).toEqual([200, 200, 200, 200, 200, 200, 200]);
 }

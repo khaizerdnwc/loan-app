@@ -59,6 +59,8 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     loanAccountId: null,
     bookingChecklist: null,
     indicativeRepayment: null,
+    infoRequest: null,
+    documents: [],
     allowedActions: [],
     decidedDuringOutage: false,
     recommendationTypes: [],

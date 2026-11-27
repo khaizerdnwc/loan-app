@@ -26,6 +26,7 @@ export const ROLE_LABEL: Record<Role, string> = {
 export const CaseStatus = {
   Draft: "DRAFT",
   Review: "REVIEW",
+  InfoRequested: "INFO_REQUESTED",
   Approval: "APPROVAL",
   Offer: "OFFER",
   Booking: "BOOKING",
@@ -55,6 +56,7 @@ export const CASE_STATUSES: readonly CaseStatus[] = Object.values(CaseStatus);
 export const STATUS_LABEL: Record<CaseStatus, string> = {
   DRAFT: "Draft",
   REVIEW: "In review",
+  INFO_REQUESTED: "Information requested",
   APPROVAL: "Awaiting approval",
   OFFER: "Offer · awaiting signature",
   BOOKING: "Ready to book",
@@ -143,6 +145,42 @@ export const WITHDRAW_REASON_LABEL: Record<WithdrawReason, string> = {
 };
 
 /**
+ * Documents a loan officer can request from the borrower on a referred case (PRD WF-007,
+ * DOC-003; the prototype's "Request information" dialog).
+ */
+export const DocumentType = {
+  BankStatements: "BANK_STATEMENTS_3M",
+  CertificateOfEmployment: "CERTIFICATE_OF_EMPLOYMENT",
+  IncomeTaxReturn: "INCOME_TAX_RETURN",
+} as const;
+export type DocumentType = (typeof DocumentType)[keyof typeof DocumentType];
+
+export const DOCUMENT_TYPE_LABEL: Record<DocumentType, string> = {
+  BANK_STATEMENTS_3M: "Bank statements, last 3 months",
+  CERTIFICATE_OF_EMPLOYMENT: "Certificate of employment",
+  INCOME_TAX_RETURN: "Latest income tax return",
+};
+
+/**
+ * Where a requested document stands on the case's checklist: requested from the borrower,
+ * received (uploaded, waiting for the officer), verified, or rejected (request it again).
+ */
+export const DocumentStatus = {
+  Requested: "REQUESTED",
+  Received: "RECEIVED",
+  Verified: "VERIFIED",
+  Rejected: "REJECTED",
+} as const;
+export type DocumentStatus = (typeof DocumentStatus)[keyof typeof DocumentStatus];
+
+export const DOCUMENT_STATUS_LABEL: Record<DocumentStatus, string> = {
+  REQUESTED: "Requested",
+  RECEIVED: "Received, to verify",
+  VERIFIED: "Verified",
+  REJECTED: "Rejected",
+};
+
+/**
  * Where a provider's answer came from (PRD IH-008). Only simulated providers exist in this
  * release; sandbox and live modes are deferred (docs/ACCEPTANCE.md), so they are not
  * declared until something can produce them.
@@ -174,5 +212,6 @@ export const ServiceName = {
   Disbursement: "DISBURSEMENT",
   ESignature: "E_SIGNATURE",
   Fraud: "FRAUD",
+  DocumentIntake: "DOCUMENT_INTAKE",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

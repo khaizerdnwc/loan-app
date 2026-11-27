@@ -17,6 +17,7 @@ const LABELS: Record<ServiceName, string> = {
   DISBURSEMENT: "Disbursement (simulated)",
   E_SIGNATURE: "E-signature (simulated)",
   FRAUD: "Fraud signals (simulated)",
+  DOCUMENT_INTAKE: "Document upload (simulated)",
 };
 
 const UNIVERSAL: CoreMode[] = Object.values(SimulationMode);

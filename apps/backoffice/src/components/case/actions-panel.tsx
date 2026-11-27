@@ -7,6 +7,7 @@ import {
   DECLINE_REASON_LABEL,
   type DeclineReason,
   type DeclineRequest,
+  DOCUMENT_TYPE_LABEL,
   DRAFT_EXPIRY_DAYS,
   OFFER_EXPIRY_DAYS,
   OVERRIDE_REASON_LABEL,
@@ -27,6 +28,7 @@ import {
   FormGrid,
   FormStack,
   formatAmountsInText,
+  formatDate,
   formatDateTime,
   formatPeso,
   Input,
@@ -36,8 +38,10 @@ import {
 } from "@loan/ui";
 import { type ReactNode, useState } from "react";
 import { useShellRefresh } from "@/components/app-shell";
+import { RequestInfoDialog } from "@/components/case/request-info-dialog";
 import { ApiError, api, errorMessage, fieldErrorsOf } from "@/lib/api";
 import { MAX_AMOUNT, MIN_AMOUNT, toCentavos, toDecimalString } from "@/lib/application-schema";
+import { isOverdue } from "@/lib/info-request";
 
 interface SimpleAction {
   label: string;
@@ -148,6 +152,7 @@ type Open =
   | { kind: "recommend" }
   | { kind: "decline" }
   | { kind: "withdraw" }
+  | { kind: "request-info" }
   | null;
 
 /**
@@ -237,6 +242,7 @@ export function ActionsPanel({
     else if (a.action === "RECOMMEND") setOpen({ kind: "recommend" });
     else if (a.action === "DECLINE") setOpen({ kind: "decline" });
     else if (a.action === "WITHDRAW") setOpen({ kind: "withdraw" });
+    else if (a.action === "REQUEST_INFO") setOpen({ kind: "request-info" });
     else setOpen({ kind: "simple", action: a.action });
   }
 
@@ -309,6 +315,22 @@ export function ActionsPanel({
           onCancel={() => setOpen(null)}
           onSubmit={(body) =>
             run(`/cases/${detail.id}/decline`, body, "Declined — the borrower is told why")
+          }
+        />
+      )}
+      {open?.kind === "request-info" && (
+        <RequestInfoDialog
+          detail={detail}
+          busy={busy}
+          error={error}
+          fieldErrors={fieldErrors}
+          onCancel={() => setOpen(null)}
+          onSubmit={(body) =>
+            run(
+              `/cases/${detail.id}/info-request`,
+              body,
+              "Request sent — the case waits for the borrower's documents",
+            )
           }
         />
       )}
@@ -391,6 +413,7 @@ function variantFor(a: ActionAvailability, redecideOffered: boolean): SimpleActi
   if (a.action === "DECLINE") return "danger";
   if (a.action === "REPRODUCE_DECISION") return "secondary";
   if (a.action === "WITHDRAW") return "secondary";
+  if (a.action === "REQUEST_INFO") return "secondary";
   if (a.action === "RECOMMEND" && redecideOffered) return "secondary";
   return SIMPLE[a.action]?.variant ?? "primary";
 }
@@ -400,6 +423,7 @@ function labelOf(action: CaseAction): string {
   if (action === "DECLINE") return "Decline";
   if (action === "REPRODUCE_DECISION") return "View decision record";
   if (action === "WITHDRAW") return "Withdraw application";
+  if (action === "REQUEST_INFO") return "Request information";
   return SIMPLE[action]?.label ?? action;
 }
 
@@ -417,6 +441,10 @@ function waitingFor(c: CaseDetail): string {
       return c.decidedDuringOutage
         ? "Referred because a provider could not answer: the loan officer decides it again once the provider is back."
         : "Referred: a loan officer reviews the evidence and recommends a decision.";
+    case "INFO_REQUESTED":
+      return c.infoRequest
+        ? `Waiting for the borrower (simulated): ${c.infoRequest.documents.map((d) => DOCUMENT_TYPE_LABEL[d]).join("; ")}. ${isOverdue(c.infoRequest.dueOn) ? `Overdue since ${formatDate(c.infoRequest.dueOn)}: the borrower has not answered by the due date; follow up, or withdraw the application.` : `Due ${formatDate(c.infoRequest.dueOn)}.`} The case goes back to review when everything has arrived.`
+        : "Waiting for the borrower's documents. The case goes back to review when everything has arrived.";
     case "APPROVAL":
       return c.escalated
         ? "Waiting for an approver whose authority covers this amount and grade."

@@ -22,6 +22,7 @@ const CLOSED_EARLY_LABEL: Record<ClosedEarly, string> = {
 const CURRENT: Record<Exclude<CaseStatus, ClosedEarly>, Step> = {
   DRAFT: "Submitted",
   REVIEW: "Review",
+  INFO_REQUESTED: "Review",
   APPROVAL: "Approval",
   OFFER: "Offer",
   BOOKING: "Booking",

@@ -11,6 +11,8 @@ import {
 const EVENTS: CaseEvent[] = [
   "SUBMIT",
   "REDECIDE",
+  "REQUEST_INFO",
+  "INFO_RECEIVED",
   "RECOMMEND",
   "APPROVE",
   "DECLINE",
@@ -37,6 +39,9 @@ describe("the case transition table", () => {
     ["REDECIDE", CaseStatus.Review, CaseStatus.Offer],
     ["REDECIDE", CaseStatus.Review, CaseStatus.Review],
     ["REDECIDE", CaseStatus.Review, CaseStatus.Declined],
+    ["REQUEST_INFO", CaseStatus.Review, CaseStatus.InfoRequested],
+    ["INFO_RECEIVED", CaseStatus.InfoRequested, CaseStatus.Review],
+    ["WITHDRAW", CaseStatus.InfoRequested, CaseStatus.Withdrawn],
     ["RECOMMEND", CaseStatus.Review, CaseStatus.Approval],
     ["APPROVE", CaseStatus.Approval, CaseStatus.Offer],
     ["DECLINE", CaseStatus.Approval, CaseStatus.Declined],
@@ -91,6 +96,7 @@ describe("the case transition table", () => {
   const WITHDRAWABLE: CaseStatus[] = [
     CaseStatus.Draft,
     CaseStatus.Review,
+    CaseStatus.InfoRequested,
     CaseStatus.Approval,
     CaseStatus.Offer,
   ];
@@ -103,6 +109,30 @@ describe("the case transition table", () => {
       expect(c.status).toBe(from);
     },
   );
+
+  it.each(Object.values(CaseStatus).filter((s) => s !== CaseStatus.Review))(
+    "REQUEST_INFO is refused from %s (only a referred case in review asks for information)",
+    (from) => {
+      expect(canHappen("REQUEST_INFO", from)).toBe(false);
+    },
+  );
+
+  it.each(Object.values(CaseStatus).filter((s) => s !== CaseStatus.InfoRequested))(
+    "INFO_RECEIVED is refused from %s",
+    (from) => {
+      expect(canHappen("INFO_RECEIVED", from)).toBe(false);
+    },
+  );
+
+  it("a case waiting for information can only go back to review or be withdrawn", () => {
+    expect(EVENTS.filter((e) => canHappen(e, CaseStatus.InfoRequested))).toEqual([
+      "INFO_RECEIVED",
+      "WITHDRAW",
+    ]);
+    expect(() =>
+      assertTransition("INFO_RECEIVED", CaseStatus.InfoRequested, CaseStatus.Approval),
+    ).toThrow(InvalidTransitionError);
+  });
 
   const EXPIRABLE: CaseStatus[] = [CaseStatus.Draft, CaseStatus.Offer];
   it.each(Object.values(CaseStatus).filter((s) => !EXPIRABLE.includes(s)))(

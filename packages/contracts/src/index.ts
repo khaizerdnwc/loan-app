@@ -2,6 +2,7 @@ export * from "./applicant-identity";
 export * from "./core-banking.port";
 export * from "./credit-bureau.port";
 export * from "./disbursement.port";
+export * from "./document-intake.port";
 export * from "./e-signature.port";
 export * from "./errors";
 export * from "./fraud-check.port";

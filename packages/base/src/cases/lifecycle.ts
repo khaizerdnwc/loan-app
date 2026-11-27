@@ -7,13 +7,15 @@ import { CaseStatus } from "@loan/core";
  *
  *   DRAFT ──submit──▶ OFFER (auto-approve) | REVIEW (refer) | DECLINED (auto-decline)
  *   REVIEW ──re-decide (a provider was unavailable)──▶ OFFER | REVIEW | DECLINED
+ *   REVIEW ──request information (loan officer)──▶ INFO_REQUESTED
+ *   INFO_REQUESTED ──every requested document received──▶ REVIEW
  *   REVIEW ──recommend──▶ APPROVAL
  *   APPROVAL ──approve──▶ OFFER · ──decline──▶ DECLINED · ──return──▶ REVIEW
  *   OFFER ──sign──▶ BOOKING
  *   BOOKING ──submit booking──▶ PENDING_CHECKER
  *   PENDING_CHECKER ──approve booking──▶ DISBURSED | BOOKING_FAILED
  *   BOOKING_FAILED ──retry──▶ DISBURSED | BOOKING_FAILED
- *   DRAFT | REVIEW | APPROVAL | OFFER ──withdraw (loan officer)──▶ WITHDRAWN
+ *   DRAFT | REVIEW | INFO_REQUESTED | APPROVAL | OFFER ──withdraw (loan officer)──▶ WITHDRAWN
  *   DRAFT | OFFER ──expire (system sweep)──▶ EXPIRED
  *
  * DECLINED, DISBURSED, WITHDRAWN and EXPIRED are closed (CLOSED_CASE_STATUSES): no edge leaves them.
@@ -21,6 +23,8 @@ import { CaseStatus } from "@loan/core";
 export type CaseEvent =
   | "SUBMIT"
   | "REDECIDE"
+  | "REQUEST_INFO"
+  | "INFO_RECEIVED"
   | "RECOMMEND"
   | "APPROVE"
   | "DECLINE"
@@ -41,6 +45,8 @@ const TRANSITIONS: Readonly<Record<CaseEvent, { from: CaseStatus[]; to: CaseStat
     from: [CaseStatus.Review],
     to: [CaseStatus.Offer, CaseStatus.Review, CaseStatus.Declined],
   },
+  REQUEST_INFO: { from: [CaseStatus.Review], to: [CaseStatus.InfoRequested] },
+  INFO_RECEIVED: { from: [CaseStatus.InfoRequested], to: [CaseStatus.Review] },
   RECOMMEND: { from: [CaseStatus.Review], to: [CaseStatus.Approval] },
   APPROVE: { from: [CaseStatus.Approval], to: [CaseStatus.Offer] },
   DECLINE: { from: [CaseStatus.Approval], to: [CaseStatus.Declined] },
@@ -56,7 +62,13 @@ const TRANSITIONS: Readonly<Record<CaseEvent, { from: CaseStatus[]; to: CaseStat
     to: [CaseStatus.BookingFailed],
   },
   WITHDRAW: {
-    from: [CaseStatus.Draft, CaseStatus.Review, CaseStatus.Approval, CaseStatus.Offer],
+    from: [
+      CaseStatus.Draft,
+      CaseStatus.Review,
+      CaseStatus.InfoRequested,
+      CaseStatus.Approval,
+      CaseStatus.Offer,
+    ],
     to: [CaseStatus.Withdrawn],
   },
   EXPIRE: { from: [CaseStatus.Draft, CaseStatus.Offer], to: [CaseStatus.Expired] },

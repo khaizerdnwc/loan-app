@@ -19,6 +19,8 @@ import { CasesController } from "./cases/cases.controller";
 import { CasesRepository } from "./cases/cases.repository";
 import { CasesService } from "./cases/cases.service";
 import { DecisionService } from "./cases/decision.service";
+import { DocumentsController } from "./cases/documents.controller";
+import { DocumentsService } from "./cases/documents.service";
 import { ApplicantEntity } from "./cases/entities/applicant.entity";
 import { LoanCaseEntity } from "./cases/entities/loan-case.entity";
 import { ExpiryService } from "./cases/expiry.service";
@@ -54,6 +56,7 @@ export class LendingModule {
       controllers: [
         AuthController,
         CasesController,
+        DocumentsController,
         SimulationController,
         AuditController,
         ComplianceController,
@@ -70,6 +73,7 @@ export class LendingModule {
         CasesService,
         ExpiryService,
         BookingService,
+        DocumentsService,
         SessionGuard,
         AuditRepository,
         AuditService,

@@ -2,6 +2,7 @@ import {
   CORE_BANKING,
   CREDIT_BUREAU,
   DISBURSEMENT,
+  DOCUMENT_INTAKE,
   E_SIGNATURE,
   FRAUD_CHECK,
   KYC_AML,
@@ -12,6 +13,7 @@ import { env } from "../../config/env";
 import { SimulatedCoreBanking } from "./core-banking/core-banking.simulator";
 import { SimulatedCreditBureau } from "./credit-bureau.simulator";
 import { SimulatedDisbursement } from "./disbursement.simulator";
+import { SimulatedDocumentIntake } from "./document-intake.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
 import { SimulatedFraudCheck } from "./fraud-check.simulator";
 import { SimulatedKycAml } from "./kyc-aml.simulator";
@@ -40,12 +42,14 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedDisbursement,
     SimulatedESignature,
     SimulatedFraudCheck,
+    SimulatedDocumentIntake,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
     { provide: CORE_BANKING, useExisting: SimulatedCoreBanking },
     { provide: DISBURSEMENT, useExisting: SimulatedDisbursement },
     { provide: E_SIGNATURE, useExisting: SimulatedESignature },
     { provide: FRAUD_CHECK, useExisting: SimulatedFraudCheck },
+    { provide: DOCUMENT_INTAKE, useExisting: SimulatedDocumentIntake },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
   exports: [
@@ -55,6 +59,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     DISBURSEMENT,
     E_SIGNATURE,
     FRAUD_CHECK,
+    DOCUMENT_INTAKE,
     SIMULATION_CONTROL,
   ],
 })

@@ -102,7 +102,7 @@ export async function startHarness(): Promise<Harness> {
 export async function resetData(ds: DataSource): Promise<void> {
   await ds.query(`TRUNCATE aml_escalation, consent_record, schedule_line, disbursement, loan_account, booking_request, loan_case,
     decision_record, activity_event, automation_change, automation_event,
-    sim.core_account, sim.disbursement, sim.signature, sim.service_mode`);
+    sim.core_account, sim.disbursement, sim.signature, sim.service_mode, sim.document_upload, case_document`);
   // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,

@@ -88,7 +88,15 @@ export function recommendationTypes(refusal: string | null): RecommendationAvail
 }
 
 const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
-  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "REDECIDE", "RECOMMEND", "WITHDRAW", "REPRODUCE_DECISION"],
+  LOAN_OFFICER: [
+    "EDIT_DRAFT",
+    "SUBMIT",
+    "REDECIDE",
+    "REQUEST_INFO",
+    "RECOMMEND",
+    "WITHDRAW",
+    "REPRODUCE_DECISION",
+  ],
   APPROVER: ["APPROVE", "DECLINE", "RETURN", "REPRODUCE_DECISION"],
   LOAN_OPERATIONS: ["SIGN", "SUBMIT_BOOKING"],
   LOAN_OPERATIONS_SUPERVISOR: ["SIGN", "SUBMIT_BOOKING", "APPROVE_BOOKING", "RETRY_BOOKING"],
@@ -99,6 +107,7 @@ const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
 const ACTION_EVENT: Partial<Record<CaseAction, Parameters<typeof canHappen>[0]>> = {
   SUBMIT: "SUBMIT",
   REDECIDE: "REDECIDE",
+  REQUEST_INFO: "REQUEST_INFO",
   RECOMMEND: "RECOMMEND",
   APPROVE: "APPROVE",
   DECLINE: "DECLINE",
@@ -129,6 +138,14 @@ export function allowedActions(
   bookingRefusal: string | null = null,
   /** Why an AML escalation holds the booking (PRD CMP-005), or null. */
   bookingHold: string | null = null,
+  /**
+   * The document checklist's refusals (documents.ts): why REQUEST_INFO cannot be sent now, and
+   * why RECOMMEND must wait (a received document is not verified or rejected yet).
+   */
+  documents: { request: string | null; recommend: string | null } = {
+    request: null,
+    recommend: null,
+  },
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -168,6 +185,22 @@ export function allowedActions(
         blockedBy: ProblemCode.Validation,
         detail:
           "Record the applicant's consent to the credit bureau check and to data processing first.",
+      });
+      continue;
+    }
+    // The document checklist (WF-007): the same wording as the API's 409.
+    const documentRefusal =
+      action === "REQUEST_INFO"
+        ? documents.request
+        : action === "RECOMMEND"
+          ? documents.recommend
+          : null;
+    if (documentRefusal) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.InvalidTransition,
+        detail: documentRefusal,
       });
       continue;
     }

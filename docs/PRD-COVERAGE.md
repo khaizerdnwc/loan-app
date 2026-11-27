@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 20 built, 38 partly built, 81 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
+Summary: 22 built, 39 partly built, 78 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -35,7 +35,7 @@ Summary: 20 built, 38 partly built, 81 not built (139 IDs, counted from the tabl
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
 | F1 | Auto-approved personal loan (Maria Santos) | partly built | `apps/api/test/journeys.e2e-spec.ts`, `apps/backoffice/e2e/f1.spec.ts` (F1-1..F1-5) | Score 742 A, auto-approve, reproducible record, maker-checker booking, reconciled 24-line schedule. Different from the PRD: a loan officer captures the application (the PRD has Maria apply in the app), no consent is captured, there is no core pre-fill or fraud check, and loan operations simulates the borrower's acceptance and e-signature. |
-| F2 | Referred thin file with counter-offer (Joel Reyes) | partly built | journeys spec, `apps/backoffice/e2e/f2.spec.ts` (F2-1..F2-6, R-6) | Refer 612 C, override needs a reason code, counter-offer ₱120,000/36, approval within authority, booking. Missing: the request for 3 months of statements, statement analysis, and borrower acceptance in the app (simulated). ASSUMPTIONS records the shortened path. |
+| F2 | Referred thin file with counter-offer (Joel Reyes) | partly built | journeys spec, `apps/backoffice/e2e/f2.spec.ts` (F2-1..F2-6, R-6) | Refer 612 C, override needs a reason code, counter-offer ₱120,000/36, approval within authority, booking. The request for 3 months of statements is built (DC-1..DC-3, borrower upload simulated). Missing: statement analysis, and borrower acceptance in the app (simulated). ASSUMPTIONS records the shortened path. |
 | F3 | Branch-assisted application with income mismatch | not built | `rs-pl-2.test.ts` (D-10), TR-1 | The income-mismatch referral trigger exists (RS-PL-2, 15%, seeded persona Dante Flores). Still missing: a branch officer role, walk-in capture of a declared income, OCR of a payslip. The capture form only offers seeded applicants. |
 | F4 | Email or file intake | not built | — | No upload, OCR or batch drafts. |
 | F5 | Home loan through committee | not built | — | No secured product, collateral, LTV, committee or minutes. |
@@ -81,7 +81,7 @@ Summary: 20 built, 38 partly built, 81 not built (139 IDs, counted from the tabl
 | WF-004 | Approval matrix | partly built | `case-access.ts` `authorityProblem`, R-6 | Authority is amount AND grade per approver, read from the staff table. No product or exception-type dimension, delegated levels or committee level. |
 | WF-005 | Maker-checker on approval, override, booking, disbursement | built | R-4, R-5, R-6, `booking.service.ts` | The officer recommends and a different approver approves (overrides included). Booking maker ≠ checker. Disbursement runs in the checker's booking step, not as a separate checker step. |
 | WF-006 | Unified case view | partly built | `cases/[id]/page.tsx`, `decision-panel.tsx`, F2-2 | Applicant, rule results, score, grade, reasons, decision record, recommendation, booking and history. No bureau detail card, documents, or full relationship data (only relationship months). |
-| WF-007 | Request information/documents from borrower | not built | — | Deferred in ACCEPTANCE. |
+| WF-007 | Request information/documents from borrower | built | DC-1, DC-2, `documents.service.ts`, `lifecycle.ts` REQUEST_INFO/INFO_RECEIVED | The officer asks for documents with a message and due date; REVIEW → INFO_REQUESTED → REVIEW when they arrive. The borrower side (app inbox, upload) is simulated; the due date is not enforced and no notification is sent (#23). |
 | WF-008 | Auto-generated credit memo | not built | — | |
 | WF-009 | Counter-offer on amount, tenor, pricing | partly built | F2-3..F2-5, `RecommendRequest` | Amount and tenor only (no pricing). The borrower accepts or rejects inside the simulated e-signature step. |
 | WF-010 | Credit committee | not built | — | Above-authority cases are flagged escalated instead (ASSUMPTIONS). |
@@ -92,9 +92,9 @@ Summary: 20 built, 38 partly built, 81 not built (139 IDs, counted from the tabl
 
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
-| DOC-001 | Upload with type tagging, checks, virus scan | not built | — | |
+| DOC-001 | Upload with type tagging, checks, virus scan | partly built | DC-2, `document-intake.port.ts`, simulator | Simulated only: the upload is tagged with its requested type and returns synthetic metadata with a clean scan. No real files, size or type checks, or malware scanning. |
 | DOC-002 | OCR and mismatch flags | not built | — | |
-| DOC-003 | Checklist tracking per case | not built | — | |
+| DOC-003 | Checklist tracking per case | built | DC-1..DC-3, `case-document.entity.ts` | Requested, received, verified or rejected (with reason), per case. The checklist is built from what the officer requests, not from per-product rules (PC-004). |
 | DOC-004 | Template generation of agreements, disclosures | not built | — | |
 | DOC-005 | E-signature with audit certificate | partly built | `packages/contracts/src/e-signature.port.ts`, simulator, F1-3 | A simulated borrower signature stores an envelope id. No bank signature, no stored certificate, no documents. |
 | DOC-006 | Versioned, immutable document storage | not built | — | |
@@ -231,7 +231,7 @@ These are PRD sections, not requirement IDs.
 | IH-004 | Raw request/response logging, masked | not built | — | No applicant data is logged at all (AGENTS §2.8). |
 | IH-005 | Result caching (30-day bureau reuse) | not built | — | |
 | IH-006 | Per-call cost tracking | not built | — | |
-| IH-007 | Simulated provider for every adapter | built | `apps/api/src/adapters/simulated/*`, `apps/api/test/simulators.e2e-spec.ts` | Bureau, KYC/AML, fraud check, core, disbursement and e-signature, with ok, outage, timeout and malformed modes (plus lost reply for core). There are no OCR, SMS or appraisal adapters yet. |
+| IH-007 | Simulated provider for every adapter | built | `apps/api/src/adapters/simulated/*`, `apps/api/test/simulators.e2e-spec.ts` | Bureau, KYC/AML, fraud check, core, disbursement, e-signature and document intake, with ok, outage, timeout and malformed modes (plus lost reply for core). There are no OCR, SMS or appraisal adapters yet. |
 | IH-008 | Provider mode, live blocked outside production, labelled | partly built (**OOR** for sandbox and live) | `ProviderMode` in `packages/core/src/domain.ts`, the decision record's `provider_mode` | Simulated output is labelled and recorded. Sandbox and live need real providers. |
 | IH-009 | Conformance test suite per category | built | `apps/api/test/simulators.e2e-spec.ts` | Runs against the simulators. Moving the suites into `packages/contracts` is deferred (BUILD-STATUS). |
 
@@ -290,7 +290,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 2 | ✅ Done (C-1). Consent capture on the application (bureau check, data processing, terms version, timestamp, channel); submit refused without it, and the bureau pull gated on it | INT-006, CMP-001 (part), AIS-002 | M | F1 and F3 both start with consent. The bureau is pulled today with no recorded consent. Migration + DTO + form + tests. |
 | 3 | ✅ Done (A-7). Duplicate application detection by applicant and product (409 with the open case reference; partial unique index on open statuses) | INT-007 | S | P1 intake control the prototype already shows. Cheap DB-backed guard. |
 | 4 | ✅ Done (W-1, W-2). Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
-| 5 | Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |
+| 5 | ✅ Done (DC-1..DC-3). Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |
 | 6 | ✅ Done (CMP-1..CMP-10; export not built). Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
 | 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
 | 8 | ✅ Done (AUD-1..AUD-8). Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
@@ -347,7 +347,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | New assisted application, Save draft | Draft "resumable for 30 days from any channel"; resume from the case | INT-003 | Draft save and edit built (A-4); 30-day expiry built (W-2). |
 | Case view: stage bar, decision summary, policy rule results, bureau card, relationship card, checks table, bank statement analysis, documents with versions, activity history, masked Gov ID with Reveal, config version | The unified case | WF-006, WF-011, DOC-006, DOC-007, CMP-004 | Decision summary, rule results, history and masked ID built. No bureau, relationship or checks cards, statement analysis, documents or Reveal. |
 | Case view, Decision record button | Stored inputs and versions | NFR-011, AIS-001 | Built, with reproduce (F1-2). |
-| Case actions: Request information, Recommend decision, Credit memo, Reassign, Withdraw (reasons include "Duplicate application"), Resume draft | Review tools | WF-007, WF-008, WF-002, WF-012, INT-003 | Recommend built (F2-3..F2-5). Withdraw built (W-1). Others not built (#5, #17, #16). |
+| Case actions: Request information, Recommend decision, Credit memo, Reassign, Withdraw (reasons include "Duplicate application"), Resume draft | Review tools | WF-007, WF-008, WF-002, WF-012, INT-003 | Recommend built (F2-3..F2-5). Withdraw built (W-1). Request information built (DC-1). Others not built (#17, #16). |
 | Approval panel: recommendation, override above or below threshold, authority line, Approve, Return, Decline | Approver | §7.4, WF-004, WF-005 | Built (F2-5, R-6, R-8). |
 | Work queues (Mine, Team, Unassigned with Pick), SLA watch, KPIs | Queues | WF-002, WF-003 | Role queue built. Team, pick and SLA not built (#15, #16). |
 | Approvals, Credit committee | Approver and committee lists | WF-004, WF-010 | Approvals queue built. Committee not built (#22). |

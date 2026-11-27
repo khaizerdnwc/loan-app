@@ -1,6 +1,7 @@
 import {
   CaseStatus,
   CLOSED_CASE_STATUSES,
+  type DocumentType,
   type Grade,
   type Money,
   type OverrideReason,
@@ -132,6 +133,24 @@ export class LoanCaseEntity {
 
   @Column({ name: "withdraw_note", type: "text", nullable: true })
   withdrawNote!: string | null;
+
+  // --- request for information (loan officer, PRD WF-007); the latest request -------------
+  /** The documents asked for in the latest request (the checklist holds their state). */
+  @Column({ name: "info_request_documents", type: "jsonb", nullable: true })
+  infoRequestDocuments!: DocumentType[] | null;
+
+  @Column({ name: "info_request_message", type: "text", nullable: true })
+  infoRequestMessage!: string | null;
+
+  /** Business date (YYYY-MM-DD) the borrower is asked to answer by; shown, not enforced. */
+  @Column({ name: "info_request_due", type: "date", nullable: true })
+  infoRequestDue!: string | null;
+
+  @Column({ name: "info_requested_by", type: "varchar", length: 40, nullable: true })
+  infoRequestedBy!: string | null;
+
+  @Column({ name: "info_requested_at", type: "timestamptz", nullable: true })
+  infoRequestedAt!: Date | null;
 
   // --- signing ----------------------------------------------------------------------------
   @Column({ name: "signature_envelope_id", type: "varchar", length: 60, nullable: true })
