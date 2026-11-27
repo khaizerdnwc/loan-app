@@ -1,17 +1,36 @@
 import type { AmlEscalationView } from "@loan/core";
 import { render, screen, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { afterEach, vi } from "vitest";
 import EscalationsPage from "@/app/(staff)/compliance/escalations/page";
 
+// The URL is the filter's state: replace() rewrites it, as the browser would.
+const { url, router } = vi.hoisted(() => {
+  const url = { search: "" };
+  return {
+    url,
+    router: {
+      push: () => {},
+      replace: (href: string) => {
+        url.search = href.includes("?") ? href.slice(href.indexOf("?")) : "";
+      },
+    },
+  };
+});
 vi.mock("next/navigation", () => ({
   usePathname: () => "/compliance/escalations",
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useRouter: () => router,
+  useSearchParams: () => new URLSearchParams(url.search),
 }));
 vi.mock("@/lib/session", () => ({
   useSession: () => ({ id: "STF-DIANE", fullName: "Diane Yu", role: "COMPLIANCE" }),
 }));
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.restoreAllMocks();
+  url.search = "";
+});
 
 const escalation: AmlEscalationView = {
   id: "esc-1",
@@ -50,5 +69,51 @@ describe("AML escalations list (parity: clickable rows)", () => {
     expect(name).toHaveAttribute("href", "/compliance/escalations/esc-1");
     const caseLink = within(row).getByRole("link", { name: "APP-1007" });
     expect(caseLink).not.toHaveAttribute("data-row-link");
+  });
+
+  it("counts Open and All from one list and keeps the choice in the URL", async () => {
+    const closed = {
+      ...escalation,
+      id: "esc-2",
+      applicantName: "Dario Mercado",
+      caseReference: "APP-1008",
+      status: "CLOSED",
+    } as AmlEscalationView;
+    const acknowledged = {
+      ...escalation,
+      id: "esc-3",
+      applicantName: "Ernesto Lacson",
+      caseReference: "APP-1009",
+      status: "ACKNOWLEDGED",
+    } as AmlEscalationView;
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify([escalation, closed, acknowledged]), { status: 200 }),
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const replace = vi.spyOn(router, "replace");
+    const { rerender } = render(<EscalationsPage />);
+    await screen.findByRole("table");
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/compliance/escalations?view=all",
+      expect.anything(),
+    );
+    const open = screen.getByRole("button", { name: /^Open\s*2$/ });
+    expect(open).toHaveAttribute("aria-pressed", "true");
+    const names = () =>
+      screen
+        .getAllByRole("row")
+        .slice(1)
+        .map((r) => within(r).getAllByRole("link")[0]?.textContent);
+    // Open means not closed: open and acknowledged.
+    expect(names()).toEqual(["Ramon Cruz", "Ernesto Lacson"]);
+
+    await userEvent.click(screen.getByRole("button", { name: /^All\s*3$/ }));
+    expect(replace).toHaveBeenLastCalledWith("/compliance/escalations?view=all", {
+      scroll: false,
+    });
+    rerender(<EscalationsPage />);
+    expect(names()).toEqual(["Ramon Cruz", "Dario Mercado", "Ernesto Lacson"]);
+    await userEvent.click(screen.getByRole("button", { name: /^Open\s*2$/ }));
+    expect(replace).toHaveBeenLastCalledWith("/compliance/escalations", { scroll: false });
   });
 });

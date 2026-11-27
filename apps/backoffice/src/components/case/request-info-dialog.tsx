@@ -67,7 +67,10 @@ export function RequestInfoDialog({
     >
       <FormStack>
         <fieldset className="flex flex-col gap-2.5">
-          <legend className="mb-2 text-sm font-semibold text-ink-900">Documents</legend>
+          {/* The one form label style (Field's): small, uppercase, tracked. */}
+          <legend className="mb-1.5 text-2xs font-bold tracking-wider text-mist-500 uppercase">
+            Documents
+          </legend>
           {offered.map((type) => (
             <Checkbox
               key={type}

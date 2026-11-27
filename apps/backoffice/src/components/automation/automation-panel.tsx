@@ -16,6 +16,7 @@ import {
   Field,
   FormStack,
   formatDateTime,
+  KeyValues,
   Pill,
   Select,
   Textarea,
@@ -61,7 +62,7 @@ function find(view: AutomationView, action: AutomationAction) {
 /** A reason the API gave for an action being unavailable, in words (never a tooltip). */
 function Blocked({ availability }: { availability: AutomationActionAvailability | undefined }) {
   if (!availability || availability.enabled) return null;
-  return <p className="text-xs text-mist-500">{availability.detail}</p>;
+  return <p className="mt-1 text-xs text-bad-700">{availability.detail}</p>;
 }
 
 /**
@@ -211,33 +212,38 @@ export function AutomationPanel({
                 {cardError.message}
               </Callout>
             )}
-            <dl className="grid grid-cols-[max-content_1fr] items-center gap-x-6 gap-y-3 text-sm">
-              <dt className="text-mist-500">Mode</dt>
-              <dd className="flex flex-wrap items-center gap-2">
-                <Pill tone={view.killSwitch ? "bad" : MODE_TONE[view.mode]}>
-                  {view.killSwitch ? "Kill switch on" : AUTOMATION_MODE_LABEL[view.mode]}
-                </Pill>
-                {view.killSwitch && (
-                  <span className="text-xs text-mist-500">
-                    Mode underneath: {AUTOMATION_MODE_LABEL[view.mode]}
-                  </span>
-                )}
-              </dd>
-              <dt className="text-mist-500">What it does</dt>
-              <dd>
-                {view.killSwitch
-                  ? "Every new application goes to manual review until the kill switch is turned off."
-                  : MODE_EFFECT[view.mode]}
-              </dd>
-              {view.killSwitch && view.killSwitchSetByName && view.killSwitchSetAt && (
-                <>
-                  <dt className="text-mist-500">Kill switch</dt>
-                  <dd>
-                    Turned on by {view.killSwitchSetByName}, {formatDateTime(view.killSwitchSetAt)}
-                  </dd>
-                </>
-              )}
-            </dl>
+            <KeyValues
+              items={[
+                {
+                  label: "Mode",
+                  value: (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Pill tone={view.killSwitch ? "bad" : MODE_TONE[view.mode]}>
+                        {view.killSwitch ? "Kill switch on" : AUTOMATION_MODE_LABEL[view.mode]}
+                      </Pill>
+                      {view.killSwitch && (
+                        <span className="text-xs text-mist-500">
+                          Mode underneath: {AUTOMATION_MODE_LABEL[view.mode]}
+                        </span>
+                      )}
+                    </span>
+                  ),
+                },
+                ...(view.killSwitch && view.killSwitchSetByName && view.killSwitchSetAt
+                  ? [
+                      {
+                        label: "Kill switch",
+                        value: `Turned on by ${view.killSwitchSetByName}, ${formatDateTime(view.killSwitchSetAt)}`,
+                      },
+                    ]
+                  : []),
+              ]}
+            />
+            <p className="mt-3 text-sm">
+              {view.killSwitch
+                ? "Every new application goes to manual review until the kill switch is turned off."
+                : MODE_EFFECT[view.mode]}
+            </p>
 
             {pending && (
               <Callout tone="warn" className="mt-5" lead="Waiting for approval:">
@@ -314,7 +320,7 @@ export function AutomationPanel({
             )}
 
             {(killOn || killOff) && (
-              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line pt-4">
+              <div className="mt-5 flex flex-wrap items-center gap-3 border-t border-line-soft pt-4">
                 <div className="min-w-56 flex-1 text-sm">
                   <strong className="text-ink-900">Kill switch</strong>
                   <p className="text-mist-500">

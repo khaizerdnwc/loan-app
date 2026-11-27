@@ -102,7 +102,10 @@ describe("AutomationPanel (AU-1, AU-3)", () => {
     expect(screen.getByText(/change from Live to Off/)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Reject change" })).toBeNull();
     expect(screen.getByRole("button", { name: "Approve change" })).toBeDisabled();
-    expect(screen.getByText(/a different administrator must approve it/)).toBeInTheDocument();
+    // A blocked action's reason reads like the case's: in the error colour under the button.
+    expect(screen.getByText(/a different administrator must approve it/).className).toMatch(
+      /text-bad-700/,
+    );
     expect(screen.getByRole("button", { name: "Withdraw request" })).toBeEnabled();
     expect(screen.getByLabelText("Change mode for Personal loan")).toBeDisabled();
   });
@@ -121,6 +124,11 @@ describe("AutomationPanel (AU-1, AU-3)", () => {
     ]);
     expect(screen.getByText("Kill switch on")).toBeInTheDocument();
     expect(screen.getByText(/Turned on by Leo Santiago/)).toBeInTheDocument();
+    // The shared facts block (KeyValues): each label holds its value in one wrapper.
+    expect(screen.getByText("Mode").tagName).toBe("DT");
+    expect(screen.getByText("Kill switch", { selector: "dt" }).parentElement).toHaveTextContent(
+      /Turned on by Leo Santiago/,
+    );
     expect(screen.queryByRole("button", { name: "Turn kill switch on" })).toBeNull();
     expect(screen.getByRole("button", { name: "Request kill switch off" })).toBeEnabled();
   });

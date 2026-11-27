@@ -34,7 +34,7 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 | `PageHeader` (app shell) | Every page: icon tile, title, description, actions on the right |
 | `useShellCrumb(reference)` (app shell) | A detail page names its record in the top bar's breadcrumb ("… / All applications / APP-1002") |
 | `Card` (`title`, `aside`, `flush`) | Every panel: header bar over a divider, then the body; `flush` for a table or list edge to edge |
-| `Table` (`clickableRows`) + `ROW_LINK` | Every list of records. A list of records the user opens sets `clickableRows` and puts `{...ROW_LINK}` on the row's one real `<Link>`: the whole row opens it, hover and focus tint the row, Tab and Enter use the link |
+| `Table` (`clickableRows`) + `ROW_LINK` | Every list of records. A list of records the user opens sets `clickableRows` and puts `{...ROW_LINK}` on the row's one real `<Link>`: the whole row opens it, hover and focus tint the row, Tab and Enter use the link. When only some rows have a record to open, `rowClickable(row)` keeps the others plain |
 | `EmptyState` | Nothing to show: a bold line and an optional hint (a string `empty` on Table becomes one) |
 | `Button` / `buttonClass` | `primary` (dark ink; at most one per card or dialog), `secondary` (every other action), `danger` (decline, refuse, failure modes), `ghost` (low emphasis); `size="sm"` for row actions and card headers. `accent` is the same look as primary — use `primary`. Links that look like buttons use `buttonClass` |
 | `Field` + `Input` / `Select` / `Textarea`, `Checkbox`, `FormGrid`, `FormStack` | Every form control |

@@ -122,6 +122,49 @@ describe("Table with clickable rows (the prototype's tr.cl)", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it("leaves a row without a record to open as a plain row (rowClickable)", async () => {
+    const onOpen = vi.fn();
+    render(
+      <Table
+        caption="Entries"
+        columns={[
+          {
+            key: "n",
+            header: "Entry",
+            render: (r: Row) =>
+              r.id === "1" ? (
+                <a
+                  {...ROW_LINK}
+                  href="/x"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    onOpen(r.id);
+                  }}
+                >
+                  {r.name}
+                </a>
+              ) : (
+                <span>{r.name}</span>
+              ),
+          },
+        ]}
+        rows={[
+          { id: "1", name: "With a case" },
+          { id: "2", name: "Without" },
+        ]}
+        rowKey={(r) => r.id}
+        empty="None"
+        clickableRows
+        rowClickable={(r) => r.id === "1"}
+      />,
+    );
+    const [, withCase, without] = screen.getAllByRole("row") as HTMLElement[];
+    expect(withCase).toHaveAttribute("data-clickable", "true");
+    expect(without).not.toHaveAttribute("data-clickable");
+    await userEvent.click(screen.getByText("Without"));
+    expect(onOpen).not.toHaveBeenCalled();
+  });
+
   it("is not clickable unless asked", () => {
     render(
       <Table

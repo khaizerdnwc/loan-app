@@ -85,7 +85,7 @@ function ProductHistory({ view, revision }: { view: AutomationView; revision: nu
       {history.data && history.data.length > 0 && (
         <ol
           aria-label={`${view.productName} automation history`}
-          className="flex flex-col divide-y divide-line"
+          className="flex flex-col divide-y divide-line-soft"
         >
           {history.data.map((e) => (
             <li key={e.id} className="py-2.5 text-sm">
