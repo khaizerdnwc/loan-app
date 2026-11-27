@@ -8,6 +8,7 @@ import {
   formatDateTime,
   formatMonthlyRate,
   formatPeso,
+  KeyValues,
   Pill,
   SimulatedLabel,
   Table,
@@ -39,26 +40,17 @@ export function LoanAccountPanel({ caseId }: { caseId: string }) {
       title={`Loan account ${a.coreAccountNumber}`}
       aside={<SimulatedLabel what="core banking" />}
     >
-      <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-        <div>
-          <dt className="text-xs text-mist-500">Principal</dt>
-          <dd className="text-ink-900">{formatPeso(a.principal)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-mist-500">Interest (add-on)</dt>
-          <dd className="text-ink-900">{formatPeso(a.interest)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-mist-500">Total repayable</dt>
-          <dd className="text-ink-900">{formatPeso(a.totalRepayable)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs text-mist-500">Rate · tenor</dt>
-          <dd className="text-ink-900">
-            {formatMonthlyRate(a.monthlyRate)} · {a.tenorMonths} mo
-          </dd>
-        </div>
-      </dl>
+      <KeyValues
+        items={[
+          { label: "Principal", value: formatPeso(a.principal) },
+          { label: "Interest (add-on)", value: formatPeso(a.interest) },
+          { label: "Total repayable", value: formatPeso(a.totalRepayable) },
+          {
+            label: "Rate · tenor",
+            value: `${formatMonthlyRate(a.monthlyRate)} · ${a.tenorMonths} months`,
+          },
+        ]}
+      />
       <p className="mt-4 flex items-center gap-2 text-sm">
         {a.reconciled ? (
           <Pill tone="ok">Reconciled</Pill>
@@ -73,8 +65,8 @@ export function LoanAccountPanel({ caseId }: { caseId: string }) {
         <div className="mt-4 rounded-btn border border-line px-4 py-3 text-sm">
           <p className="flex flex-wrap items-center gap-2">
             <strong className="text-ink-900">Disbursed {formatPeso(a.disbursement.amount)}</strong>
-            to {a.disbursement.destinationAccount} · ref{" "}
-            <span className="font-mono">{a.disbursement.reference}</span>·{" "}
+            to <span className="font-mono text-xs">{a.disbursement.destinationAccount}</span> · ref{" "}
+            <span className="font-mono text-xs">{a.disbursement.reference}</span> ·{" "}
             {formatDateTime(a.disbursement.disbursedAt)}
             <SimulatedLabel what="disbursement" />
           </p>

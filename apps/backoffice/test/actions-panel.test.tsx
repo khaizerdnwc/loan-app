@@ -266,6 +266,60 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(variant("View decision record")).toBe("secondary");
   });
 
+  it("lays the actions out like the prototype: steps inline, Withdraw apart and small, reasons with amounts formatted", () => {
+    const { container } = renderPanel(
+      detail({
+        allowedActions: [
+          {
+            action: "APPROVE",
+            enabled: false,
+            blockedBy: "AUTHORITY_LIMIT_EXCEEDED",
+            detail: "₱120000.00 is above your approval limit of ₱100000.00",
+          },
+          { action: "RETURN", enabled: true },
+          { action: "WITHDRAW", enabled: true },
+        ],
+      }),
+    );
+    const approve = screen.getByRole("button", { name: "Approve" });
+    const back = screen.getByRole("button", { name: "Return to loan officer" });
+    const withdraw = screen.getByRole("button", { name: "Withdraw application" });
+    const group = (el: HTMLElement) => el.closest("[data-group]")?.getAttribute("data-group");
+    expect(group(approve)).toBe("steps");
+    expect(group(back)).toBe("steps");
+    expect(group(withdraw)).toBe("tools");
+    expect(approve).toHaveAttribute("data-size", "md");
+    expect(withdraw).toHaveAttribute("data-size", "sm");
+    expect(approve).toHaveAccessibleDescription(
+      /₱120,000\.00 is above your approval limit of ₱100,000\.00/,
+    );
+    expect(container.textContent).not.toMatch(/₱120000\.00/);
+  });
+
+  it("shows a blocked Withdraw's reason with its button, below the divider", () => {
+    const { container } = renderPanel(
+      detail({
+        allowedActions: [
+          { action: "RETURN", enabled: true },
+          {
+            action: "WITHDRAW",
+            enabled: false,
+            blockedBy: "INVALID_STATE_TRANSITION",
+            detail: "A case being booked cannot be withdrawn.",
+          },
+        ],
+      }),
+    );
+    const withdraw = screen.getByRole("button", { name: "Withdraw application" });
+    expect(withdraw).toBeDisabled();
+    expect(withdraw).toHaveAccessibleDescription(/cannot be withdrawn/);
+    const reason = container.querySelector("#WITHDRAW-blocked") as HTMLElement;
+    expect(reason.closest("[data-group]")).toHaveAttribute("data-group", "tools");
+    expect(reason).toHaveTextContent(
+      "Withdraw application: A case being booked cannot be withdrawn.",
+    );
+  });
+
   it("offers no action the API did not list", () => {
     renderPanel(detail({ allowedActions: [] }));
     expect(screen.queryByRole("button")).not.toBeInTheDocument();

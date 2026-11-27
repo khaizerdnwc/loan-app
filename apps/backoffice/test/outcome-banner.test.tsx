@@ -23,7 +23,7 @@ function caseWith(
 describe("OutcomeBanner (W-1, W-2)", () => {
   it("shows the green auto-approval on a live case", () => {
     render(<OutcomeBanner detail={caseWith("OFFER", "AUTO_APPROVE")} />);
-    expect(screen.getByText("Auto-approved.").parentElement?.className).toContain("bg-ok-050");
+    expect(screen.getByText("Auto-approved.").parentElement).toHaveAttribute("data-tone", "ok");
   });
 
   it.each([
@@ -34,8 +34,7 @@ describe("OutcomeBanner (W-1, W-2)", () => {
     render(<OutcomeBanner detail={caseWith(status, outcome, from)} />);
     const banner = screen.getByText(text).parentElement as HTMLElement;
     expect(banner).toHaveTextContent("The application is closed.");
-    expect(banner.className).toContain("bg-mist-100");
-    expect(banner.className).not.toContain("bg-ok-050");
+    expect(banner).toHaveAttribute("data-tone", "neutral");
     expect(screen.queryByText("Auto-approved.")).not.toBeInTheDocument();
   });
 });

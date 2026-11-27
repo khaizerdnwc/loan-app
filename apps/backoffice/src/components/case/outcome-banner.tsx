@@ -1,4 +1,5 @@
 import type { CaseDetail } from "@loan/core";
+import { Callout } from "@loan/ui";
 
 const OUTCOME_WORDS = {
   AUTO_APPROVE: "Auto-approved",
@@ -10,41 +11,42 @@ const OUTCOME_WORDS = {
  * The automated outcome under the stage bar. A withdrawn or expired case no longer shows the
  * outcome's colour (a green "Auto-approved" would contradict the closed status): it says
  * neutrally what happened after the decision. A decided case can only expire as an offer
- * (drafts have no decision).
+ * (drafts have no decision). Drawn with the shared Callout (the prototype's .trig box).
  */
 export function OutcomeBanner({ detail: c }: { detail: CaseDetail }) {
   if (!c.decision) return null;
   const { outcome, score, grade, referralTriggers, reasonCodes } = c.decision;
   if (c.status === "WITHDRAWN" || c.status === "EXPIRED") {
     return (
-      <div className="rounded-card bg-mist-100 px-5 py-3 text-sm text-ink-900">
-        <strong>
-          {c.status === "WITHDRAWN"
+      <Callout
+        tone="neutral"
+        lead={
+          c.status === "WITHDRAWN"
             ? `${OUTCOME_WORDS[outcome]}, then withdrawn.`
-            : `${OUTCOME_WORDS[outcome]}; the offer expired unsigned.`}
-        </strong>{" "}
+            : `${OUTCOME_WORDS[outcome]}; the offer expired unsigned.`
+        }
+      >
         The application is closed.
-      </div>
+      </Callout>
     );
   }
   if (outcome === "AUTO_APPROVE") {
     return (
-      <div className="rounded-card bg-ok-050 px-5 py-3 text-sm text-ok-700">
-        <strong>Auto-approved.</strong> Score {score} ({grade}) in the approve band; every policy
-        rule passed.
-      </div>
+      <Callout tone="ok" lead="Auto-approved.">
+        Score {score} ({grade}) in the approve band; every policy rule passed.
+      </Callout>
     );
   }
   if (outcome === "REFER") {
     return (
-      <div className="rounded-card bg-gold-050 px-5 py-3 text-sm text-gold-700">
-        <strong>Referred to human review.</strong> {referralTriggers.join(" · ")}
-      </div>
+      <Callout tone="warn" lead="Referred to human review.">
+        {referralTriggers.join(" · ")}
+      </Callout>
     );
   }
   return (
-    <div className="rounded-card bg-bad-050 px-5 py-3 text-sm text-bad-700">
-      <strong>Auto-declined.</strong> {reasonCodes.map((r) => r.staff).join(" · ")}
-    </div>
+    <Callout tone="bad" lead="Auto-declined.">
+      {reasonCodes.map((r) => r.staff).join(" · ")}
+    </Callout>
   );
 }

@@ -98,3 +98,15 @@ describe("api()", () => {
     expect(errorMessage(error)).toMatch(/offline/);
   });
 });
+
+describe("errorMessage — amounts in a refusal read like every other amount (U-2)", () => {
+  it("formats the amounts the API wrote into its detail", () => {
+    const e = new ApiError(
+      403,
+      "AUTHORITY_LIMIT_EXCEEDED",
+      "₱120000.00 is above your approval limit of ₱100000.00",
+      [],
+    );
+    expect(errorMessage(e)).toBe("₱120,000.00 is above your approval limit of ₱100,000.00");
+  });
+});

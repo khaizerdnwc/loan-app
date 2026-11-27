@@ -84,6 +84,15 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 | W-2 | GIVEN a draft unchanged for 30 days (PRD INT-003) or an offer unsigned 5 days after it was made THEN editing (even consent only), submitting or signing it is refused with 409 naming the expiry date and nothing changes, the case shows when it expires while open, and the scheduled sweep (`EXPIRY_SWEEP_SECONDS`) moves it to Expired with a SYSTEM event, one case per transaction under a row lock; younger cases and every other status are untouched; a second (or concurrent) sweep changes nothing more; an expired application frees the applicant for a new one | `apps/api/test/withdraw-and-expiry.e2e-spec.ts`, `apps/api/src/expiry-sweep.spec.ts`, `packages/base/test/cases/lifecycle.test.ts` + component: `apps/backoffice/test/actions-panel.test.tsx` | ☑ |
 | L-1 | A case's status changes only along the transition table's edges, checked at both ends | `packages/base/test/cases/lifecycle.test.ts` + lint `house/no-case-status-assignment-outside-lifecycle` | ☑ |
 
+## Screens and consistency (prototype parity, docs/ui-parity.md)
+
+| ID | Criterion | Test | Status |
+|---|---|---|---|
+| U-1 | A whole case row opens the case (the prototype's clickable row): the row highlights on hover and while its link has keyboard focus; the row holds one real link reached with Tab and opened with Enter; a click on a button in the row, a modified click or a text selection does not navigate | `packages/ui/test/parity.test.tsx` + component: `apps/backoffice/test/case-table.test.tsx` | ☑ |
+| U-2 | Every amount on screen reads the same (`formatPeso`), including amounts inside sentences the API wrote: activity history (stored history too), rule values, refusals and toasts ("₱20000.00" shows as "₱20,000.00"); grouped amounts, percentages, scores and references are left alone | `packages/ui/test/format.test.ts`, `packages/ui/test/parity.test.tsx` (dialog refusal) + component: `apps/backoffice/test/activity-timeline.test.tsx`, `apps/backoffice/test/amounts-in-text.test.tsx` (rule value, failed booking), `apps/backoffice/test/api.test.ts` (refusal message), `apps/backoffice/test/actions-panel.test.tsx` (blocked reason) | ☑ |
+| U-3 | One button hierarchy (primary, secondary, danger, ghost; one disabled look; danger darkens on hover so white text stays AA), one pill (tint, inset ring, 700 text), one callout for outcomes and errors (neutral for a withdrawn or expired case), one label-over-value facts block, the prototype's stage bar and toast; the next-action card lays steps inline with Withdraw apart, and blocked reasons stay linked to their buttons | `packages/ui/test/parity.test.tsx` + component: `apps/backoffice/test/actions-panel.test.tsx`, `apps/backoffice/test/outcome-banner.test.tsx` | ☑ |
+| U-4 | Monospace only for identifiers: references, accounts and masked IDs are monospace; amounts are not | `packages/ui/test/parity.test.tsx`, `apps/backoffice/test/case-table.test.tsx` | ☑ |
+
 ## Deferred (explicitly out of this release)
 
 Borrower app and borrower-side acceptance; information requests and document upload; OCR

@@ -60,4 +60,19 @@ describe("the case table", () => {
     expect(applicant).toHaveTextContent("JR");
     expect(applicant).toHaveTextContent("APP-1001");
   });
+
+  it("makes the whole row open the case, through the one real link in it", () => {
+    render(<CaseTable cases={[base]} empty="None." />);
+    const row = screen.getAllByRole("row")[1] as HTMLElement;
+    expect(row).toHaveAttribute("data-clickable", "true");
+    const links = within(row).getAllByRole("link");
+    expect(links).toHaveLength(1);
+    expect(links[0]).toHaveAttribute("data-row-link");
+  });
+
+  it("sets only the reference in monospace, not the amount", () => {
+    render(<CaseTable cases={[base]} empty="None." />);
+    expect(screen.getByText("APP-1001").className).toMatch(/font-mono/);
+    expect(screen.getByText("₱200,000.00").className).not.toMatch(/font-mono/);
+  });
 });

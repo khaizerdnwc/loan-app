@@ -9,6 +9,7 @@ import {
   GradeTile,
   OutcomePill,
   Pill,
+  ROW_LINK,
   StagePill,
   Table,
 } from "@loan/ui";
@@ -22,7 +23,10 @@ const COLUMNS: Column<CaseSummary>[] = [
       <div className="flex items-center gap-2.5">
         <Avatar name={c.applicantName} />
         <div>
+          {/* The row's one link: Tab reaches it, Enter opens it, and a click anywhere on the
+              row follows it (Table clickableRows). */}
           <Link
+            {...ROW_LINK}
             href={`/cases/${c.id}`}
             className="font-bold text-ink-900 underline-offset-2 hover:underline"
           >
@@ -64,7 +68,7 @@ const COLUMNS: Column<CaseSummary>[] = [
   {
     key: "updated",
     header: "Updated",
-    render: (c) => <span className="text-xs">{formatDateTime(c.updatedAt)}</span>,
+    render: (c) => <span className="text-xs whitespace-nowrap">{formatDateTime(c.updatedAt)}</span>,
   },
 ];
 
@@ -76,6 +80,7 @@ export function CaseTable({ cases, empty }: { cases: CaseSummary[]; empty: strin
       rows={cases}
       rowKey={(c) => c.id}
       empty={empty}
+      clickableRows
     />
   );
 }

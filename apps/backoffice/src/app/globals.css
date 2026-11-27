@@ -41,6 +41,8 @@
   --color-ok-100: #d6eee2;
   --color-ok-050: #eaf6f0;
 
+  /* Danger button hover (the prototype's #9a272e): white text 7.3:1. */
+  --color-bad-800: #9a272e;
   --color-bad-700: #b23138;
   --color-bad-500: #db4a52;
   --color-bad-100: #f8d8da;
@@ -59,11 +61,16 @@
   --color-info-100: #dee3f3;
   --color-info-050: #eef1f9;
 
+  /* The prototype's three border weights: --border-s (dividers inside a card), --border
+     (cards, tables), --border-x (buttons and form controls). */
+  --color-line-soft: rgba(45, 45, 61, 0.06);
   --color-line: rgba(45, 45, 61, 0.12);
+  --color-line-strong: rgba(45, 45, 61, 0.22);
 
   --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
+  --radius-modal: 16px;
   --radius-card: 14px;
   --radius-btn: 12px;
   /* Sidebar links (10px), segmented filter buttons (9px), avatar and grade tiles (8px). */

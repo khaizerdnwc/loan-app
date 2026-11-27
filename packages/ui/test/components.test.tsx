@@ -254,14 +254,16 @@ describe("status presentation", () => {
     const { rerender } = render(<StageBar status="WITHDRAWN" wasReferred closedFrom="APPROVAL" />);
     const stopped = screen.getByText("Withdrawn");
     expect(stopped).toHaveAttribute("aria-current", "step");
+    expect(stopped).toHaveAttribute("data-state", "stopped");
+    expect(stopped.className).not.toContain("bg-bad-050");
     expect(screen.queryByText("Approval")).not.toBeInTheDocument();
-    expect(screen.getByText("Review").className).toContain("bg-ok-100");
-    expect(screen.getByText("Offer").className).toContain("bg-mist-100");
+    expect(screen.getByText("Review")).toHaveAttribute("data-state", "done");
+    expect(screen.getByText("Offer")).toHaveAttribute("data-state", "todo");
 
     rerender(<StageBar status="EXPIRED" wasReferred={false} closedFrom="OFFER" />);
     expect(screen.getByText("Expired")).toHaveAttribute("aria-current", "step");
-    expect(screen.getByText("Decision").className).toContain("bg-ok-100");
-    expect(screen.getByText("Booking").className).toContain("bg-mist-100");
+    expect(screen.getByText("Decision")).toHaveAttribute("data-state", "done");
+    expect(screen.getByText("Booking")).toHaveAttribute("data-state", "todo");
 
     rerender(<StageBar status="EXPIRED" wasReferred={false} closedFrom={null} />);
     expect(screen.getByText("Expired")).toHaveAttribute("aria-current", "step");

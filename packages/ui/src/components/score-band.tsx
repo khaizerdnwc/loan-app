@@ -22,22 +22,22 @@ export function ScoreBand({ score, declineBelow, approveFrom }: ScoreBandProps) 
         className="relative h-2.5 w-full overflow-hidden rounded-full"
       >
         <div
-          className="absolute inset-y-0 left-0 bg-bad-500"
+          className="absolute inset-y-0 left-0 bg-bad-100"
           style={{ width: pct(declineBelow) }}
         />
         <div
-          className="absolute inset-y-0 bg-gold-500"
+          className="absolute inset-y-0 bg-gold-100"
           style={{
             left: pct(declineBelow),
             width: `calc(${pct(approveFrom)} - ${pct(declineBelow)})`,
           }}
         />
-        <div className="absolute inset-y-0 right-0 bg-ok-700" style={{ left: pct(approveFrom) }} />
+        <div className="absolute inset-y-0 right-0 bg-ok-100" style={{ left: pct(approveFrom) }} />
       </div>
       <div className="relative h-4">
         <span
           aria-hidden="true"
-          className="absolute -top-1 h-4 w-1 -translate-x-1/2 rounded-full bg-ink-900"
+          className="absolute -top-3.5 h-5 w-1 -translate-x-1/2 rounded-full bg-ink-800"
           style={{ left: pct(clamped) }}
         />
       </div>

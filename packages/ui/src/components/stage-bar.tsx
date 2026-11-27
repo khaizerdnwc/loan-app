@@ -59,7 +59,13 @@ export function StageBar({
     : CURRENT[status];
   const currentIndex = steps.indexOf(at);
   return (
-    <ol aria-label="Case stages" className="flex flex-wrap gap-1">
+    // Under 860px the steps wrap onto a second row rather than scroll sideways, so the
+    // current step is always on screen and there is no scroll region to reach by keyboard.
+    <ol
+      aria-label="Case stages"
+      data-layout="wrap-narrow"
+      className="flex flex-wrap gap-1 min-[860px]:flex-nowrap"
+    >
       {steps.map((step, i) => {
         const state =
           status === "DISBURSED" || i < currentIndex
@@ -69,17 +75,22 @@ export function StageBar({
               : "todo";
         const failed = i === currentIndex && (status === "DECLINED" || status === "BOOKING_FAILED");
         const stopped = i === currentIndex && stoppedLabel !== null;
+        // The prototype's .stages: done grey, current dark ink, a stop in red, ahead sunken.
+        // "Ahead" uses mist-600 rather than the prototype's slate-400 so it stays readable (AA).
+        // A withdrawn or expired case is closed, not failed: a white step with a strong ring,
+        // so it stands apart from the grey done steps without reading as an error.
         return (
           <li
             key={step}
             aria-current={state === "current" ? "step" : undefined}
+            data-state={failed ? "failed" : stopped ? "stopped" : state}
             className={cn(
-              "flex-1 rounded-btn px-3 py-2 text-center text-xs font-semibold",
-              state === "done" && "bg-ok-100 text-ok-700",
-              state === "current" && !failed && !stopped && "bg-gold-100 text-gold-700",
-              failed && "bg-bad-100 text-bad-700",
-              stopped && "bg-mist-200 text-ink-900",
-              state === "todo" && "bg-mist-100 text-mist-500",
+              "min-w-23 flex-1 rounded-tile px-2.5 py-2 text-xs whitespace-nowrap",
+              state === "done" && "bg-mist-200 font-semibold text-ink-700",
+              state === "current" && !failed && !stopped && "bg-ink-800 font-semibold text-white",
+              failed && "bg-bad-050 font-semibold text-bad-700",
+              stopped && "bg-white font-semibold text-ink-900 ring-1 ring-line-strong ring-inset",
+              state === "todo" && "bg-mist-100 font-medium text-mist-600",
             )}
           >
             {stopped

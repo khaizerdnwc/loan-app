@@ -1,7 +1,9 @@
 "use client";
 
 import { type ReactNode, useEffect, useId, useRef } from "react";
+import { formatAmountsInText } from "../lib/format";
 import { Button, type ButtonVariant } from "./button";
+import { Callout } from "./callout";
 
 export interface ModalProps {
   open: boolean;
@@ -60,21 +62,29 @@ export function Modal({ open, title, description, onClose, children, footer, bus
         e.preventDefault();
         if (!busy) onClose();
       }}
-      className="m-auto w-[min(560px,calc(100vw-32px))] rounded-card border border-line bg-white p-0 text-ink-800 shadow-modal backdrop:bg-ink-900/40"
+      className="m-auto max-h-[90vh] w-[min(560px,calc(100vw-32px))] rounded-modal border border-line bg-white p-0 text-ink-800 shadow-modal backdrop:bg-ink-900/45"
     >
+      {/* The prototype's .modal: title and description, body, then a footer bar of buttons
+          over a soft divider (secondary first, the confirming action last on the right). */}
       {open && (
-        <div className="p-6">
-          <h2 id={titleId} className="text-lg font-bold text-ink-900">
-            {title}
-          </h2>
-          {description && (
-            <div id={descriptionId} className="mt-1 text-sm text-mist-600">
-              {description}
+        <>
+          <div className="px-5 pt-5 pb-1.5">
+            <h2 id={titleId} className="text-lg font-extrabold text-ink-900">
+              {title}
+            </h2>
+            {description && (
+              <div id={descriptionId} className="mt-1 text-sm text-mist-600">
+                {description}
+              </div>
+            )}
+          </div>
+          {children && <div className="px-5 py-3">{children}</div>}
+          {footer && (
+            <div className="mt-2 flex flex-wrap justify-end gap-2 border-t border-line-soft px-5 py-3.5">
+              {footer}
             </div>
           )}
-          {children && <div className="mt-4">{children}</div>}
-          {footer && <div className="mt-6 flex justify-end gap-2">{footer}</div>}
-        </div>
+        </>
       )}
     </dialog>
   );
@@ -128,9 +138,9 @@ export function ConfirmDialog({
     >
       {children}
       {error && (
-        <p role="alert" className="mt-3 rounded-btn bg-bad-050 px-3 py-2 text-sm text-bad-700">
-          {error}
-        </p>
+        <Callout tone="bad" alert className="mt-3">
+          {formatAmountsInText(error)}
+        </Callout>
       )}
     </Modal>
   );
