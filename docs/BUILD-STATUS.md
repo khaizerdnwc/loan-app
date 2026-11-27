@@ -28,6 +28,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | U1 | Prototype UI/UX parity, batch 1: audit of every screen against the prototype (docs/ui-parity.md, screenshots at 1440 and 390), fixes in packages/ui first (clickable rows, one button hierarchy, field, pill, callout, facts block, stage bar, toast, modal, amounts in server sentences through formatPeso, monospace only for identifiers), rules and component list in the ui-ux-conventions skill; reconciled with P4 (outcome banner on Callout, Withdrawal card on KeyValues, closed stage step), next-action card inline | done | U-1..U-4 (Vitest) · 8 journeys green on lane ports · no schema change |
 | P9 | PRD backlog #9: pre-booking checklist (BKG-001) | done | BK-1 (integration incl. refusal with nothing written, the under-lock re-check and the checker/retry re-check, base unit, component, browser) · `booking-checklist.ts` one gate for the view, the disabled action and the 409 `BOOKING_CHECKLIST_INCOMPLETE` · no migration |
 | P13 | PRD backlog #13: indicative repayment before a decision (INT-004) | done | IR-1 (integration incl. every core failure mode, conformance for `quote`, component, browser) · `GET /products/PL/quote` · core's `quote()` now follows the simulated failure modes and is labelled simulated; an approved case opens with the instalment null when core is down · two synthetic personas (Teresa Lopez, Paz Ocampo) · no migration |
+| U2 | Prototype UI/UX parity, batch 2: case breadcrumb with the reference (parity 24), queue figures grid at phone width (27), All applications In progress / Closed / All with counts and New application (28) | done | U-5..U-7 (Vitest) · no schema change |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 
@@ -37,6 +38,8 @@ commit passed the review loop. Blocked items carry the evidence.
 - 28 Nov, later — full parallel restored (user); heavy jobs (verify build/e2e, next build,
   Playwright, image builds) stay serialised and run by the integrator at merge; Jest and
   Vitest capped at 2 workers; verify containers stopped after each run.
+- 28 Nov 01:56–04:31 — paused at the 5-hour usage limit; continued automatically
+  (autoContinueAtUsageLimit); lanes B and C relaunched in their worktrees per rule 11.
 
 ## Blocked / waiting
 

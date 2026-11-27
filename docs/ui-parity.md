@@ -51,7 +51,7 @@ The rules that came out of this, and the component list, are in
 | 21 | Count badge only when there is something to do | A gold "0" badge on an empty queue | **fixed** |
 | 22 | Menu button is a 34px icon button (hamburger) | A "Menu" text button | **fixed** — icon button named "Menu" |
 | 23 | "Run simulation" starts a guided demo | Our button links to Simulated services, and showed on that page too | **fixed** (hidden on the page it links to); a guided demo is not built |
-| 24 | Breadcrumb on a case: "Applications / All applications / APP-1042" | "All applications / Case" | **later** — the shell does not know the case reference (it would need the page to pass its crumb up); the case header's own crumb already reads "Applications / APP-…" |
+| 24 | Breadcrumb on a case: "Applications / All applications / APP-1042" | "All applications / Case" | **fixed** — on a case the top bar reads "<group> / All applications (a link) / <reference>"; the case page names its reference through `useShellCrumb`, and the bar says "Case" until it has loaded. Below 860px, where the top bar hides its crumb, the case header shows "All applications / <reference>" instead |
 | 25 | Brand mark, search, bank logo, environment chip, notifications bell | Not present | **later / deferred** — no search or notifications in this release (docs/ACCEPTANCE.md, Deferred) |
 
 ## Screens
@@ -59,8 +59,8 @@ The rules that came out of this, and the component list, are in
 | # | Screen | Difference | Status |
 |---|---|---|---|
 | 26 | Queue | Prototype has tabs My queue / Team queue / Unassigned and an SLA column | **later** — no team queue, assignment or SLA in this release; our segmented filter by stage uses the same look |
-| 27 | Queue (390) | Prototype KPI cards span the width; ours cap at 280px | **later** (queue-body layout) |
-| 28 | All applications | Prototype tabs In progress / Closed / All and a "New assisted application" action | **later** |
+| 27 | Queue (390) | Prototype KPI cards follow its 4-column grid (2 under 1100px, 1 under 520px); ours were capped at 280px | **fixed** — the same grid, cards fill their column |
+| 28 | All applications | Prototype tabs In progress / Closed / All with counts, and a "New assisted application" action | **fixed** — the same three filters with counts (closed = declined, disbursed, withdrawn, expired), opening on In progress, and "New application" for the loan officer; the prototype's Reason and SLA columns are not built (no SLA in this release) |
 | 29 | New application | Prototype: "Consent" card title, Submit and Save draft side by side; ours "3 · Consent" and stacked full-width buttons | **fixed** |
 | 30 | New application | Prototype captures a new customer (name, age, employer, income) and documents; we pick a seeded applicant | **kept** (scope: synthetic personas only) |
 | 31 | Case header | Prototype: crumb, icon tile, name, a row of facts; ours had the crumb in monospace, no tile, one run-on line | **fixed** |

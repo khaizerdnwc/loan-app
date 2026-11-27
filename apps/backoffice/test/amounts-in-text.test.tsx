@@ -114,5 +114,12 @@ describe("amounts in server-written sentences (U-2)", () => {
       await screen.findByText(/Core banking did not confirm ₱150,000\.00 in time\./),
     ).toBeInTheDocument();
     expect(screen.queryByText(/150000\.00/)).toBeNull();
+
+    // U-6: the case header's own crumb uses the top bar's wording and only shows below
+    // 860px, where the top bar's crumb is hidden (one breadcrumb at any width).
+    const crumb = screen.getByRole("link", { name: "All applications" }).closest("p");
+    expect(crumb).toHaveAttribute("data-crumb", "case-header");
+    expect(crumb).toHaveTextContent("All applications / APP-1003");
+    expect(crumb?.className).toMatch(/min-\[860px\]:hidden/);
   });
 });

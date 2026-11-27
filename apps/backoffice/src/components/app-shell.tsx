@@ -29,10 +29,25 @@ export function useShellRefresh(): () => void {
   return useContext(ShellRefresh);
 }
 
+const ShellCrumb = createContext<(label: string | null) => void>(() => {});
+
+/**
+ * Names the record a detail page shows in the top bar's breadcrumb (the prototype's
+ * "Applications / All applications / APP-1042"). The page passes its reference once loaded;
+ * it is cleared when the page goes. Outside the shell it does nothing.
+ */
+export function useShellCrumb(label: string | null): void {
+  const set = useContext(ShellCrumb);
+  useEffect(() => {
+    set(label);
+    return () => set(null);
+  }, [label, set]);
+}
+
 /**
  * The prototype's shell: a dark 252px sidebar with grouped, iconed navigation and the
  * signed-in persona with sign-out at its foot (a drawer under 860px); a white sticky top bar
- * with the "Section / Page" breadcrumb and a role chip; and a warning banner while any
+ * with the "Section / Page" breadcrumb (on a case, "Section / All applications / reference") and a role chip; and a warning banner while any
  * simulated service is not answering normally. The queue count and the banner refresh
  * on every navigation, so a mode switch or a completed action shows without a reload.
  */
@@ -43,6 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const toast = useToast();
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [narrow, setNarrow] = useState(false);
+  const [detailCrumb, setDetailCrumb] = useState<string | null>(null);
   const drawerRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLButtonElement>(null);
   /** Close the drawer and put focus back on the Menu button that opened it. */
@@ -102,6 +118,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const crumb = breadcrumbFor(me.role, pathname);
+  // A case page: "<group> / <All applications, a link> / <reference>", like the prototype.
+  const casesGroup = navFor(me.role).find((g) => g.items.some((i) => i.href === "/cases"));
+  const onCase = /^\/cases\/(?!new$)[^/]+$/.test(pathname) && casesGroup !== undefined;
 
   const nav = (
     <nav aria-label="Main" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
@@ -204,13 +223,33 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Breadcrumb"
           className="hidden items-center gap-2 text-sm whitespace-nowrap text-mist-500 min-[860px]:flex"
         >
-          <span>{crumb.section}</span>
-          <span aria-hidden="true" className="text-mist-300">
-            /
-          </span>
-          <span aria-current="page" className="font-bold text-ink-900">
-            {crumb.page}
-          </span>
+          {onCase && casesGroup ? (
+            <>
+              <span>{casesGroup.heading}</span>
+              <span aria-hidden="true" className="text-mist-300">
+                /
+              </span>
+              <Link href="/cases" className="hover:text-ink-900">
+                {crumb.section}
+              </Link>
+              <span aria-hidden="true" className="text-mist-300">
+                /
+              </span>
+              <span aria-current="page" className="font-bold text-ink-900">
+                {detailCrumb ?? crumb.page}
+              </span>
+            </>
+          ) : (
+            <>
+              <span>{crumb.section}</span>
+              <span aria-hidden="true" className="text-mist-300">
+                /
+              </span>
+              <span aria-current="page" className="font-bold text-ink-900">
+                {crumb.page}
+              </span>
+            </>
+          )}
         </nav>
         <div className="ml-auto flex items-center gap-2.5">
           {me.role === "ADMIN" && !pathname.startsWith("/simulation") && (
@@ -238,7 +277,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       )}
 
       <main className="px-4 py-7 min-[860px]:px-8">
-        <ShellRefresh.Provider value={refresh}>{children}</ShellRefresh.Provider>
+        <ShellRefresh.Provider value={refresh}>
+          <ShellCrumb.Provider value={setDetailCrumb}>{children}</ShellCrumb.Provider>
+        </ShellRefresh.Provider>
       </main>
     </div>
   );

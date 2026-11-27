@@ -1,19 +1,26 @@
 import { ToastProvider } from "@loan/ui";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
-import { AppShell, useShellRefresh } from "@/components/app-shell";
+import { AppShell, useShellCrumb, useShellRefresh } from "@/components/app-shell";
 import { SessionProvider } from "@/lib/session";
 
-const { router } = vi.hoisted(() => ({ router: { replace: vi.fn(), push: vi.fn() } }));
-vi.mock("next/navigation", () => ({ useRouter: () => router, usePathname: () => "/queue" }));
+const { router, location } = vi.hoisted(() => ({
+  router: { replace: vi.fn(), push: vi.fn() },
+  location: { pathname: "/queue" },
+}));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  usePathname: () => location.pathname,
+}));
 
 let modes: { service: string; label: string; mode: string }[];
 let me: { id: string; fullName: string; role: string };
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  location.pathname = "/queue";
   modes = [{ service: "CREDIT_BUREAU", label: "Credit bureau", mode: "OK" }];
   me = { id: "STF-PAOLO", fullName: "Paolo Tan", role: "LOAN_OFFICER" };
   // The drawer behaviour applies under 860px.
@@ -41,6 +48,11 @@ function RefreshButton() {
       Do something
     </button>
   );
+}
+
+function CasePageStandIn({ reference }: { reference: string | null }) {
+  useShellCrumb(reference);
+  return <p>Case page</p>;
 }
 
 /** Turns a render-time or effect error into visible text, so a test fails instead of erroring. */
@@ -84,6 +96,37 @@ describe("AppShell", () => {
     expect(crumb).toHaveTextContent("My work/Work queue");
     expect(screen.getAllByText("Loan officer").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Run simulation/ })).not.toBeInTheDocument();
+  });
+
+  it("on a case, names the section, links back to All applications and ends with the reference", async () => {
+    location.pathname = "/cases/case-1";
+    const { rerender } = render(
+      <ToastProvider>
+        <SessionProvider fallback={<p>Checking…</p>}>
+          <AppShell>
+            <CasePageStandIn reference={null} />
+          </AppShell>
+        </SessionProvider>
+      </ToastProvider>,
+    );
+    await screen.findByText("Case page");
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    // Until the case has loaded, the last part says "Case".
+    expect(crumb).toHaveTextContent(/\/All applications\/Case$/);
+    expect(within(crumb).getByRole("link", { name: "All applications" })).toHaveAttribute(
+      "href",
+      "/cases",
+    );
+    rerender(
+      <ToastProvider>
+        <SessionProvider fallback={<p>Checking…</p>}>
+          <AppShell>
+            <CasePageStandIn reference="APP-1002" />
+          </AppShell>
+        </SessionProvider>
+      </ToastProvider>,
+    );
+    expect(within(crumb).getByText("APP-1002")).toHaveAttribute("aria-current", "page");
   });
 
   it("renders where matchMedia is unavailable, treating the screen as wide (sidebar not inert)", async () => {
