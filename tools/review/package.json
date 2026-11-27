@@ -1,0 +1,19 @@
+{
+  "name": "@loan/review-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "The /review workflow tooling: lessons, preflight, reviewer roles, review stamp, repro proof, house checks (ADR 0015-0018).",
+  "scripts": {
+    "test": "vitest run",
+    "lint": "eslint --cache src test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.5",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.2"
+  }
+}

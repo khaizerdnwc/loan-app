@@ -1,0 +1,26 @@
+{
+  "name": "@loan/eslint-house",
+  "version": "0.1.0",
+  "private": true,
+  "description": "House ESLint rules: what only this project knows (ADR 0015, ADR 0016).",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "lint": "eslint --cache src test",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "eslint": "^9.39.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.5",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.74.0",
+    "vitest": "^5.1.2"
+  }
+}

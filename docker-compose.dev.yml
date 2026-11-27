@@ -1,0 +1,21 @@
+# Local development database only. Port 5433 because 5432 is often taken by another project.
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: loan-app-postgres
+    environment:
+      POSTGRES_USER: loan
+      POSTGRES_PASSWORD: loan_dev_password
+      POSTGRES_DB: loan_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - loan-app-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loan -d loan_dev"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  loan-app-pgdata:

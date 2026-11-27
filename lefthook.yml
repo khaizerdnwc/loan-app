@@ -1,0 +1,56 @@
+# Lefthook config: the git hooks every commit and push goes through (ADR 0017, ADR 0021).
+# Docs: https://lefthook.dev
+
+# Put node/pnpm on PATH for hooks launched from GUI clients, editors and agent
+# shells that start with a bare PATH. See the script for details.
+rc: scripts/lefthook-rc.sh
+
+pre-commit:
+  parallel: true
+  jobs:
+    - name: biome-check
+      glob: "*.{ts,tsx,js,mjs,cjs,json,jsonc,css}"
+      run: pnpm exec biome check --no-errors-on-unmatched --files-ignore-unknown=true {staged_files}
+      stage_fixed: true
+
+    # Secret scanning on staged changes. Best-effort: blocks the commit if a
+    # secret is staged, but no-ops if gitleaks isn't installed locally. The hard
+    # gate is the `security` job on the pull request, which runs gitleaks from a
+    # pinned Docker image over the whole history.
+    - name: gitleaks
+      run: >
+        if command -v gitleaks >/dev/null 2>&1; then
+          gitleaks protect --staged --redact --config .gitleaks.toml --no-banner;
+        else
+          echo "gitleaks not installed — skipping the commit-time scan (the PR security job enforces it). brew install gitleaks";
+        fi
+
+commit-msg:
+  # In order: the message format, then the review lock, then the bug-fix proof (slowest).
+  # commit-msg runs after pre-commit, so Biome's stage_fixed has settled the staged diff
+  # before the review lock fingerprints it.
+  piped: true
+  jobs:
+    - name: commitlint
+      run: pnpm exec commitlint --edit {1}
+
+    # No review, no commit — for every commit, not only Claude's (ADR 0017). Shared with
+    # .claude/hooks/require-review-before-commit.sh. Opt out visibly: SKIP_REVIEW=1.
+    - name: review-stamp
+      run: bash scripts/review-stamp-check.sh
+
+    # A fix: naming `Repro-Test:` must fail without the fix and pass with it.
+    - name: repro-proof
+      run: bash scripts/repro-commit-check.sh {1}
+
+pre-push:
+  parallel: false
+  jobs:
+    # The FAST gate (ADR 0021): typecheck, lint, house checks and unit tests for the
+    # packages changed since this branch was last pushed. No Docker; under two minutes.
+    # The slow stages (security scans, integration tests on Postgres, build, E2E) run as
+    # parallel jobs on the pull request in GitHub Actions. `pnpm verify` still runs every
+    # stage locally on demand. A push that only deletes refs skips it.
+    - name: verify-fast
+      use_stdin: true
+      run: bash scripts/verify/pre-push.sh

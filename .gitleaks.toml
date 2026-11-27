@@ -1,0 +1,32 @@
+# Gitleaks config — extends the built-in ruleset with project allowlists.
+# Run locally:  gitleaks dir . --config .gitleaks.toml --redact
+# Blocking: the security job on every pull request (scripts/verify/verify.sh --only security).
+title = "loan-app gitleaks config"
+
+# Pull in gitleaks' default detectors (AWS keys, private keys, tokens, etc.).
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Project-wide non-secrets: examples, fixtures, and dev-only placeholders."
+
+# Files that legitimately contain placeholder/sample credentials.
+paths = [
+  '''\.env\.example$''',
+  '''pnpm-lock\.yaml$''',
+  '''.*\.test\.(ts|tsx)$''',
+  '''.*\.spec\.(ts|tsx)$''',
+  '''.*/__tests__/.*''',
+  '''.*/__mocks__/.*''',
+  '''.*\.gitleaks\.toml$''',
+]
+
+# Known dev-only / documentation values that look secret-ish but aren't.
+regexes = [
+  # Local and verify-only Postgres credentials (docker-compose.dev.yml, scripts/verify/env.sh).
+  '''postgres://loan:loan_(dev_password|verify)@''',
+  # Dummy JWT secrets used only by the gates and tests.
+  '''(verify|test|dev)-dummy-secret[a-z0-9-]*''',
+  # Examples often reference a literal placeholder secret.
+  '''(your-secret-here|changeme|example|placeholder|dummy)''',
+]

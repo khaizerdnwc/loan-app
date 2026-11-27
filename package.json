@@ -1,0 +1,64 @@
+{
+  "name": "loan-app",
+  "private": true,
+  "type": "module",
+  "description": "WhiteBank Lending MVP: a personal loan from application through decision, approval and booking.",
+  "packageManager": "pnpm@9.15.9",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel --filter=@loan/api --filter=@loan/backoffice",
+    "typecheck": "turbo run typecheck",
+    "lint": "biome check . && turbo run lint",
+    "lint:fix": "biome check --write . && turbo run lint -- --fix",
+    "test": "turbo run test",
+    "test:unit": "turbo run test",
+    "test:integration": "pnpm --filter @loan/api run test:integration",
+    "test:e2e": "pnpm --filter @loan/backoffice run test:e2e",
+    "db:up": "docker compose -f docker-compose.dev.yml up -d --wait",
+    "db:down": "docker compose -f docker-compose.dev.yml down",
+    "db:migrate": "pnpm --filter @loan/api run db:migrate",
+    "db:seed": "pnpm --filter @loan/api run db:seed",
+    "db:reset": "pnpm --filter @loan/api run db:reset",
+    "house:check": "tsx tools/review/src/house-check.ts",
+    "deps:check": "depcruise --config .dependency-cruiser.cjs apps packages tools",
+    "lessons": "tsx tools/review/src/lessons.ts",
+    "review:preflight": "tsx tools/review/src/review-preflight.ts",
+    "review:roles": "tsx tools/review/src/review-roles.ts",
+    "review:ack": "tsx tools/review/src/review-ack.ts",
+    "review:repro": "tsx tools/review/src/repro-proof.ts",
+    "doctor": "bash scripts/doctor.sh",
+    "verify": "bash scripts/verify/verify.sh",
+    "ci": "bash scripts/verify/verify.sh",
+    "licenses:check": "tsx scripts/check-licenses.ts",
+    "prepare": "lefthook install || true"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.9",
+    "@commitlint/cli": "^21.2.4",
+    "@commitlint/config-conventional": "^21.2.0",
+    "@loan/eslint-house": "workspace:*",
+    "@types/node": "^22.19.0",
+    "audit-ci": "^7.1.0",
+    "dependency-cruiser": "^18.9.0",
+    "eslint": "^9.39.5",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-security": "^4.2.1",
+    "lefthook": "^2.2.4",
+    "tsx": "^4.23.15",
+    "turbo": "^2.11.13",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.74.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@swc/core",
+      "esbuild",
+      "lefthook",
+      "sharp",
+      "unrs-resolver"
+    ]
+  }
+}

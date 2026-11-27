@@ -1,0 +1,35 @@
+# dependencies
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+.next/
+out/
+*.tsbuildinfo
+.turbo/
+coverage/
+
+# env
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# tests and gates
+playwright-report/
+test-results/
+verify-logs/
+.eslintcache
+
+# claude workflow state (ADR 0017): the stamp and review scratch are per machine
+.claude/.review-stamp
+.claude/.review/
+.claude/worktrees/
+.claude/settings.local.json
+.claude/.open-terminal-armed
+
+# os / editors
+.DS_Store
+*.log
+.idea/
