@@ -4,6 +4,22 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-engine-step-needs-a-version
+
+Every piece of logic `decide()` runs must be reachable only through a version the record
+stores (rule set or scorecard), or the current version must have a frozen fixture of stored
+records that a test replays. Why: reproduce (ADR 0022) re-runs the stored inputs against the
+stored versions *with today's code*. A step that is not keyed to a version — a mode overlay,
+a post-processing pass — can change and silently alter the replay of every record made since
+it shipped, while the version string on those records stays the same. Nearest deterministic
+alternative: a frozen per-version fixture (as `fixtures/rs-pl-1-records.json` does for RS-PL-1)
+for the current version, captured when it ships.
+
+- 2026-11-28 — Lane C (automation modes, RS-PL-2). `applyAutomation()` in decide.ts runs for
+  any snapshot carrying `automation`, whatever the rule set; RS-PL-1 was frozen with a fixture,
+  but no RS-PL-2 records (with modes, fraud, income mismatch) were frozen. Found by the data
+  reviewer.
+
 ## data-20261128-unique-violation-mapping-forced-test
 
 When a service checks for a duplicate and then relies on a unique index to cover the race,

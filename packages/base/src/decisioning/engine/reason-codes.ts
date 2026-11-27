@@ -72,4 +72,39 @@ export const REASONS = {
     staff: "Identity could not be verified",
     borrower: "We could not verify your identity.",
   },
+  incomeMismatch: {
+    code: "R15",
+    staff: "Declared income differs from verified income by more than the policy tolerance",
+    borrower: "We need to confirm your income.",
+  },
+  fraudFlag: {
+    code: "R16",
+    staff: "Fraud or identity signal raised by the fraud check",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  fraudUnavailable: {
+    code: "R17",
+    staff: "Fraud check unavailable: routed to manual review",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  relatedParty: {
+    code: "R18",
+    staff: "Related party or insider applicant: review is mandatory",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  automationOff: {
+    code: "R19",
+    staff: "Automation off for this product: every application goes to a person",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  shadowMode: {
+    code: "R20",
+    staff: "Shadow mode: the engine's outcome is recorded and a person decides",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  killSwitch: {
+    code: "R21",
+    staff: "Kill switch on: every new application goes to manual review",
+    borrower: "Your application needs a review by our credit team.",
+  },
 } as const satisfies Record<string, ReasonCode>;

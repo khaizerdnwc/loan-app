@@ -7,6 +7,8 @@ import {
   type Disbursement,
   E_SIGNATURE,
   type ESignature,
+  FRAUD_CHECK,
+  type FraudCheck,
   KYC_AML,
   type KycAml,
   ProviderUnavailableError,
@@ -61,6 +63,24 @@ describe("simulated providers conform to their ports", () => {
     expect(await kyc.screen({ ...maria, applicantId: "APL-RAMON" })).toMatchObject({
       sanctionsMatch: true,
       matchedList: "Simulated watchlist",
+    });
+  });
+
+  it("the fraud check flags Paula, clears Maria and an unknown person, labelled simulated", async () => {
+    const fraud = h.app.get<FraudCheck>(FRAUD_CHECK);
+    expect(fraud.mode).toBe("SIMULATED");
+    expect(await fraud.assess(maria)).toMatchObject({
+      mode: "SIMULATED",
+      provider: "Fraud signals (simulated)",
+      flagged: false,
+      signals: [],
+    });
+    expect(await fraud.assess({ ...maria, applicantId: "APL-PAULA" })).toMatchObject({
+      flagged: true,
+      signals: ["DUPLICATE_IDENTITY"],
+    });
+    expect(await fraud.assess({ ...maria, applicantId: "NOBODY" })).toMatchObject({
+      flagged: false,
     });
   });
 
@@ -138,6 +158,9 @@ describe("simulated providers conform to their ports", () => {
     ["DISBURSEMENT", "MALFORMED"],
     ["E_SIGNATURE", "TIMEOUT"],
     ["E_SIGNATURE", "MALFORMED"],
+    ["FRAUD", "OUTAGE"],
+    ["FRAUD", "TIMEOUT"],
+    ["FRAUD", "MALFORMED"],
   ])(
     "%s in %s fails with ProviderUnavailableError, never a wrong answer",
     async (service, mode) => {
@@ -167,6 +190,7 @@ describe("simulated providers conform to their ports", () => {
             signerName: "n",
             documentTitle: "d",
           }),
+        FRAUD: () => h.app.get<FraudCheck>(FRAUD_CHECK).assess(maria),
       }[service as "CREDIT_BUREAU"];
       const err = await call().catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ProviderUnavailableError);
@@ -184,6 +208,7 @@ describe("simulation controls", () => {
       "CREDIT_BUREAU",
       "DISBURSEMENT",
       "E_SIGNATURE",
+      "FRAUD",
       "KYC_AML",
     ]);
     for (const s of list) {

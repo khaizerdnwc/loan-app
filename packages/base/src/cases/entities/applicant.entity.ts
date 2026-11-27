@@ -30,8 +30,20 @@ export class ApplicantEntity {
   @Column({ name: "relationship_months", type: "integer" })
   relationshipMonths!: number;
 
+  /** Verified monthly income when available, else the declared one: what DTI uses. */
   @Column(moneyColumn({ name: "monthly_income" }))
   monthlyIncome!: Money;
+
+  /**
+   * The monthly income the applicant declared, when it was recorded apart from the verified
+   * figure above (PRD F3); null when there is no separate declaration.
+   */
+  @Column(moneyColumn({ name: "declared_monthly_income", nullable: true }))
+  declaredMonthlyIncome!: Money | null;
+
+  /** A WhiteBank insider or a relative of one: every application is reviewed (CMP-006). */
+  @Column({ name: "related_party", type: "boolean", default: false })
+  relatedParty!: boolean;
 
   @Column(moneyColumn({ name: "monthly_obligations" }))
   monthlyObligations!: Money;

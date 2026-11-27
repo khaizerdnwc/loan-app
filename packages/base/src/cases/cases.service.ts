@@ -23,7 +23,7 @@ import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
-import { authorityProblem, canView } from "./case-access";
+import { authorityProblem, canView, recommendationRefusal } from "./case-access";
 import { CaseViews } from "./case-views";
 import { CasesRepository } from "./cases.repository";
 import { CONSENT_CHANNEL, consentComplete } from "./consent";
@@ -245,6 +245,9 @@ export class CasesService {
           decisionId: record.id,
           ruleSet: record.ruleSetVersion,
           scorecard: record.scorecardVersion,
+          automationMode: record.automationMode,
+          killSwitch: record.killSwitch,
+          engineOutcome: record.engineOutcome,
         },
       });
     });
@@ -269,13 +272,14 @@ export class CasesService {
     // No consent, no bureau pull: also on a re-decision (e.g. a case from before consent).
     if (!consentComplete(await this.repo.latestConsent(current.id))) throw consentRequired();
     const inputs = await this.decisions.gatherInputs(current, businessDate());
-    if (inputs.bureau.status === "UNAVAILABLE" || inputs.screening.status === "UNAVAILABLE") {
+    const stillDown = DecisionService.unavailableProvider(inputs);
+    if (stillDown) {
       // Nothing is written: another outage record would add nothing, and each try is a
       // provider call (a bureau inquiry, with a real bureau).
       throw new DomainError(
         503,
         ProblemCode.ProviderUnavailable,
-        `${inputs.bureau.status === "UNAVAILABLE" ? "The credit bureau" : "KYC/AML screening"} still cannot answer. Decide the case again once it is back.`,
+        `${stillDown} still cannot answer. Decide the case again once it is back.`,
       );
     }
 
@@ -351,11 +355,13 @@ export class CasesService {
       }
       if (body.type !== Recommendation.Decline && c.decisionId) {
         const decision = await this.repo.findDecision(c.decisionId);
-        if (DecisionService.decidedDuringOutage(decision)) {
-          throw invalidState(
-            "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be recommended for approval. Decide it again once the provider is back, or recommend a decline.",
-          );
-        }
+        // After an outage, or a failed knockout referred because automation was not live,
+        // only a decline may be recommended (the case view lists the same refusal).
+        const refusal = recommendationRefusal(
+          DecisionService.decidedDuringOutage(decision),
+          DecisionService.knockedOut(decision),
+        );
+        if (refusal) throw invalidState(refusal);
       }
       let amount: Money | null = null;
       let tenor: number | null = null;

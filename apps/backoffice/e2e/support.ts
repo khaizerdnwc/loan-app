@@ -17,6 +17,7 @@ export const PERSONA = {
   ella: "Ella Reyes",
   lito: "Lito Garcia",
   leo: "Leo Santiago",
+  celia: "Celia Ortiz",
 } as const;
 export type Persona = keyof typeof PERSONA;
 
@@ -102,7 +103,14 @@ export async function setMode(page: Page, serviceLabel: string, mode: string): P
 export async function resetModes(page: Page): Promise<void> {
   await signIn(page, "leo");
   const statuses = await page.evaluate(async () => {
-    const services = ["CREDIT_BUREAU", "KYC_AML", "CORE_BANKING", "DISBURSEMENT", "E_SIGNATURE"];
+    const services = [
+      "CREDIT_BUREAU",
+      "KYC_AML",
+      "CORE_BANKING",
+      "DISBURSEMENT",
+      "E_SIGNATURE",
+      "FRAUD",
+    ];
     const out: number[] = [];
     for (const s of services) {
       const res = await fetch(`/api/simulation/services/${s}`, {
@@ -114,5 +122,5 @@ export async function resetModes(page: Page): Promise<void> {
     }
     return out;
   });
-  expect(statuses).toEqual([200, 200, 200, 200, 200]);
+  expect(statuses).toEqual([200, 200, 200, 200, 200, 200]);
 }

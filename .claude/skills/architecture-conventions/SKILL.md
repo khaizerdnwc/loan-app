@@ -45,10 +45,14 @@ this (`pnpm deps:check`, part of the `static` stage).
 ## Modules and lifecycle
 
 - The lending domain is **one Nest module** (`packages/base/src/lending.module.ts`) with
-  folders `auth/`, `cases/`, `simulation/` and the pure `decisioning/engine/`. Every service
-  works on one aggregate (the loan case) through one repository and one transaction runner,
-  so splitting into per-feature modules would only re-export that repository. Split when a
-  second aggregate appears (e.g. collections). It exports only `SessionGuard`, `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
+  folders `auth/`, `cases/`, `simulation/`, `automation/` and the pure `decisioning/engine/`.
+  Every case service works on one aggregate (the loan case) through one repository and one
+  transaction runner, so splitting into per-feature modules would only re-export that
+  repository. `automation/` (product automation: mode, kill switch, change requests) is a small
+  second aggregate kept in the module on purpose: a decision reads it under a share lock inside
+  the case's own transaction (docs/ARCHITECTURE.md). Split when an aggregate stands alone (e.g.
+  collections). It exports only `SessionGuard`, `JwtModule` and `ExpiryService` (for the API's
+  expiry-sweep timer).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
 - The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written

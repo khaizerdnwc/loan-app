@@ -13,6 +13,7 @@ const ALLOWED_ROOTS = new Set([
   "products",
   "decisions",
   "simulation",
+  "automation",
 ]);
 
 /** How long the API may take before the browser is told it is not answering. */

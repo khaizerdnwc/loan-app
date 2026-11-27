@@ -1,6 +1,6 @@
 "use client";
 
-import type { DecisionRecordView } from "@loan/core";
+import { AUTOMATION_MODE_LABEL, type DecisionRecordView } from "@loan/core";
 import {
   Callout,
   Card,
@@ -8,6 +8,7 @@ import {
   formatMonthlyRate,
   formatRatioPercent,
   GradeTile,
+  OUTCOME_LABEL,
   OutcomePill,
   Pill,
   ScoreBand,
@@ -15,11 +16,12 @@ import {
 } from "@loan/ui";
 
 /**
- * Band edges of rule set RS-PL-1 (docs/ASSUMPTIONS.md). The contract does not carry them yet,
- * so they are shown for RS-PL-1 only; another version falls back to the rule result text.
+ * Band edges per rule set (docs/ASSUMPTIONS.md). The contract does not carry them yet, so they
+ * are listed here; an unlisted version falls back to the rule result text.
  */
 const BANDS: Record<string, { declineBelow: number; approveFrom: number }> = {
   "RS-PL-1": { declineBelow: 600, approveFrom: 700 },
+  "RS-PL-2": { declineBelow: 600, approveFrom: 700 },
 };
 
 const RESULT: Record<
@@ -38,7 +40,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
       title="Decision summary"
       aside={
         <span className="flex items-center gap-2">
-          <SimulatedLabel what="bureau and screening data" />
+          <SimulatedLabel what="bureau, screening and fraud check data" />
           <span className="font-mono">
             {decision.ruleSetVersion} · {decision.scorecardVersion}
           </span>
@@ -66,6 +68,21 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
           <dd className="text-right text-ink-900">{formatMonthlyRate(decision.monthlyRate)}</dd>
         </dl>
       </div>
+
+      {(decision.automationMode !== "LIVE" || decision.killSwitch) && (
+        <Callout
+          tone="info"
+          className="mt-5"
+          lead={`${
+            decision.killSwitch
+              ? "Kill switch on"
+              : `Automation ${AUTOMATION_MODE_LABEL[decision.automationMode].toLowerCase()}`
+          }:`}
+        >
+          the engine&apos;s outcome was {OUTCOME_LABEL[decision.engineOutcome]}; a person decides
+          this case.
+        </Callout>
+      )}
 
       {decision.score !== null && bands && (
         <div className="mt-5">

@@ -7,6 +7,15 @@ rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a mach
 ## ui-ux-20261128-unavailable-says-why
 
 When a provider could not answer and a field is shown as "Unavailable", the same card says which provider could not answer and what that means for the case (it still proceeds; the figure is quoted again later, or never). Why: on the approved-terms card (BK/#13, 2026-11-28) the monthly instalment read "Unavailable" while the caption under it still said "instalment quoted by core banking (simulated)" — the screen contradicted itself and an officer could not tell whether the offer or the booking was blocked (Engineering Standard 6: understandable pending states). The indicative-repayment box on the same change did it right: "Core banking could not quote it just now. This does not affect saving or submitting the application." Nearest deterministic alternative: a component test that renders the panel with the value null and asserts the explanatory sentence and the absence of the "quoted by" caption.
+## ui-ux-20261128-dialog-offers-only-accepted-choices
+
+The Recommend dialog opens on "Approve as requested" for every REVIEW case. With automation off, in shadow or under the kill switch (PRD §7.5), a case whose policy knockout failed (a sanctions match, an existing default, age outside policy) no longer auto-declines: it is referred to a loan officer, and CasesService.recommend refuses anything but a decline with 409. The officer picks the default, writes a rationale, confirms, and only then learns the case could only ever be declined. The case's `allowedActions` lists RECOMMEND as enabled with no hint that its choices are narrowed. Why it matters: Engineering Standard 6 (confirmation states what will happen) and the house convention that a button a role cannot use is hidden or disabled with a visible reason. Found reviewing the automation-modes batch (Lane C) on 2026-11-28. Nearest deterministic alternative: the API says which recommendation types it accepts for the case (e.g. on the RECOMMEND availability) and a Vitest case renders the dialog for a knockout case and asserts Decline is the only enabled option; an e2e step under shadow mode with a knockout persona.
+
+## ui-ux-20261128-no-reason-code-mirror
+
+Gate: house/no-reason-code-literal
+
+actions-panel.tsx decided "referred because a provider could not answer" by testing the decision's reason codes for R10 or R13. The automation batch added the fraud check and its outage code R17; the API's predicate (DecisionService.unavailableProvider) learned it, the screen did not, so on a fraud-check outage the API offers "Decide again" while the next-action line says "Referred: a loan officer reviews the evidence and recommends a decision". Reason codes are the engine's vocabulary and grow with each rule set; what a case waits for is the API's to say (AGENTS.md §2.1). Found reviewing Lane C batch 1 on 2026-11-28. A string literal that is exactly a reason code in web code is now a lint error.
 
 ## ui-ux-20261127-dialog-follows-refreshed-case
 

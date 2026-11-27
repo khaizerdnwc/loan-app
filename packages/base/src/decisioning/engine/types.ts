@@ -1,4 +1,4 @@
-import type { DecisionOutcome, Grade } from "@loan/core";
+import type { AutomationMode, DecisionOutcome, Grade } from "@loan/core";
 
 /**
  * Everything the decision needs, gathered once (ADR 0022 R2) and stored verbatim in the
@@ -21,7 +21,27 @@ export interface DecisionInputs {
     employmentMonths: number;
     /** Months as a WhiteBank customer; 0 for new to bank. */
     relationshipMonths: number;
+    /**
+     * The monthly income the applicant declared, when it was recorded apart from the verified
+     * figure in `monthlyIncome`; null when there is no separate declaration. Present from
+     * RS-PL-2 (absent on records made under RS-PL-1).
+     */
+    declaredMonthlyIncome?: string | null;
+    /** A WhiteBank insider or a relative of one (PRD CMP-006). Present from RS-PL-2. */
+    relatedParty?: boolean;
   };
+  /**
+   * Fraud signals, or `unavailable` when the check could not answer. Present from RS-PL-2
+   * (absent on records made under RS-PL-1).
+   */
+  fraud?:
+    | { status: "OK"; flagged: boolean; signals: string[] }
+    | { status: "UNAVAILABLE"; reason: string };
+  /**
+   * The product's automation when the decision was made (PRD §7.5). Absent on records made
+   * before automation modes existed: those ran live.
+   */
+  automation?: { mode: AutomationMode; killSwitch: boolean };
   /** KYC/AML screening, or `unavailable` when the provider could not answer. */
   screening:
     | { status: "OK"; sanctionsMatch: boolean; kycVerified: boolean }
@@ -74,7 +94,10 @@ export interface DecisionVersions {
 
 export interface DecisionResult {
   versions: DecisionVersions;
+  /** What the case does: the engine's outcome when automation is live, otherwise REFER. */
   outcome: DecisionOutcome;
+  /** What the rules and the score decided, before the automation mode applied. */
+  engineOutcome: DecisionOutcome;
   /** Null when a knockout ended the pipeline, or the bureau could not be read. */
   score: number | null;
   grade: Grade | null;

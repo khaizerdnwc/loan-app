@@ -25,24 +25,50 @@ export interface RuleSet {
   lowScoreWithTrigger: "REFER" | "DECLINE";
   /** Add-on monthly rate per grade (decimal strings). */
   monthlyRate: Record<Grade, string>;
+  /**
+   * Declared against verified income (PRD DEC-006, F3): a difference above this share of the
+   * verified income is a referral trigger (ratio, decimal string). Absent: no such rule.
+   */
+  incomeMismatchTolerance?: string;
+  /** A fraud or identity flag, or a fraud check that could not answer, refers (DEC-006). */
+  fraudCheck?: boolean;
+  /** A related-party (insider) applicant always goes to a person (CMP-006). */
+  relatedPartyReferral?: boolean;
+  /**
+   * The product's automation mode and kill switch are an input, applied last (PRD §7.5):
+   * not live, the case is referred and the engine's own outcome kept. A change to that step
+   * is a new rule-set version, like any rule.
+   */
+  automationModes?: boolean;
 }
 
+const RS_PL_1: RuleSet = {
+  version: "RS-PL-1",
+  productCode: "PL",
+  minAge: 21,
+  maxAge: 65,
+  maxDebtToIncome: "0.40",
+  autoApprovalLimit: "300000.00",
+  approveFrom: 700,
+  declineBelow: 600,
+  lowScoreWithTrigger: "REFER",
+  monthlyRate: { A: "0.0120", B: "0.0140", C: "0.0160", D: "0.0180", E: "0.0200" },
+};
+
 export const RULE_SETS: Readonly<Record<string, RuleSet>> = {
-  "RS-PL-1": {
-    version: "RS-PL-1",
-    productCode: "PL",
-    minAge: 21,
-    maxAge: 65,
-    maxDebtToIncome: "0.40",
-    autoApprovalLimit: "300000.00",
-    approveFrom: 700,
-    declineBelow: 600,
-    lowScoreWithTrigger: "REFER",
-    monthlyRate: { A: "0.0120", B: "0.0140", C: "0.0160", D: "0.0180", E: "0.0200" },
+  "RS-PL-1": RS_PL_1,
+  /** RS-PL-1 plus the income-mismatch, fraud and related-party referral triggers. */
+  "RS-PL-2": {
+    ...RS_PL_1,
+    version: "RS-PL-2",
+    incomeMismatchTolerance: "0.15",
+    fraudCheck: true,
+    relatedPartyReferral: true,
+    automationModes: true,
   },
 };
 
-export const CURRENT_RULE_SET = "RS-PL-1";
+export const CURRENT_RULE_SET = "RS-PL-2";
 
 export function ruleSet(version: string): RuleSet {
   const rs = RULE_SETS[version];

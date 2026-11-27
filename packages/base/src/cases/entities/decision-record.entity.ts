@@ -1,5 +1,5 @@
-import type { DecisionOutcome, Grade, ProviderMode } from "@loan/core";
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import type { AutomationMode, DecisionOutcome, Grade, ProviderMode } from "@loan/core";
+import { Check, Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
 import type {
   DecisionInputs,
   ReasonCode,
@@ -14,6 +14,11 @@ import type {
  */
 @Entity({ name: "decision_record" })
 @Index(["caseId"])
+/** Only RS-PL-1 records (made before automation modes) may lack the engine's outcome. */
+@Check(
+  "CHK_decision_record_engine_outcome",
+  `"engine_outcome" IS NOT NULL OR "rule_set_version" = 'RS-PL-1'`,
+)
 export class DecisionRecordEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -66,6 +71,24 @@ export class DecisionRecordEntity {
    */
   @Column({ name: "provider_mode", type: "varchar", length: 12 })
   providerMode!: ProviderMode;
+
+  /**
+   * The product's automation mode when the decision was made (PRD §7.5), also in `inputs`.
+   * Records from before modes existed read LIVE (the migration's backfill): they ran live.
+   */
+  @Column({ name: "automation_mode", type: "varchar", length: 10 })
+  automationMode!: AutomationMode;
+
+  /** Whether the product's kill switch was on (also in `inputs`). */
+  @Column({ name: "kill_switch", type: "boolean" })
+  killSwitch!: boolean;
+
+  /**
+   * What the rules and score decided before the mode applied; `outcome` is what the case did.
+   * Null on records from before modes existed, where the two are the same.
+   */
+  @Column({ name: "engine_outcome", type: "varchar", length: 20, nullable: true })
+  engineOutcome!: DecisionOutcome | null;
 
   @Column({ name: "decided_by", type: "varchar", length: 40 })
   decidedBy!: string;

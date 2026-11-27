@@ -21,8 +21,9 @@ describe("where each role lands and what its sidebar offers", () => {
   });
 
   it("admin has no case screens and compliance has no queue", () => {
-    expect(hrefs("ADMIN")).toEqual(["/simulation"]);
-    expect(hrefs("COMPLIANCE")).toEqual(["/cases", "/simulation"]);
+    expect(hrefs("ADMIN")).toEqual(["/simulation", "/automation"]);
+    expect(hrefs("COMPLIANCE")).toEqual(["/cases", "/simulation", "/automation"]);
+    expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
   });
 });
 
@@ -34,6 +35,7 @@ describe("breadcrumb and page icons", () => {
     ["APPROVER", "/queue", "My work", "Approvals", "check"],
     ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],
     ["ADMIN", "/simulation", "System", "Simulated services", "sliders"],
+    ["ADMIN", "/automation", "System", "Automation controls", "sliders"],
   ] as [Role, string, string, string, string][])(
     "%s on %s reads %s / %s with the %s icon",
     (role, path, section, page, icon) => {

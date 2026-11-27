@@ -100,6 +100,16 @@ export const SEED_STAFF: StaffSeed[] = [
     approvalLimit: null,
     approvalGrades: null,
   },
+  // The second administrator: an automation change needs one to draft it and another to approve.
+  {
+    id: "STF-CELIA",
+    username: "celia",
+    fullName: "Celia Ortiz",
+    role: "ADMIN",
+    title: "Credit risk manager (administrator)",
+    approvalLimit: null,
+    approvalGrades: null,
+  },
 ];
 
 interface ApplicantSeed {
@@ -112,6 +122,10 @@ interface ApplicantSeed {
   relationshipMonths: number;
   monthlyIncome: string;
   monthlyObligations: string;
+  /** Declared income recorded apart from the verified `monthlyIncome` (RS-PL-2 mismatch rule). */
+  declaredMonthlyIncome?: string;
+  /** A WhiteBank insider or a relative of one (CMP-006). */
+  relatedParty?: boolean;
   depositAccount: string;
   bureau: {
     fileDepth: "FULL" | "THIN" | "NO_HIT";
@@ -128,6 +142,8 @@ interface ApplicantSeed {
     matchedList: string | null;
     politicallyExposed: boolean;
   };
+  /** The simulated fraud check's answer; absent means no signals. */
+  fraud?: { flagged: boolean; signals: string[] };
 }
 
 const CLEAR = {
@@ -135,6 +151,17 @@ const CLEAR = {
   sanctionsMatch: false,
   matchedList: null,
   politicallyExposed: false,
+};
+
+/** Maria's bureau report (742, grade A with her income and obligations). */
+const GOOD_BUREAU: ApplicantSeed["bureau"] = {
+  fileDepth: "FULL",
+  bureauScore: 748,
+  tradeLines: 6,
+  utilisationPct: 35,
+  delinquencies12m: 0,
+  existingDefault: false,
+  monthsOnFile: 96,
 };
 
 export const SEED_APPLICANTS: ApplicantSeed[] = [
@@ -456,6 +483,67 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  // RS-PL-2 referral triggers and the automation journey: Maria's profile (742, grade A) with one
+  // difference each, so that difference is the only reason the case goes to a person.
+  {
+    id: "APL-DANTE",
+    fullName: "Dante Flores",
+    birthDate: "1993-02-14",
+    governmentIdLast4: "2468",
+    employer: "Marikina Shoe Works",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "50000.00",
+    monthlyObligations: "9000.00",
+    declaredMonthlyIncome: "65000.00",
+    depositAccount: "WB-SAV-0172-3391",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
+  {
+    id: "APL-PAULA",
+    fullName: "Paula Mercado",
+    birthDate: "1994-09-03",
+    governmentIdLast4: "1357",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0180-4402",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+    fraud: { flagged: true, signals: ["DUPLICATE_IDENTITY"] },
+  },
+  {
+    id: "APL-NAVARRO",
+    fullName: "Teresa Navarro",
+    birthDate: "1990-11-22",
+    governmentIdLast4: "8642",
+    employer: "WhiteBank (branch operations)",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    relatedParty: true,
+    depositAccount: "WB-SAV-0195-5513",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
+  {
+    id: "APL-OSCAR",
+    fullName: "Oscar Belmonte",
+    birthDate: "1995-05-10",
+    governmentIdLast4: "9753",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0021-0175",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */
@@ -471,18 +559,20 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
     }
     await m.getRepository(StaffEntity).upsert(staff, ["id"]);
     await m.getRepository(ApplicantEntity).upsert(
-      SEED_APPLICANTS.map(({ bureau: _b, screening: _s, ...a }) => ({
+      SEED_APPLICANTS.map(({ bureau: _b, screening: _s, fraud: _f, ...a }) => ({
         ...a,
         monthlyIncome: Money.of(a.monthlyIncome),
         monthlyObligations: Money.of(a.monthlyObligations),
+        declaredMonthlyIncome: a.declaredMonthlyIncome ? Money.of(a.declaredMonthlyIncome) : null,
+        relatedParty: a.relatedParty ?? false,
       })),
       ["id"],
     );
     for (const a of SEED_APPLICANTS) {
       await m.query(
-        `INSERT INTO sim.persona_profile (applicant_id, bureau, screening) VALUES ($1, $2, $3)
-         ON CONFLICT (applicant_id) DO UPDATE SET bureau = $2, screening = $3`,
-        [a.id, a.bureau, a.screening],
+        `INSERT INTO sim.persona_profile (applicant_id, bureau, screening, fraud) VALUES ($1, $2, $3, $4)
+         ON CONFLICT (applicant_id) DO UPDATE SET bureau = $2, screening = $3, fraud = $4`,
+        [a.id, a.bureau, a.screening, a.fraud ?? null],
       );
     }
   });

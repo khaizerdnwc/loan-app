@@ -5,6 +5,10 @@ import { AuthController } from "./auth/auth.controller";
 import { SessionGuard } from "./auth/session.guard";
 import { StaffEntity } from "./auth/staff.entity";
 import { StaffRepository } from "./auth/staff.repository";
+import { AutomationController } from "./automation/automation.controller";
+import { ProductAutomationEntity } from "./automation/automation.entities";
+import { AutomationRepository } from "./automation/automation.repository";
+import { AutomationService } from "./automation/automation.service";
 import { ActivityService } from "./cases/activity.service";
 import { BookingService } from "./cases/booking.service";
 import { CaseViews } from "./cases/case-views";
@@ -33,10 +37,15 @@ export class LendingModule {
     return {
       module: LendingModule,
       imports: [
-        TypeOrmModule.forFeature([StaffEntity, ApplicantEntity, LoanCaseEntity]),
+        TypeOrmModule.forFeature([
+          StaffEntity,
+          ApplicantEntity,
+          LoanCaseEntity,
+          ProductAutomationEntity,
+        ]),
         JwtModule.register({ secret: options.jwtSecret, signOptions: { algorithm: "HS256" } }),
       ],
-      controllers: [AuthController, CasesController, SimulationController],
+      controllers: [AuthController, CasesController, SimulationController, AutomationController],
       providers: [
         { provide: LENDING_OPTIONS, useValue: options },
         TransactionRunner,
@@ -49,6 +58,8 @@ export class LendingModule {
         ExpiryService,
         BookingService,
         SessionGuard,
+        AutomationRepository,
+        AutomationService,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
       exports: [SessionGuard, JwtModule, ExpiryService],

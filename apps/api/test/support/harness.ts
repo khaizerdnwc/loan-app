@@ -19,6 +19,7 @@ export const STAFF = {
   lito: "STF-LITO",
   diane: "STF-DIANE",
   leo: "STF-LEO",
+  celia: "STF-CELIA",
 } as const;
 export type Persona = keyof typeof STAFF;
 
@@ -93,6 +94,11 @@ export async function resetData(ds: DataSource): Promise<void> {
     sim.core_account, sim.disbursement, sim.signature, sim.service_mode`);
   // Decision records and activity are insert-only by trigger; truncation is still allowed.
   await ds.query("TRUNCATE decision_record, activity_event");
+  // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
+  await ds.query("TRUNCATE automation_change, automation_event");
+  await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
+    ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
+      kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
 }
 
 export async function setMode(h: Harness, service: string, mode: string): Promise<void> {
@@ -119,8 +125,8 @@ export async function twin(h: Harness, seededId: string): Promise<string> {
     [seededId, id],
   );
   await h.ds.query(
-    `INSERT INTO sim.persona_profile (applicant_id, bureau, screening)
-     SELECT $2, bureau, screening FROM sim.persona_profile WHERE applicant_id = $1`,
+    `INSERT INTO sim.persona_profile (applicant_id, bureau, screening, fraud)
+     SELECT $2, bureau, screening, fraud FROM sim.persona_profile WHERE applicant_id = $1`,
     [seededId, id],
   );
   return id;

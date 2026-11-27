@@ -29,13 +29,19 @@ describe("F1 — Maria Santos, auto-approved ₱150,000 over 24 months", () => {
     const record = (await h.as("paolo").get(`/cases/${c.id}/decision`).expect(200))
       .body as DecisionRecordView;
     expect(record).toMatchObject({
-      ruleSetVersion: "RS-PL-1",
+      ruleSetVersion: "RS-PL-2",
       scorecardVersion: "SC-PL-1",
       providerMode: "SIMULATED",
       outcome: "AUTO_APPROVE",
+      automationMode: "LIVE",
+      killSwitch: false,
+      engineOutcome: "AUTO_APPROVE",
     });
     expect(record.inputsHash).toMatch(/^[0-9a-f]{64}$/);
-    expect(record.ruleResults.every((r) => r.result === "PASS")).toBe(true);
+    // No separate income declaration, so the income-mismatch rule is not evaluated.
+    expect(
+      record.ruleResults.filter((r) => r.result !== "PASS").map((r) => [r.id, r.result]),
+    ).toEqual([["RF-INCOME", "NOT_EVALUATED"]]);
     const replay = await h.as("diane").post(`/decisions/${record.id}/reproduce`).expect(200);
     expect(replay.body).toEqual({
       decisionId: record.id,
@@ -125,8 +131,12 @@ describe("F2 — Joel Reyes, referred thin file, counter-offer ₱120,000 over 3
       "KO-DEFAULT",
       "RF-AMOUNT",
       "RF-DTI",
+      "RF-INCOME",
+      "RF-RELATED",
+      "RF-FRAUD",
       "RF-FILE",
       "SC-BAND",
+      "AU-MODE",
     ]);
     expect(view.decision?.referralTriggers).toEqual([
       "Thin bureau file: too little credit history to score with confidence",

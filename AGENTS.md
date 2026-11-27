@@ -39,7 +39,7 @@ and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
 |---|---|
 | Money, shared types, RFC 9457 error shape | `packages/core/src` |
 | Port interface for an external service | `packages/contracts/src` |
-| Lending domain (one Nest module, `lending.module.ts`: auth, cases, simulation controls) | `packages/base/src/{auth,cases,simulation}/` |
+| Lending domain (one Nest module, `lending.module.ts`: auth, cases, simulation controls, automation mode and kill switch) | `packages/base/src/{auth,cases,simulation,automation}/` |
 | Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |
 | Decision engine, rule sets, scorecard | `packages/base/src/decisioning/engine/` |
 | Migrations, data source, transaction runner | `packages/base/src/database/` |

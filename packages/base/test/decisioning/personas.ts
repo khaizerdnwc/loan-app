@@ -6,7 +6,21 @@ import type { DecisionInputs } from "../../src/decisioning/engine";
  */
 const okScreening = { status: "OK", sanctionsMatch: false, kycVerified: true } as const;
 
-export const MARIA_F1: DecisionInputs = {
+/**
+ * The inputs RS-PL-2 adds (no separate income declaration, not a related party, no fraud
+ * signals, automation live). The personas below are RS-PL-2 snapshots; `fixtures/rs-pl-1-records.json` holds
+ * records made under RS-PL-1, before these inputs existed.
+ */
+export function withRsPl2Inputs(inputs: DecisionInputs): DecisionInputs {
+  return {
+    ...inputs,
+    applicant: { declaredMonthlyIncome: null, relatedParty: false, ...inputs.applicant },
+    fraud: inputs.fraud ?? { status: "OK", flagged: false, signals: [] },
+    automation: inputs.automation ?? { mode: "LIVE", killSwitch: false },
+  };
+}
+
+export const MARIA_F1: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "150000.00", tenorMonths: 24 },
   applicant: {
@@ -27,9 +41,9 @@ export const MARIA_F1: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 96,
   },
-};
+});
 
-export const JOEL_F2: DecisionInputs = {
+export const JOEL_F2: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "200000.00", tenorMonths: 36 },
   applicant: {
@@ -50,16 +64,16 @@ export const JOEL_F2: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 7,
   },
-};
+});
 
-export const RAMON_SANCTIONS: DecisionInputs = {
+export const RAMON_SANCTIONS: DecisionInputs = withRsPl2Inputs({
   ...MARIA_F1,
   application: { productCode: "PL", amount: "50000.00", tenorMonths: 12 },
   applicant: { ...MARIA_F1.applicant, ageYears: 52 },
   screening: { status: "OK", sanctionsMatch: true, kycVerified: true },
-};
+});
 
-export const NICO_HIGH_DTI: DecisionInputs = {
+export const NICO_HIGH_DTI: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "250000.00", tenorMonths: 24 },
   applicant: {
@@ -80,9 +94,9 @@ export const NICO_HIGH_DTI: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 80,
   },
-};
+});
 
-export const RAFAEL_ABOVE_LIMIT: DecisionInputs = {
+export const RAFAEL_ABOVE_LIMIT: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "500000.00", tenorMonths: 36 },
   applicant: {
@@ -103,9 +117,9 @@ export const RAFAEL_ABOVE_LIMIT: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 150,
   },
-};
+});
 
-export const CARMEN_LOW_SCORE: DecisionInputs = {
+export const CARMEN_LOW_SCORE: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "60000.00", tenorMonths: 12 },
   applicant: {
@@ -126,10 +140,10 @@ export const CARMEN_LOW_SCORE: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 40,
   },
-};
+});
 
 /** No bureau record at all: refers for the missing history (R08), scored without a bureau score. */
-export const NINA_NO_HIT: DecisionInputs = {
+export const NINA_NO_HIT: DecisionInputs = withRsPl2Inputs({
   asOfDate: "2026-11-28",
   application: { productCode: "PL", amount: "80000.00", tenorMonths: 18 },
   applicant: {
@@ -150,4 +164,4 @@ export const NINA_NO_HIT: DecisionInputs = {
     existingDefault: false,
     monthsOnFile: 0,
   },
-};
+});

@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 14 built, 39 partly built, 86 not built (139 IDs). Of the 8 flows, 3 are partly built
+Summary: 14 built, 41 partly built, 84 not built (139 IDs). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -36,12 +36,12 @@ Summary: 14 built, 39 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 |---|---|---|---|---|
 | F1 | Auto-approved personal loan (Maria Santos) | partly built | `apps/api/test/journeys.e2e-spec.ts`, `apps/backoffice/e2e/f1.spec.ts` (F1-1..F1-5) | Score 742 A, auto-approve, reproducible record, maker-checker booking, reconciled 24-line schedule. Different from the PRD: a loan officer captures the application (the PRD has Maria apply in the app), no consent is captured, there is no core pre-fill or fraud check, and loan operations simulates the borrower's acceptance and e-signature. |
 | F2 | Referred thin file with counter-offer (Joel Reyes) | partly built | journeys spec, `apps/backoffice/e2e/f2.spec.ts` (F2-1..F2-6, R-6) | Refer 612 C, override needs a reason code, counter-offer ₱120,000/36, approval within authority, booking. Missing: the request for 3 months of statements, statement analysis, and borrower acceptance in the app (simulated). ASSUMPTIONS records the shortened path. |
-| F3 | Branch-assisted application with income mismatch | not built | — | No branch officer role, consent capture, OCR, or income-mismatch trigger. The capture form only offers seeded applicants. |
+| F3 | Branch-assisted application with income mismatch | not built | `rs-pl-2.test.ts` (D-10), TR-1 | The income-mismatch referral trigger exists (RS-PL-2, 15%, seeded persona Dante Flores). Still missing: a branch officer role, walk-in capture of a declared income, OCR of a payslip. The capture form only offers seeded applicants. |
 | F4 | Email or file intake | not built | — | No upload, OCR or batch drafts. |
 | F5 | Home loan through committee | not built | — | No secured product, collateral, LTV, committee or minutes. |
 | F6 | Auto-decline and compliance escalation (Ramon Cruz) | partly built | `packages/base/test/decisioning/decide.test.ts` (D-2) | The sanctions knockout declines with no score, and reason codes have borrower-safe wording (`reason-codes.ts`). Missing: escalation to Compliance (no AML escalation record or queue) and any borrower-facing decline view. |
 | F7 | Delinquent loan through restructuring | not built | — | No collections module. |
-| F8 | Configuration and model change | not built | — | Rule sets are versioned in code (`rule-sets.ts`). There is no editor, test harness, maker-checker publish, shadow mode or kill switch. |
+| F8 | Configuration and model change | not built | AU-1..AU-3 | Rule sets are versioned in code (`rule-sets.ts`; RS-PL-2 added beside RS-PL-1, which still replays). Per-product shadow mode and kill switch are built, with maker-checker on mode changes. There is no rules editor, test harness or maker-checker publish of a rule set. |
 
 ### 6.1 Product configurator (PC)
 
@@ -177,7 +177,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | PLT-001 | Reuse WhiteBank identity, SSO, MFA | partly built (**OOR** for SSO) | R-9, R-10, `session.guard.ts` | Own staff table, scrypt test passwords and signed cookie. Roles are re-read each request. Reusing WhiteBank identity needs the real platform. |
 | PLT-002 | Multi-tenant isolation (P2) | not built | — | Phase 2. |
 | PLT-003 | Branding and localisation from WhiteBank theming | partly built | `apps/backoffice/src/app/globals.css`, `packages/ui` | The prototype's tokens are used. No per-tenant theming or localisation. |
-| PLT-004 | Immutable, searchable audit log | partly built | insert-only `activity_event`, `decision_record` | Per-case only. Sign-ins, simulation mode changes (`sim.service_mode.set_by` is overwritten) and other non-case actions are not logged. No search screen. |
+| PLT-004 | Immutable, searchable audit log | partly built | insert-only `activity_event`, `decision_record` | Per-case only, plus an insert-only history of automation changes (`automation_event`, AU-1). Sign-ins, simulation mode changes (`sim.service_mode.set_by` is overwritten) and other non-case actions are not logged. No search screen. |
 | PLT-005 | Holiday calendars, business days | not built | ASSUMPTIONS "Business date" | Only a UTC+8 business date. No holidays, so due dates are not shifted. |
 | PLT-006 | Feature flags | not built | — | |
 
@@ -190,7 +190,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | DEC-003 | Versioned rule sets, maker-checker, effective dates | partly built | `rule-sets.ts` | Versioned and immutable. No maker-checker or effective dates. |
 | DEC-004 | Test harness draft vs live | partly built | `POST /decisions/:id/reproduce`, D-8 | Replays one stored decision on its own version. No comparison of draft against live over a set of cases. |
 | DEC-005 | Decision bands, max auto-approval amount | built | `rule-sets.ts` (approveFrom, declineBelow, autoApprovalLimit), D-4, D-6 | Defined in code per product, not configurable from a screen. |
-| DEC-006 | Configurable referral triggers | partly built | `decide.ts`, D-5, D-6, D-9, B-7 | Grey zone, over limit, thin file or no hit, DTI, bureau unavailable and KYC/AML unavailable. Missing: fraud flag, income mismatch, related party, policy exception, low confidence. Not configurable. |
+| DEC-006 | Configurable referral triggers | partly built | `decide.ts`, D-5, D-6, D-9, B-7, D-10..D-12, TR-1 | Grey zone, over limit, thin file or no hit, DTI, bureau unavailable, KYC/AML unavailable, and (RS-PL-2) declared vs verified income mismatch, fraud or identity flag, fraud check unavailable, related party. Missing: policy exception, low confidence. Not configurable: a change is a new rule-set version in code. |
 | DEC-007 | Borrower-safe decline reason codes | built | `reason-codes.ts` (staff and borrower wording), D-7 | |
 | DEC-008 | External decision engine option | not built | — | A simulated port is possible. |
 | DEC-009 | Champion/challenger (P2) | not built | — | Phase 2. |
@@ -205,7 +205,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | AIS-004 | Cold-start: bureau score plus expert scorecard | built | `scorecards.ts` (SC-PL-1), D-1..D-9 | An additive expert scorecard that includes the bureau score band. This is the only model mode. |
 | AIS-005 | Tenant-specific models after repayment outcomes | not built (**OOR**) | — | Needs real repayment outcomes. |
 | AIS-006 | Pooled models (P2) | not built | — | Phase 2. |
-| AIS-007 | Shadow mode | not built | — | |
+| AIS-007 | Shadow mode | partly built | AU-1, AU-2, D-13, `automation.service.ts` | Per-product shadow mode: the engine scores and decides every application, its outcome is recorded (`engine_outcome`) and a person decides. Missing: agreement-rate and outcome reporting before automation is enabled, and shadowing a challenger model beside a live one. |
 | AIS-008 | Model registry | partly built | `scorecards.ts` versions | Versions only. No lineage, validation, sign-off or deployment history. |
 | AIS-009 | Drift and segment monitoring | not built | — | |
 | AIS-010 | Fairness testing | not built (**OOR** for meaningful results) | — | A harness could run on synthetic personas, but the results would mean nothing without real data. |
@@ -219,7 +219,7 @@ These are PRD sections, not requirement IDs.
 | Ref | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
 | §7.4 | Override needs reason code and rationale; above a threshold, a second approver | built | F2-3, F2-4, ASSUMPTIONS "Override" | Every recommendation goes to a different approver, so every override gets a second person whatever the threshold. The reviewer actions "request information" and "escalate" are not built (escalation happens only automatically, on an authority breach). |
-| §7.5 | Automation off or shadow at launch, stepwise widening, per-product kill switch | not built | — | |
+| §7.5 | Automation off or shadow at launch, stepwise widening, per-product kill switch | partly built | AU-1..AU-3, `apps/backoffice/e2e/automation.spec.ts` | Per product: off, shadow or live, changed by one administrator and approved by another; a kill switch that one administrator turns on at once and two turn off. Every decision record stores the mode. PL is seeded live (today's behaviour), not off or shadow. Missing: stepwise widening (by segment, amount or share of traffic). |
 
 ### 8. Integrations (IH)
 
@@ -231,7 +231,7 @@ These are PRD sections, not requirement IDs.
 | IH-004 | Raw request/response logging, masked | not built | — | No applicant data is logged at all (AGENTS §2.8). |
 | IH-005 | Result caching (30-day bureau reuse) | not built | — | |
 | IH-006 | Per-call cost tracking | not built | — | |
-| IH-007 | Simulated provider for every adapter | built | `apps/api/src/adapters/simulated/*`, `apps/api/test/simulators.e2e-spec.ts` | Bureau, KYC/AML, core, disbursement and e-signature, with ok, outage, timeout and malformed modes (plus lost reply for core). There are no fraud, OCR, SMS or appraisal adapters yet. |
+| IH-007 | Simulated provider for every adapter | built | `apps/api/src/adapters/simulated/*`, `apps/api/test/simulators.e2e-spec.ts` | Bureau, KYC/AML, fraud check, core, disbursement and e-signature, with ok, outage, timeout and malformed modes (plus lost reply for core). There are no OCR, SMS or appraisal adapters yet. |
 | IH-008 | Provider mode, live blocked outside production, labelled | partly built (**OOR** for sandbox and live) | `ProviderMode` in `packages/core/src/domain.ts`, the decision record's `provider_mode` | Simulated output is labelled and recorded. Sandbox and live need real providers. |
 | IH-009 | Conformance test suite per category | built | `apps/api/test/simulators.e2e-spec.ts` | Runs against the simulators. Moving the suites into `packages/contracts` is deferred (BUILD-STATUS). |
 
@@ -244,7 +244,7 @@ These are PRD sections, not requirement IDs.
 | CMP-003 | Bureau submission files | not built | — | A file in a documented format can be generated from synthetic data. Submitting it needs a real bureau. |
 | CMP-004 | Data privacy | partly built | `applicant.entity.ts` (only the last 4 digits of the government ID), masked IDs in views | Data minimisation and no applicant data in logs. No access, correction, retention or deletion workflow. |
 | CMP-005 | AML at onboarding and pre-disbursement, escalation, export | partly built | `kyc-aml.port.ts`, D-2, R13 | Screened at submission. Not screened again before disbursement. No escalation and no export. |
-| CMP-006 | Related-party controls | not built | — | |
+| CMP-006 | Related-party controls | partly built | D-12, TR-1 | A related-party flag on the applicant (seeded) and mandatory referral (RS-PL-2, R18). Missing: where the flag comes from (a core or HR lookup), the special approval workflow and reporting. |
 | CMP-007 | Fair lending | partly built | DEC-007 codes | Decline codes only. |
 | CMP-008 | Model risk governance | not built | — | |
 | CMP-009 | Fair collection | not built | — | Depends on CLX. |
@@ -295,8 +295,8 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
 | 8 | Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
 | 9 | ✅ Done (BK-1). Pre-booking checklist shown to loan operations and enforced by the API (approval, signature, conditions) | BKG-001 | S | Makes an existing guard visible and extends it to conditions. |
-| 10 | Per-product automation mode (off, shadow, live) and a kill switch routing every new case to referral, recorded in the decision record | §7.5, AIS-007 (mode only), F8 | M | Part of the PRD rollout model. The engine change is small; the record must carry the mode for replay. |
-| 11 | Missing referral triggers: income mismatch (declared vs verified), related-party flag, fraud flag (new simulated fraud port with failure modes) | DEC-006, CMP-006, F3 | M | F3 needs the income mismatch and CMP-006 needs mandatory referral. A new rule-set version keeps old decisions replayable. |
+| 10 | ✅ Done (AU-1..AU-3, D-13). Per-product automation mode (off, shadow, live) and a kill switch routing every new case to referral, recorded in the decision record | §7.5, AIS-007 (mode only), F8 | M | Part of the PRD rollout model. The engine change is small; the record must carry the mode for replay. |
+| 11 | ✅ Done (D-10..D-12, D-14, TR-1, TR-2). Missing referral triggers: income mismatch (declared vs verified), related-party flag, fraud flag (new simulated fraud port with failure modes) | DEC-006, CMP-006, F3 | M | F3 needs the income mismatch and CMP-006 needs mandatory referral. A new rule-set version keeps old decisions replayable. |
 | 12 | Walk-in and new-customer capture (name, birth date, employer, income, obligations) with pre-fill from a simulated core customer lookup; branch officer role | INT-005, INT-002, F3 | M | F3's entry point. Today only seeded applicants can be chosen. |
 | 13 | ✅ Done (IR-1). Indicative repayment before submission, from the core quote | INT-004 | S | The quote port already exists. It is shown after approval today. |
 | 14 | Decision-mix and origination-funnel reports (outcome, override and reason-code counts; stage drop-off) | RPT-003, RPT-001 | S | Measures the PRD's straight-through-processing metric. The data is already stored. |
@@ -365,7 +365,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Compliance: Related-party lending, Segregation of duties, Data subject requests, Model governance, Fair collection oversight | Compliance views | CMP-006, CMP-011, CMP-004, CMP-008, CMP-009 | SoD enforced (R-1..R-9) but there is no screen. Others not built. |
 | Configuration: Products, Workflows, Approval matrix (L1/L2/L3 and override threshold), Documents and templates, Notifications, Collection strategies | Config | PC-*, WF-001, WF-003, WF-004, DOC-004, NTF-*, CLX-002 | Not built (#19, #20, #21, #23). |
 | Configuration: Decisioning (rules, bands, triggers, draft, submit for review, approve and publish by a different user, pipeline) | Rules | DEC-001..006, PC-005, F8 | Engine built in code. No editor or maker-checker publish (#20). |
-| Configuration: AI models (registry, features, prohibited features, shadow, monitoring, fairness, overrides, automation per product, kill switch, pooled P2) | Models | AIS-007..012, §7.5 | Not built (#10, #26). |
+| Configuration: AI models (registry, features, prohibited features, shadow, monitoring, fairness, overrides, automation per product, kill switch, pooled P2) | Models | AIS-007..012, §7.5 | Automation per product and kill switch built as the Automation controls screen (#10, with maker-checker). Registry, monitoring and the rest not built (#26). |
 | Configuration: Integrations, API access, Users and roles (SSO, MFA), Tenant settings and modules | Admin | IH-002, IH-008, PLT-001, PLT-006 | Simulation controls only (`/simulation`). The rest is not built or out of reach. |
 | Prototype's own "simulation" panel per case | Failure toggles | IH-007, IH-008 | Built as the admin Simulated services page (B-5, B-7). |
 

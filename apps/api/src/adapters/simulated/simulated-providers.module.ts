@@ -3,6 +3,7 @@ import {
   CREDIT_BUREAU,
   DISBURSEMENT,
   E_SIGNATURE,
+  FRAUD_CHECK,
   KYC_AML,
   SIMULATION_CONTROL,
 } from "@loan/contracts";
@@ -12,6 +13,7 @@ import { SimulatedCoreBanking } from "./core-banking/core-banking.simulator";
 import { SimulatedCreditBureau } from "./credit-bureau.simulator";
 import { SimulatedDisbursement } from "./disbursement.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
+import { SimulatedFraudCheck } from "./fraud-check.simulator";
 import { SimulatedKycAml } from "./kyc-aml.simulator";
 import { SimulationModesService } from "./simulation-modes.service";
 import { SIMULATION_OPTIONS } from "./simulation-options";
@@ -37,13 +39,23 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedCoreBanking,
     SimulatedDisbursement,
     SimulatedESignature,
+    SimulatedFraudCheck,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
     { provide: CORE_BANKING, useExisting: SimulatedCoreBanking },
     { provide: DISBURSEMENT, useExisting: SimulatedDisbursement },
     { provide: E_SIGNATURE, useExisting: SimulatedESignature },
+    { provide: FRAUD_CHECK, useExisting: SimulatedFraudCheck },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
-  exports: [CREDIT_BUREAU, KYC_AML, CORE_BANKING, DISBURSEMENT, E_SIGNATURE, SIMULATION_CONTROL],
+  exports: [
+    CREDIT_BUREAU,
+    KYC_AML,
+    CORE_BANKING,
+    DISBURSEMENT,
+    E_SIGNATURE,
+    FRAUD_CHECK,
+    SIMULATION_CONTROL,
+  ],
 })
 export class SimulatedProvidersModule {}
