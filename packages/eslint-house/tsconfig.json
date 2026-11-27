@@ -4,12 +4,13 @@
     "module": "esnext",
     "moduleResolution": "bundler",
     "noEmit": true,
-    "allowJs": false,
+    "allowJs": true,
     "declaration": false,
     "declarationMap": false,
     "experimentalDecorators": false,
     "emitDecoratorMetadata": false,
-    "types": ["node"]
+    "types": ["node"],
+    "checkJs": false
   },
   "include": ["test/**/*.ts"]
 }

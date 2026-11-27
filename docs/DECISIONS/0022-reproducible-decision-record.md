@@ -22,7 +22,7 @@ outcome."
   bureau), into one `DecisionInputs` snapshot.
 - **R3. The decision record is insert-only:** inputs snapshot (JSONB), its SHA-256 hash,
   rule set version, scorecard version, per-rule results, score, grade, outcome, reason codes,
-  referral trigger, provider mode (`simulated`), created at. The repository exposes no
+  referral trigger, provider mode (`SIMULATED`), created at. The repository exposes no
   update or delete, and a database trigger rejects UPDATE and DELETE.
 - **R4. Versions are code.** Rule sets and scorecards are versioned constants; a change is a
   new version, and old versions stay so old records can be replayed.

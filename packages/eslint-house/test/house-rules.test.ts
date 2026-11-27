@@ -1,5 +1,5 @@
 import { join } from "node:path";
-import { RuleTester } from "eslint";
+import { type Rule, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
@@ -18,14 +18,18 @@ import noTypeormSynchronize from "../src/rules/no-typeorm-synchronize.js";
 import requireOrderWithTake from "../src/rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "../src/rules/require-roles-on-controller-handler.js";
 
-RuleTester.afterAll = afterAll;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
+/** The rules are plain JS; their inferred literal types are narrower than ESLint's. */
+const asRule = (rule: unknown) => rule as Rule.RuleModule;
+
+// The static hooks exist at runtime but not in ESLint's type definitions.
+const hooks = RuleTester as unknown as Record<"afterAll" | "describe" | "it" | "itOnly", unknown>;
+hooks.afterAll = afterAll;
+hooks.describe = describe;
+hooks.it = it;
+hooks.itOnly = it.only;
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    // @ts-expect-error — tseslint.parser satisfies the flat-config Parser shape.
     parser: tseslint.parser,
     ecmaVersion: "latest",
     sourceType: "module",
@@ -40,7 +44,7 @@ const API = at("apps/api/src/booking/booking.service.ts");
 const BASE = at("packages/base/src/booking/booking.service.ts");
 const WEB = at("apps/backoffice/src/app/cases/page.tsx");
 
-ruleTester.run("no-commented-out-code", noCommentedOutCode, {
+ruleTester.run("no-commented-out-code", asRule(noCommentedOutCode), {
   valid: [
     {
       filename: BASE,
@@ -69,7 +73,7 @@ ruleTester.run("no-commented-out-code", noCommentedOutCode, {
   ],
 });
 
-ruleTester.run("no-todo-comment", noTodoComment, {
+ruleTester.run("no-todo-comment", asRule(noTodoComment), {
   valid: [
     { filename: BASE, code: "// Locks the row so two checkers cannot book twice.\nconst a = 1;" },
     { filename: at("apps/api/test/x.e2e-spec.ts"), code: "// TODO later\nconst a = 1;" },
@@ -88,7 +92,7 @@ ruleTester.run("no-todo-comment", noTodoComment, {
   ],
 });
 
-ruleTester.run("no-console-in-server", noConsoleInServer, {
+ruleTester.run("no-console-in-server", asRule(noConsoleInServer), {
   valid: [
     { filename: API, code: "this.logger.log('booked');" },
     { filename: WEB, code: "console.error('render failed');" },
@@ -99,7 +103,7 @@ ruleTester.run("no-console-in-server", noConsoleInServer, {
   ],
 });
 
-ruleTester.run("no-math-random-in-server", noMathRandomInServer, {
+ruleTester.run("no-math-random-in-server", asRule(noMathRandomInServer), {
   valid: [
     { filename: API, code: "const key = crypto.randomUUID();" },
     { filename: at("packages/base/src/seed/seed.ts"), code: "const n = Math.random();" },
@@ -114,7 +118,7 @@ ruleTester.run("no-math-random-in-server", noMathRandomInServer, {
   ],
 });
 
-ruleTester.run("no-process-env-outside-config", noProcessEnvOutsideConfig, {
+ruleTester.run("no-process-env-outside-config", asRule(noProcessEnvOutsideConfig), {
   valid: [
     { filename: at("apps/api/src/config/env.ts"), code: "const raw = process.env;" },
     { filename: at("apps/backoffice/src/config/env.ts"), code: "const u = process.env.API_URL;" },
@@ -130,7 +134,7 @@ ruleTester.run("no-process-env-outside-config", noProcessEnvOutsideConfig, {
   ],
 });
 
-ruleTester.run("require-roles-on-controller-handler", requireRolesOnControllerHandler, {
+ruleTester.run("require-roles-on-controller-handler", asRule(requireRolesOnControllerHandler), {
   valid: [
     {
       filename: at("apps/api/src/booking/booking.controller.ts"),
@@ -155,7 +159,7 @@ ruleTester.run("require-roles-on-controller-handler", requireRolesOnControllerHa
   ],
 });
 
-ruleTester.run("no-float-money", noFloatMoney, {
+ruleTester.run("no-float-money", asRule(noFloatMoney), {
   valid: [
     { filename: BASE, code: "const total = principal.plus(interest);" },
     { filename: BASE, code: "const n = tenorMonths * 2; const i = instalmentCount - 1;" },
@@ -201,7 +205,7 @@ ruleTester.run("no-float-money", noFloatMoney, {
   ],
 });
 
-ruleTester.run("no-datasource-outside-repository", noDatasourceOutsideRepository, {
+ruleTester.run("no-datasource-outside-repository", asRule(noDatasourceOutsideRepository), {
   valid: [
     {
       filename: at("packages/base/src/booking/booking.repository.ts"),
@@ -241,7 +245,7 @@ ruleTester.run("no-datasource-outside-repository", noDatasourceOutsideRepository
   ],
 });
 
-ruleTester.run("no-typeorm-synchronize", noTypeormSynchronize, {
+ruleTester.run("no-typeorm-synchronize", asRule(noTypeormSynchronize), {
   valid: [
     {
       filename: at("packages/base/src/database/data-source.ts"),
@@ -258,7 +262,7 @@ ruleTester.run("no-typeorm-synchronize", noTypeormSynchronize, {
   ],
 });
 
-ruleTester.run("require-order-with-take", requireOrderWithTake, {
+ruleTester.run("require-order-with-take", asRule(requireOrderWithTake), {
   valid: [
     { filename: BASE, code: "repo.find({ take: 20, order: { createdAt: 'DESC' } });" },
     {
@@ -281,7 +285,7 @@ ruleTester.run("require-order-with-take", requireOrderWithTake, {
   ],
 });
 
-ruleTester.run("no-provider-import-outside-adapters", noProviderImportOutsideAdapters, {
+ruleTester.run("no-provider-import-outside-adapters", asRule(noProviderImportOutsideAdapters), {
   valid: [
     {
       filename: at("apps/api/src/app.module.ts"),
@@ -311,7 +315,7 @@ ruleTester.run("no-provider-import-outside-adapters", noProviderImportOutsideAda
   ],
 });
 
-ruleTester.run("no-status-only-assertion", noStatusOnlyAssertion, {
+ruleTester.run("no-status-only-assertion", asRule(noStatusOnlyAssertion), {
   valid: [
     {
       filename: at("apps/api/test/booking.e2e-spec.ts"),
@@ -335,7 +339,7 @@ ruleTester.run("no-status-only-assertion", noStatusOnlyAssertion, {
   ],
 });
 
-ruleTester.run("no-raw-colour", noRawColour, {
+ruleTester.run("no-raw-colour", asRule(noRawColour), {
   valid: [
     { filename: WEB, code: "const c = <div className='bg-gold-500 text-ink-900' />;" },
     { filename: WEB, code: "const a = <a href='#main-content'>Skip</a>;" },
@@ -360,7 +364,7 @@ ruleTester.run("no-raw-colour", noRawColour, {
   ],
 });
 
-ruleTester.run("money-through-formatter", moneyThroughFormatter, {
+ruleTester.run("money-through-formatter", asRule(moneyThroughFormatter), {
   valid: [
     { filename: WEB, code: "const s = <span>{formatPeso(loan.principal)}</span>;" },
     {

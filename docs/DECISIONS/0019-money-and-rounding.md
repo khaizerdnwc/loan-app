@@ -20,10 +20,11 @@ risk grade.
 ## Decision
 - **R1.** Every amount is a `Money` (packages/core, decimal.js underneath). Arithmetic goes
   through its methods; it rounds only when asked, with an explicit mode.
-- **R2.** Money columns are `numeric(14,2)` with a transformer that reads and writes strings.
+- **R2.** Money columns are `numeric(14,2)` (`MONEY_PRECISION`, `MONEY_SCALE` in packages/core): at most 12 whole digits, enforced when an amount is parsed and when it is serialised, with a transformer that reads and writes strings.
   The API sends and accepts money as decimal strings (`"150000.00"`), never JSON numbers.
 - **R3. Interest (add-on method).** `interest = principal × monthlyRate × tenorMonths`,
   rounded **half-up to the centavo** once, on the total.
+- *Floor* below means truncation to the centavo (`round("DOWN")`, towards zero); it is only applied to non-negative amounts, where the two are the same.
 - **R4. Instalments.** `totalRepayable = principal + interest`.
   `regularInstalment = floor_to_centavo(totalRepayable ÷ n)`; the **final instalment absorbs
   the remainder**: `totalRepayable − regularInstalment × (n − 1)`. The final instalment is

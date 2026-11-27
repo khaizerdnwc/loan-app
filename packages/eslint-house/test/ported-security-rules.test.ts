@@ -1,4 +1,4 @@
-import { RuleTester } from "eslint";
+import { type Rule, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import noDangerousHtmlWithoutSanitize from "../src/rules/no-dangerous-html-without-sanitize.js";
@@ -7,21 +7,25 @@ import noErrorNameBranching from "../src/rules/no-error-name-branching.js";
 // ESLint's RuleTester drives the host test runner. Vitest runs with globals: false, so
 // wire the hooks explicitly. Ported from nxlvl with their original cases; filenames are
 // package-relative ("src/..."), which the _app-path shim maps for every package.
-RuleTester.afterAll = afterAll;
-RuleTester.describe = describe;
-RuleTester.it = it;
-RuleTester.itOnly = it.only;
+/** The rules are plain JS; their inferred literal types are narrower than ESLint's. */
+const asRule = (rule: unknown) => rule as Rule.RuleModule;
+
+// The static hooks exist at runtime but not in ESLint's type definitions.
+const hooks = RuleTester as unknown as Record<"afterAll" | "describe" | "it" | "itOnly", unknown>;
+hooks.afterAll = afterAll;
+hooks.describe = describe;
+hooks.it = it;
+hooks.itOnly = it.only;
 
 const ruleTester = new RuleTester({
   languageOptions: {
-    // @ts-expect-error — tseslint.parser satisfies the flat-config Parser shape.
     parser: tseslint.parser,
     ecmaVersion: "latest",
     sourceType: "module",
   },
 });
 
-ruleTester.run("no-dangerous-html-without-sanitize", noDangerousHtmlWithoutSanitize, {
+ruleTester.run("no-dangerous-html-without-sanitize", asRule(noDangerousHtmlWithoutSanitize), {
   valid: [
     {
       filename: "src/features/feed/components/post.tsx",
@@ -54,7 +58,7 @@ ruleTester.run("no-dangerous-html-without-sanitize", noDangerousHtmlWithoutSanit
   ],
 });
 
-ruleTester.run("no-error-name-branching", noErrorNameBranching, {
+ruleTester.run("no-error-name-branching", asRule(noErrorNameBranching), {
   valid: [
     // The fix: `type` is a static string literal, untouched by the minifier.
     {

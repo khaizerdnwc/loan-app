@@ -20,10 +20,17 @@ the weekend and tempt `--no-verify`.
 - **R3. A draft PR is opened as soon as the branch exists**, so the full gate runs on every
   push during the build, not only at the end. The build loop reads `gh pr checks` and fixes
   a red job before starting the next milestone.
-- **R4. `pnpm verify` still runs everything locally** on demand: before submission, and
+- **R4. Shared config outside any package** (`tools/jest/**`, `tsconfig.base.json`) is in
+  turbo's `globalDependencies`, so changing it invalidates every cached result and counts
+  every package as affected.
+- **R5. `pnpm verify` still runs everything locally** on demand: before submission, and
   whenever GitHub Actions is unavailable.
 
 ## Consequences
 Pushes are fast. A push can reach the PR with a failing integration or e2e test; the PR job
 catches it minutes later instead of the laptop catching it first. Accepted, because R3
 keeps that window to one milestone. Reconsider if a broken main ever results.
+
+Note: `deps:check` passes only the top-level folders that exist (`$(ls -d apps packages
+tools)`), because dependency-cruiser fails on a missing path; this matters only before apps/
+exists, and is harmless after.
