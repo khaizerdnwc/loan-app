@@ -40,7 +40,7 @@ project team's prototype; values marked *ours* are our own.
 | Rafael Gomez | ₱500,000 · income ₱180,000 · bureau 711 full | Refer, grade A (amount above auto limit) |
 | Carmen Diaz | bureau 540 · util 85% · 2 missed payments · 8 months employed | Auto-decline, 450 E (score, missed payments) |
 | Nina Cruz | no bureau record · income ₱42,000 · 14 months employed · customer 10 months | Refer, 537 E (no bureau hit; low score shown to the reviewer) |
-| Kevin Lim | age 20 | Auto-decline, no score (age) |
+| Kevin Lim | age 17 | Auto-decline, no score (age) |
 
 ## Roles and authority
 
@@ -49,7 +49,7 @@ project team's prototype; values marked *ours* are our own.
 | Staff roles | Loan officer · Approver · Loan operations (maker) · Loan operations supervisor (checker) · Compliance (read-only) · Admin (simulation controls only) | PRD §4, prototype |
 | Approver authority | Rina Aquino: ₱1,000,000, grades A–C · Ben Castro: ₱100,000, grades A–B | PRD F2 (Rina), ours (Ben, to demonstrate a breach) |
 | Above authority | Blocked with the reason; the case stays in Approval, flagged escalated, visible to an approver whose authority covers it | ours (committee deferred) |
-| Override | A recommendation that differs from the automated outcome or terms needs a reason code and rationale; the approver must be a different user | PRD 7.4, mechanics 1c |
+| Override | Every recommendation needs a rationale. A counter-offer that changes the scored amount or tenor, or a recommendation to decline, is an override and also needs a reason code (OV01–OV06); approving as requested is not. The approver must be a different user. | PRD 7.4, mechanics 1c, ours (definition) |
 | Booking maker-checker | Loan operations submits; a loan operations supervisor (a different user) approves, which books and disburses | PRD §4, prototype |
 | Sign-in | Demo persona picker issuing a signed, httpOnly session cookie; no passwords or MFA | mechanics 1a ("test sign-in or equivalent") |
 
@@ -61,5 +61,9 @@ project team's prototype; values marked *ours* are our own.
 | Counter-offer | Approved counter-offer terms replace the requested terms; borrower acceptance is part of the simulated e-signature |
 | Information requests, documents, OCR, credit memo, committee | Deferred (PRD flows F2 step 3–4 shortened: the officer reviews and recommends directly) |
 | Disbursement | Single tranche to the applicant's (simulated) WhiteBank account, in the same step as booking |
+
+| Ungraded referrals | A case referred because the bureau was down has no score or grade; no approver's grade list covers it, so it cannot be approved until it is decided again. Re-running a decision is not in this release (recorded as a limitation). | ours |
+| Business date | Ages, booking dates and due dates use the Philippine calendar date (UTC+8). | ours |
+| Case visibility | A case outside a role's view answers 404 (not 403), so its existence is not revealed. | ours |
 
 Add a row whenever the build makes a choice the materials do not dictate.

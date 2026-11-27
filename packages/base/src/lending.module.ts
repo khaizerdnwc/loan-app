@@ -1,0 +1,54 @@
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { TypeOrmModule } from "@nestjs/typeorm";
+import { AuthController } from "./auth/auth.controller";
+import { SessionGuard } from "./auth/session.guard";
+import { StaffEntity } from "./auth/staff.entity";
+import { StaffRepository } from "./auth/staff.repository";
+import { ActivityService } from "./cases/activity.service";
+import { BookingService } from "./cases/booking.service";
+import { CaseViews } from "./cases/case-views";
+import { CasesController } from "./cases/cases.controller";
+import { CasesRepository } from "./cases/cases.repository";
+import { CasesService } from "./cases/cases.service";
+import { DecisionService } from "./cases/decision.service";
+import { ApplicantEntity } from "./cases/entities/applicant.entity";
+import { LoanCaseEntity } from "./cases/entities/loan-case.entity";
+import { TransactionRunner } from "./database/transaction-runner";
+import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
+import { SimulationController } from "./simulation/simulation.controller";
+
+export type { LendingModuleOptions };
+
+/**
+ * The lending domain as one Nest module: auth, cases (capture, decision, review, approval,
+ * booking, history) and the simulation controls. The ports it needs (bureau, KYC/AML, core
+ * banking, disbursement, e-signature, simulation control) are provided by whoever imports
+ * it — the API's composition root binds the simulated providers.
+ */
+@Module({})
+export class LendingModule {
+  static register(options: LendingModuleOptions) {
+    return {
+      module: LendingModule,
+      imports: [
+        TypeOrmModule.forFeature([StaffEntity, ApplicantEntity, LoanCaseEntity]),
+        JwtModule.register({ secret: options.jwtSecret, signOptions: { algorithm: "HS256" } }),
+      ],
+      controllers: [AuthController, CasesController, SimulationController],
+      providers: [
+        { provide: LENDING_OPTIONS, useValue: options },
+        TransactionRunner,
+        StaffRepository,
+        CasesRepository,
+        ActivityService,
+        DecisionService,
+        CaseViews,
+        CasesService,
+        BookingService,
+        SessionGuard,
+      ],
+      exports: [SessionGuard, JwtModule],
+    };
+  }
+}

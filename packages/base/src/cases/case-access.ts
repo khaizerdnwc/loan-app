@@ -1,0 +1,144 @@
+import {
+  type ActionAvailability,
+  type CaseAction,
+  CaseStatus,
+  Money,
+  ProblemCode,
+  Recommendation,
+  Role,
+} from "@loan/core";
+import type { SessionUser } from "../auth/session";
+import type { StaffEntity } from "../auth/staff.entity";
+import { OPERATIONS_STAGES } from "./cases.repository";
+import type { BookingRequestEntity } from "./entities/booking.entities";
+import type { LoanCaseEntity } from "./entities/loan-case.entity";
+import { canHappen } from "./lifecycle";
+
+/**
+ * Who may see a case (docs/API.md). Outside this, the API answers 404 so the case's
+ * existence is not revealed.
+ */
+export function canView(user: SessionUser, c: LoanCaseEntity): boolean {
+  switch (user.role) {
+    case Role.LoanOfficer:
+    case Role.Compliance:
+      return true;
+    case Role.Approver:
+      return c.status === CaseStatus.Approval || c.approvedBy === user.id;
+    case Role.LoanOperations:
+    case Role.LoanOperationsSupervisor:
+      return OPERATIONS_STAGES.includes(c.status);
+    default:
+      return false;
+  }
+}
+
+/**
+ * Whether an approver's authority covers a case: the amount to approve is within their
+ * limit AND the grade is one they may approve (ASSUMPTIONS "Approver authority"). Returns
+ * the reason when it does not. Read from the staff table at decision time, never from the
+ * session token.
+ */
+export function authorityProblem(approver: StaffEntity, c: LoanCaseEntity): string | null {
+  const amount = c.recommendedAmount ?? c.requestedAmount;
+  const limit = approver.approvalLimit ?? Money.zero();
+  const grades = approver.approvalGrades ?? [];
+  const problems: string[] = [];
+  if (amount.greaterThan(limit)) {
+    problems.push(`₱${amount.toString()} is above your approval limit of ₱${limit.toString()}`);
+  }
+  if (!c.grade || !grades.includes(c.grade)) {
+    problems.push(
+      `grade ${c.grade ?? "none"} is outside the grades you may approve (${grades.join(", ") || "none"})`,
+    );
+  }
+  return problems.length
+    ? `${problems.join(", and ")}. Route it to an approver with higher authority.`
+    : null;
+}
+
+const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
+  LOAN_OFFICER: ["EDIT_DRAFT", "SUBMIT", "RECOMMEND", "REPRODUCE_DECISION"],
+  APPROVER: ["APPROVE", "DECLINE", "RETURN", "REPRODUCE_DECISION"],
+  LOAN_OPERATIONS: ["SIGN", "SUBMIT_BOOKING"],
+  LOAN_OPERATIONS_SUPERVISOR: ["SIGN", "SUBMIT_BOOKING", "APPROVE_BOOKING", "RETRY_BOOKING"],
+  COMPLIANCE: ["REPRODUCE_DECISION"],
+  ADMIN: [],
+};
+
+const ACTION_EVENT: Partial<Record<CaseAction, Parameters<typeof canHappen>[0]>> = {
+  SUBMIT: "SUBMIT",
+  RECOMMEND: "RECOMMEND",
+  APPROVE: "APPROVE",
+  DECLINE: "DECLINE",
+  RETURN: "RETURN",
+  SIGN: "SIGN",
+  SUBMIT_BOOKING: "SUBMIT_BOOKING",
+};
+
+/**
+ * The actions the signed-in user's role could take on the case in its current status,
+ * each enabled or disabled with the rule that refuses it (docs/API.md). The services
+ * enforce the same rules when the action is posted; this only describes them.
+ */
+export function allowedActions(
+  user: SessionUser,
+  c: LoanCaseEntity,
+  staff: StaffEntity | null,
+  booking: BookingRequestEntity | null,
+): ActionAvailability[] {
+  const out: ActionAvailability[] = [];
+  for (const action of ROLE_ACTIONS[user.role]) {
+    const event = ACTION_EVENT[action];
+    if (event && !canHappen(event, c.status)) continue;
+    if (action === "EDIT_DRAFT" && c.status !== CaseStatus.Draft) continue;
+    if (action === "REPRODUCE_DECISION" && !c.decisionId) continue;
+    if (action === "APPROVE_BOOKING" && c.status !== CaseStatus.PendingChecker) continue;
+    if (action === "RETRY_BOOKING" && c.status !== CaseStatus.BookingFailed) continue;
+
+    if (action === "APPROVE") {
+      if (c.recommendation === Recommendation.Decline) {
+        out.push({
+          action,
+          enabled: false,
+          blockedBy: ProblemCode.InvalidTransition,
+          detail: "The recommendation is to decline: confirm the decline or return the case.",
+        });
+        continue;
+      }
+      if (c.recommendedBy === user.id) {
+        out.push({
+          action,
+          enabled: false,
+          blockedBy: ProblemCode.MakerChecker,
+          detail: "You made this recommendation; a different approver must approve it.",
+        });
+        continue;
+      }
+      const problem = staff ? authorityProblem(staff, c) : "Your authority could not be read.";
+      if (problem) {
+        out.push({
+          action,
+          enabled: false,
+          blockedBy: ProblemCode.AuthorityLimit,
+          detail: problem,
+        });
+        continue;
+      }
+    }
+    if (
+      (action === "APPROVE_BOOKING" || action === "RETRY_BOOKING") &&
+      booking?.makerId === user.id
+    ) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.MakerChecker,
+        detail: "You submitted this booking; a different supervisor must approve it.",
+      });
+      continue;
+    }
+    out.push({ action, enabled: true });
+  }
+  return out;
+}

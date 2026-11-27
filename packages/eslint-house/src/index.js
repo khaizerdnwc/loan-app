@@ -23,6 +23,7 @@
  *   - no-typeorm-synchronize             : schema changes through migrations only
  *   - require-order-with-take            : take/skip/limit come with an explicit order
  *   - no-provider-import-outside-adapters: workflow code depends on ports, not concrete providers
+ *   - no-case-status-assignment-outside-lifecycle: a case's status changes only via moveTo()
  *   - no-status-only-assertion           : a success test asserts the outcome, not only 2xx
  *   - no-raw-colour                      : components use theme tokens, never colour literals
  *   - money-through-formatter            : peso amounts are displayed through formatPeso()
@@ -32,6 +33,7 @@
  *   - require-label-in-name              : an aria-label must contain the visible label
  */
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
+import noCaseStatusAssignmentOutsideLifecycle from "./rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "./rules/no-commented-out-code.js";
 import noConsoleInServer from "./rules/no-console-in-server.js";
 import noDangerousHtmlWithoutSanitize from "./rules/no-dangerous-html-without-sanitize.js";
@@ -68,6 +70,7 @@ export default {
     "no-typeorm-synchronize": noTypeormSynchronize,
     "require-order-with-take": requireOrderWithTake,
     "no-provider-import-outside-adapters": noProviderImportOutsideAdapters,
+    "no-case-status-assignment-outside-lifecycle": noCaseStatusAssignmentOutsideLifecycle,
     "no-status-only-assertion": noStatusOnlyAssertion,
     "no-raw-colour": noRawColour,
     "money-through-formatter": moneyThroughFormatter,

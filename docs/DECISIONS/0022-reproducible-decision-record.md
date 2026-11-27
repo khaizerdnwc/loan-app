@@ -22,14 +22,22 @@ outcome."
   bureau), into one `DecisionInputs` snapshot.
 - **R3. The decision record is insert-only:** inputs snapshot (JSONB), its SHA-256 hash,
   rule set version, scorecard version, per-rule results, score, grade, outcome, reason codes,
-  referral trigger, provider mode (`SIMULATED`), created at. The repository exposes no
-  update or delete, and a database trigger rejects UPDATE and DELETE.
+  referral trigger, provider mode (the bureau port's own mode), created at. The repository
+  exposes no update or delete, and a database trigger rejects UPDATE and DELETE. TRUNCATE is
+  not blocked: the integration tests use it to reset, and only the database owner can run it.
+  A production database would revoke TRUNCATE from the application role.
+- **R2a. The decision is made on the draft that was read.** Inputs are gathered before the
+  lock; inside it, submit refuses (409) if the case's version changed meanwhile.
 - **R4. Versions are code.** Rule sets and scorecards are versioned constants; a change is a
   new version, and old versions stay so old records can be replayed.
 - **R5. Reproduce on demand.** `POST /decisions/:id/reproduce` re-runs the stored inputs
   against the stored versions and reports `match` or the differing fields.
-- **R6. Human decisions are separate records** (recommendation, approval, override with
-  reason code), linked to the automated decision, never edits of it.
+- **R6. Human decisions never edit the automated record.** The current recommendation,
+  approval or approver decline is held on the case (what the next step acts on), and every
+  one is also an insert-only activity event carrying its terms (type, amount, tenor, rate,
+  override reason, rationale). A return followed by a new recommendation replaces the
+  case's columns; the history stays in the events. The `approved_by` column holds the
+  approver who last acted (approve, decline or return), which keeps the case in their view.
 
 ## Consequences
 Any decision can be explained and replayed in the demo. Cost: rule versions are kept forever

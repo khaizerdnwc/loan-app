@@ -1,0 +1,132 @@
+import "reflect-metadata";
+import type { CaseDetail, CreateCaseRequest } from "@loan/core";
+import type { INestApplication } from "@nestjs/common";
+import { Test } from "@nestjs/testing";
+import request from "supertest";
+import { DataSource } from "typeorm";
+import { configureApp } from "../../src/app";
+import { AppModule } from "../../src/app.module";
+
+/** The seeded staff (packages/base/src/seed/seed.ts). */
+export const STAFF = {
+  paolo: "STF-PAOLO",
+  rina: "STF-RINA",
+  ben: "STF-BEN",
+  marco: "STF-MARCO",
+  ella: "STF-ELLA",
+  lito: "STF-LITO",
+  diane: "STF-DIANE",
+  leo: "STF-LEO",
+} as const;
+export type Persona = keyof typeof STAFF;
+
+export interface Harness {
+  app: INestApplication;
+  ds: DataSource;
+  /** An HTTP client signed in as a persona (session cookie). */
+  as(persona: Persona): Client;
+  anonymous(): request.Agent;
+  close(): Promise<void>;
+}
+
+export interface Client {
+  get(path: string): request.Test;
+  post(path: string, body?: object): request.Test;
+  patch(path: string, body: object): request.Test;
+  put(path: string, body: object): request.Test;
+}
+
+/**
+ * Boot the real app (same module, pipes, filter and guards as production) against the
+ * test database, and start each test file from empty lending tables and OK simulators.
+ */
+export async function startHarness(): Promise<Harness> {
+  const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+  const app = moduleRef.createNestApplication();
+  configureApp(app);
+  await app.init();
+  const ds = app.get(DataSource);
+  await resetData(ds);
+
+  // Sign every persona in once; each client then sends its session cookie.
+  const cookies = new Map<Persona, string>();
+  for (const persona of Object.keys(STAFF) as Persona[]) {
+    const res = await request(app.getHttpServer())
+      .post("/auth/demo-login")
+      .send({ staffId: STAFF[persona] })
+      .expect(200);
+    const setCookie = ([] as string[]).concat(res.headers["set-cookie"] ?? []);
+    const session = setCookie.find((c) => c.startsWith("session="))?.split(";")[0];
+    if (!session) throw new Error(`no session cookie for ${persona}`);
+    cookies.set(persona, session);
+  }
+
+  return {
+    app,
+    ds,
+    as(persona) {
+      const server = app.getHttpServer();
+      const cookie = cookies.get(persona) as string;
+      return {
+        get: (path) => request(server).get(path).set("Cookie", cookie),
+        post: (path, body) =>
+          request(server)
+            .post(path)
+            .set("Cookie", cookie)
+            .send(body ?? {}),
+        patch: (path, body) => request(server).patch(path).set("Cookie", cookie).send(body),
+        put: (path, body) => request(server).put(path).set("Cookie", cookie).send(body),
+      };
+    },
+    anonymous: () => request.agent(app.getHttpServer()),
+    close: async () => {
+      await app.close();
+    },
+  };
+}
+
+/** Empty every case table and reset the simulators; staff, applicants and personas stay. */
+export async function resetData(ds: DataSource): Promise<void> {
+  await ds.query(`TRUNCATE schedule_line, disbursement, loan_account, booking_request, loan_case,
+    sim.core_account, sim.disbursement, sim.signature, sim.service_mode`);
+  // Decision records and activity are insert-only by trigger; truncation is still allowed.
+  await ds.query("TRUNCATE decision_record, activity_event");
+}
+
+export async function setMode(h: Harness, service: string, mode: string): Promise<void> {
+  await h.as("leo").put(`/simulation/services/${service}`, { mode }).expect(200);
+}
+
+/** Create and submit an application as the loan officer. */
+export async function submitCase(
+  h: Harness,
+  body: Partial<CreateCaseRequest> & { applicantId: string },
+): Promise<CaseDetail> {
+  const res = await h
+    .as("paolo")
+    .post("/cases", {
+      amount: "150000.00",
+      tenorMonths: 24,
+      purpose: "Home improvement",
+      submit: true,
+      ...body,
+    })
+    .expect(201);
+  return res.body as CaseDetail;
+}
+
+/** Take an approved case (status OFFER) through signing and the maker step. */
+export async function readyForChecker(
+  h: Harness,
+  id: string,
+  maker: Persona = "marco",
+): Promise<CaseDetail> {
+  await h.as("marco").post(`/cases/${id}/sign`).expect(200);
+  const res = await h.as(maker).post(`/cases/${id}/booking`).expect(200);
+  return res.body as CaseDetail;
+}
+
+export async function count(ds: DataSource, sql: string, params: unknown[] = []): Promise<number> {
+  const [row] = (await ds.query(sql, params)) as [{ n: string }];
+  return Number(row.n);
+}

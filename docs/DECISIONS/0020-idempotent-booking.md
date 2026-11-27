@@ -46,7 +46,24 @@ cannot tell whether it worked).
   separate transactions. A crash between the core call and the lending commit leaves an
   account in core with no lending record; R5's retry reconciles it. There is no background
   reconciliation job.
+- The checker's transaction holds the case row lock and one pooled connection for the whole
+  core and disbursement call, and each simulator takes a second connection. The pool is
+  bounded (20 connections, 5-second acquire timeout, `dataSourceOptions`), so a burst of
+  simultaneous approvals fails fast instead of waiting forever. That refusal is an
+  unclassified 500 (not BOOKING_FAILED): nothing is written, the key is kept, and a retry is
+  safe. Booking outside the lock with a
+  BOOKING_IN_PROGRESS state would remove this; it is not needed at the PRD's volume.
+- A schedule that does not reconcile is refused (`assertReconciles`), and the case is marked
+  BOOKING_FAILED. A retry with the same key gets the same core account back, so the
+  mismatch repeats: the case stays failed and core holds an account with no lending record.
+  Lending does not check that core priced the loan at the approved rate, only that core's
+  numbers add up. Both need an operations runbook and the reconciliation job (deferred).
+- Child tables (schedule line, disbursement, loan account, booking request, decision record,
+  activity event) carry no foreign keys yet. Each set of rows is written in one transaction
+  and never deleted, so no orphan can arise from the code today. Adding the keys is the next
+  data migration.
 
 ## Consequences
 Duplicates are prevented at three layers. Cost: a row lock per booking, which is negligible
-at the PRD's volume. Tested sequentially (replay) and concurrently (two simultaneous approvals).
+at the PRD's volume. Tested sequentially (replay) and concurrently (three simultaneous
+approvals on each of five cases).

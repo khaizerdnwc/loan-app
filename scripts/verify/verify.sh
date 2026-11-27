@@ -227,7 +227,7 @@ ensure_services() {
   [ "$SERVICES_UP" = 1 ] && return 0
   SERVICES_UP=1
   step "throwaway postgres" bash "$ROOT/scripts/verify/services.sh" up
-  step "build the packages the API needs" pnpm exec turbo run build --filter=@loan/api^...
+  step "build the API and the packages it needs" pnpm exec turbo run build --filter=@loan/api...
   step "migrations from empty" ${API[@]+"${API[@]}"} db:migrate
 }
 

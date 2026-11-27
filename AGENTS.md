@@ -25,8 +25,8 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 5. **One transaction per state change**, and every state change writes an activity event
    (who, what, when, before/after) in that same transaction.
 6. **External services are ports.** Interfaces in `packages/contracts`; simulated
-   implementations only in `apps/api/src/adapters/simulated`, wired only in
-   `apps/api/src/app.module.ts`. Each simulator has `ok | outage | timeout | malformed` modes
+   implementations only in `apps/api/src/adapters/simulated`, bound only in
+   `adapters/simulated/simulated-providers.module.ts` (imported by `app.module.ts`). Each simulator has `ok | outage | timeout | malformed` modes
    and labels its output as simulated.
 7. **Outages degrade to referral, never decline** (PRD NFR-005).
 8. **No real data, no real providers, no secrets in the repo, no applicant data in logs.**
@@ -37,7 +37,8 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 |---|---|
 | Money, shared types, RFC 9457 error shape | `packages/core/src` |
 | Port interface for an external service | `packages/contracts/src` |
-| Domain module (entities, repository, service, controller, DTOs) | `packages/base/src/<module>/` |
+| Lending domain (one Nest module, `lending.module.ts`: auth, cases, simulation controls) | `packages/base/src/{auth,cases,simulation}/` |
+| Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |
 | Decision engine, rule sets, scorecard | `packages/base/src/decisioning/engine/` |
 | Migrations, data source, transaction runner | `packages/base/src/database/` |
 | Seed data (personas, staff, product) | `packages/base/src/seed/` |

@@ -37,19 +37,25 @@ this (`pnpm deps:check`, part of the `static` stage).
 - Implementations live only in `apps/api/src/adapters/` (today: `simulated/`). Each simulator
   has the failure modes `ok | outage | timeout | malformed`, labels its output *simulated*, and
   passes the port's conformance test suite.
-- The composition root (`apps/api/src/app.module.ts`) is the only place that binds a token to
-  an implementation. Domain code injects the token and types against the port —
+- `apps/api/src/adapters/simulated/simulated-providers.module.ts` is the only place that binds
+  a port token to an implementation; the composition root (`apps/api/src/app.module.ts`)
+  imports it. Domain code injects the token and types against the port —
   `house/no-provider-import-outside-adapters`.
 
 ## Modules and lifecycle
 
-- One Nest module per feature in `packages/base/src/<feature>/` (auth, applications,
-  decisioning, review, approvals, booking, activity, simulation-control). A module exports
-  only what another module needs; nothing reaches into another module's repository.
+- The lending domain is **one Nest module** (`packages/base/src/lending.module.ts`) with
+  folders `auth/`, `cases/`, `simulation/` and the pure `decisioning/engine/`. Every service
+  works on one aggregate (the loan case) through one repository and one transaction runner,
+  so splitting into per-feature modules would only re-export that repository. Split when a
+  second aggregate appears (e.g. collections). It exports only `SessionGuard` and `JwtModule`.
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
-- The case lifecycle is **one transition table**: every state change goes through it, and it
-  is the only place that knows which state may follow which, and who may cause it.
+- The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written
+  only by `moveTo(c, event, to)`, which checks both ends of the edge, or `startDraft(c)` —
+  `house/no-case-status-assignment-outside-lifecycle`.
+- Provider mode (simulated or real) comes from the port or its result, never a literal in
+  `packages/base`.
 
 ## Enforced by lint and checks
 

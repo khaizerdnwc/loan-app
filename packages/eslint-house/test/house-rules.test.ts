@@ -4,6 +4,7 @@ import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
 import moneyThroughFormatter from "../src/rules/money-through-formatter.js";
+import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "../src/rules/no-commented-out-code.js";
 import noConsoleInServer from "../src/rules/no-console-in-server.js";
 import noDatasourceOutsideRepository from "../src/rules/no-datasource-outside-repository.js";
@@ -387,3 +388,40 @@ ruleTester.run("money-through-formatter", asRule(moneyThroughFormatter), {
     },
   ],
 });
+
+ruleTester.run(
+  "no-case-status-assignment-outside-lifecycle",
+  asRule(noCaseStatusAssignmentOutsideLifecycle),
+  {
+    valid: [
+      {
+        filename: at("packages/base/src/cases/lifecycle.ts"),
+        code: "function moveTo(c, e, to) { c.status = to; }",
+      },
+      {
+        filename: at("packages/base/src/cases/cases.service.ts"),
+        code: "moveTo(c, 'APPROVE', CaseStatus.Offer);",
+      },
+      {
+        filename: at("packages/base/src/cases/booking.service.ts"),
+        code: "booking.status = 'BOOKED';",
+      },
+      {
+        filename: at("apps/api/test/x.e2e-spec.ts"),
+        code: "c.status = CaseStatus.Offer;",
+      },
+    ],
+    invalid: [
+      {
+        filename: at("packages/base/src/cases/cases.service.ts"),
+        code: "c.status = CaseStatus.Offer;",
+        errors: [{ messageId: "assignment" }],
+      },
+      {
+        filename: at("packages/base/src/cases/booking.service.ts"),
+        code: "loanCase.status = to;",
+        errors: [{ messageId: "assignment" }],
+      },
+    ],
+  },
+);

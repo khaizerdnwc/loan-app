@@ -1,4 +1,4 @@
-# Local development database only. Port 5433 because 5432 is often taken by another project.
+# Local development database only. Port 5436 on localhost only: 5432, 5433 and 5435 are taken by other projects on the dev machine.
 services:
   postgres:
     image: postgres:16-alpine
@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: loan_dev_password
       POSTGRES_DB: loan_dev
     ports:
-      - "5433:5432"
+      - "127.0.0.1:5436:5432"
     volumes:
       - loan-app-pgdata:/var/lib/postgresql/data
     healthcheck:

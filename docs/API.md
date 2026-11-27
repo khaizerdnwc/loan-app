@@ -58,6 +58,7 @@ refuses it now:
 |---|---|---|
 | APPROVE | amount above the approver's limit, or grade outside their grades | AUTHORITY_LIMIT_EXCEEDED |
 | APPROVE | the approver made the recommendation (defence in depth: one person holds one role today, so the role guard already refuses this) | MAKER_CHECKER_VIOLATION |
+| APPROVE | the recommendation is to decline (decline or return it instead) | INVALID_STATE_TRANSITION |
 | APPROVE_BOOKING / RETRY_BOOKING | the supervisor submitted the booking | MAKER_CHECKER_VIOLATION |
 
 A disabled APPROVE can still be posted: the API refuses it with that code and, for the

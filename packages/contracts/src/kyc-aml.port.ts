@@ -15,6 +15,7 @@ export interface ScreeningResult {
 }
 
 export interface KycAml {
+  readonly mode: ProviderMode;
   /** Throws ProviderUnavailableError when screening cannot complete. */
   screen(subject: ApplicantIdentity): Promise<ScreeningResult>;
 }

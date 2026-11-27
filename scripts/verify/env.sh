@@ -29,7 +29,7 @@ export VERIFY_ACTIONLINT_IMAGE="rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f
 export VERIFY_HADOLINT_IMAGE="hadolint/hadolint:v2.12.0-alpine@sha256:3c206a451cec6d486367e758645269fd7d696c5ccb6ff59d8b03b0e45268a199"
 
 # --- Throwaway services (scripts/verify/services.sh) ---------------------------------
-# Ports chosen never to collide with the dev stack (postgres 5433, API 3101, web 3100),
+# Ports chosen never to collide with the dev stack (postgres 5436, API 3101, web 3100),
 # so a verify can run while `pnpm dev` is up.
 export VERIFY_PG_PORT=55432
 export VERIFY_API_PORT=53101
@@ -53,6 +53,10 @@ export JWT_SECRET=verify-dummy-secret-at-least-32-characters-long
 export CORS_ORIGIN="http://127.0.0.1:${VERIFY_WEB_PORT}"
 export API_URL="http://127.0.0.1:${VERIFY_API_PORT}"
 export SIMULATION_AUTO_RESET_MINUTES=15
+export SIMULATION_TIMEOUT_MS=20
+export MIGRATE_ON_BOOT=false
+export TRUST_PROXY_HOPS=0
+export PORT="$VERIFY_API_PORT"
 export PLAYWRIGHT_BASE_URL="http://127.0.0.1:${VERIFY_WEB_PORT}"
 
 unset _verify_owner

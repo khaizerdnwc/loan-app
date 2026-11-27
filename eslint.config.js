@@ -55,6 +55,7 @@ export default tseslint.config(
       "house/require-order-with-take": "error",
       // architecture
       "house/no-provider-import-outside-adapters": "error",
+      "house/no-case-status-assignment-outside-lifecycle": "error",
       // qa
       "house/no-status-only-assertion": "error",
       // ui-ux

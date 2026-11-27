@@ -35,7 +35,7 @@ fi
 
 command -v gitleaks >/dev/null && ok "gitleaks (commit-time scan)" || warn "gitleaks not installed: commit-time scan skipped; the PR security job still runs it"
 
-for port in 3100 3101 5433; do
+for port in 3100 3101 5436; do
   if lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1; then warn "port $port is in use (dev stack already up?)"; fi
 done
 

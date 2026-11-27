@@ -21,6 +21,8 @@ export interface BureauReport {
 }
 
 export interface CreditBureau {
+  /** Simulated or real: stored on every decision record that used this bureau. */
+  readonly mode: ProviderMode;
   /** Throws ProviderUnavailableError when the bureau cannot answer. */
   pull(subject: ApplicantIdentity): Promise<BureauReport>;
 }
