@@ -6,7 +6,8 @@ async function bootstrap(): Promise<void> {
   const app = await createApp();
   app.enableShutdownHooks();
   await app.listen(env().PORT, "0.0.0.0");
-  new Logger("bootstrap").log(`API listening on :${env().PORT} (Swagger at /docs)`);
+  const docs = env().SWAGGER_ENABLED ? " (Swagger at /docs)" : "";
+  new Logger("bootstrap").log(`API listening on :${env().PORT}${docs}`);
 }
 
 bootstrap().catch((err: unknown) => {

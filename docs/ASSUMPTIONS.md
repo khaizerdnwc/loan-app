@@ -69,4 +69,12 @@ project team's prototype; values marked *ours* are our own.
 | Business date | Ages, booking dates and due dates use the Philippine calendar date (UTC+8). | ours |
 | Case visibility | A case outside a role's view answers 404 (not 403), so its existence is not revealed. | ours |
 
+## Hardening
+
+| Item | Choice | Source |
+|---|---|---|
+| Swagger | Served at `/docs` only when `SWAGGER_ENABLED=true` (set in local development's `.env.example`). Unset or blank is off, so a deployment that forgets the variable publishes no route map; docs/API.md is the reference | ours |
+| Rate limits | 300 requests a minute per route for each signed-in staff member (keyed on the verified session token's staff id), and the same per caller address for requests with no valid session. Sign-in keeps its own limits (20 per account, 60 per address). A token signed out but not yet expired still names its staff member's bucket; it is refused by the session guard either way | ours |
+| Proxy body cap | The backoffice `/api` proxy forwards request bodies up to 100 KiB, the API's own JSON body limit; larger bodies get a 413 problem body (code `VALIDATION_FAILED`). One 15-second deadline covers reading the client's body and the API's answer: a stalled client body is a 504, an API that does not answer a 502 (both code `PROVIDER_UNAVAILABLE`) | ours |
+
 Add a row whenever the build makes a choice the materials do not dictate.

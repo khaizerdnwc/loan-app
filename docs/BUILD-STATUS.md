@@ -21,6 +21,9 @@ commit passed the review loop. Blocked items carry the evidence.
 | P1 | PRD backlog #1: re-decide a case referred during a provider outage (NFR-005) | done | B-10 (integration) · lifecycle REDECIDE edges (unit) · officer's "Decide again" action · PRD-COVERAGE updated |
 | P2 | PRD backlog #2: consent before the bureau check (INT-006, AIS-002) | done | C-1 (integration, unit, browser) · migration 1764300000004 (insert-only, FK to the case) · consent card on New application and a Consent panel on the case |
 | P3 | PRD backlog #3: one open application per applicant and product (INT-007) | done | A-7 (integration: refusal, declined and disbursed free the applicant, forced index path, concurrent race) · migration 1764300000005 (partial unique index) rehearsed on the used dev database (migrate, revert, migrate) · pre-flight query in docs/DEPLOY.md · three more synthetic applicants for independent browser journeys |
+| H1 | Hardening: Swagger an explicit opt-in (`SWAGGER_ENABLED`, off by default) | done | H-1 (integration with SWAGGER_ENABLED unset, plus a swagger-on control; unit test pins the default) |
+| H2 | Hardening: request body cap and read deadline on the backoffice `/api` proxy; backoffice env module kept out of client bundles | done | H-2 (Vitest: exact cap forwarded, over-cap body, declared and non-numeric Content-Length, streamed body, stalled body → 504) · env module throws in a browser (jsdom test) · new lint rule `house/no-server-env-in-client` (no new dependency) |
+| H3 | Hardening: per-user rate limits behind the proxy | done | H-3 (integration: per-user buckets, forged tokens fall back to the address, sign-in stays per address) · `apps/api/src/throttler.guard.ts`; sign-in throttlers unchanged |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 
@@ -43,16 +46,19 @@ commit passed the review loop. Blocked items carry the evidence.
 - Deferred from the M3–M7 reviews (recorded in ADR 0020/0022 and the design notes): foreign
   keys on the child tables; a reconciliation job and runbook for a refused schedule; TRUNCATE
   not blocked on insert-only tables; rate and DTI stored as varchar; per-port conformance
-  suites in packages/contracts; per-user throttling (behind the backoffice proxy all callers share
-  one bucket; `TRUST_PROXY_HOPS` lets a deployment with an appending load balancer key on the
-  real address); a quoted instalment fetched from core on every case
-  read; Swagger open on the API.
+  suites in packages/contracts; a quoted instalment fetched from core on every case
+  read. (Per-user throttling and closing Swagger by default: done, H3 and H1.)
+- Unauthenticated traffic behind the backoffice proxy, sign-in included, still shares one
+  per-address bucket: the proxy sends no client address, so the API sees only the proxy's.
+  One person's mistyped passwords or an anonymous flood can make sign-in answer 429 for
+  everyone for a minute. Deferred fix: the proxy appends the client address to
+  X-Forwarded-For and the API runs with `TRUST_PROXY_HOPS=1`.
 - Deferred from the M8 reviews: display labels come from `@loan/core`, whose index also
   pulls decimal.js into the client bundle (a `@loan/core/labels` subpath would avoid it); the
   form's product limits and the score-band edges (600/700) are copied in the backoffice
   instead of read from the API; dependency-cruiser has no `no-unresolvable` or
-  `ui-depends-only-on-core` rule yet; the /api proxy has no request body cap; the backoffice
-  env module is not marked `server-only` (package not installed).
+  `ui-depends-only-on-core` rule yet. (The /api proxy body cap and keeping the backoffice env
+  module server-only: done, H2.)
 - Fixed: `review:preflight --bugfix` could not prove a backoffice (Vitest) fix, because its
   throwaway worktree had no built `@loan/core` (`dist/` is not tracked). The repro tool now
   builds the compiled packages (core, contracts, base) in the worktree before each run;

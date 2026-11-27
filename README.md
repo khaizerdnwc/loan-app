@@ -9,7 +9,7 @@ bureau, KYC/AML, core banking, disbursement, e-signature) is simulated behind an
 
 ```bash
 pnpm install && pnpm db:up && pnpm db:migrate && pnpm db:seed && pnpm dev
-# backoffice http://localhost:3100 · API http://localhost:3101 (Swagger at /docs)
+# backoffice http://localhost:3100 · API http://localhost:3101 (Swagger at /docs when SWAGGER_ENABLED=true, as in apps/api/.env.example)
 ```
 
 Or the whole stack from the production images:

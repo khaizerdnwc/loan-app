@@ -42,7 +42,7 @@ export class SessionGuard implements CanActivate {
     if (this.reflector.getAllAndOverride<boolean>(PUBLIC_KEY, targets)) return true;
 
     const request = context.switchToHttp().getRequest<RequestLike>();
-    const token = tokenFrom(request);
+    const token = sessionTokenFrom(request);
     if (!token) {
       throw new UnauthorizedException({
         code: ProblemCode.Unauthenticated,
@@ -75,7 +75,11 @@ export class SessionGuard implements CanActivate {
   }
 }
 
-function tokenFrom(request: RequestLike): string | null {
+/**
+ * The session token a request carries: the session cookie, else a Bearer header. Unverified;
+ * callers verify it (this guard, and the API's per-user throttle tracker).
+ */
+export function sessionTokenFrom(request: Pick<RequestLike, "headers" | "cookies">): string | null {
   const cookie = request.cookies?.[SESSION_COOKIE];
   if (cookie) return cookie;
   const header = request.headers.authorization;

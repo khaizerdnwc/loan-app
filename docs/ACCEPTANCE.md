@@ -82,6 +82,14 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 | B-10 | A case referred because a provider was down is re-decided by the loan officer once it answers (bureau or screening outage): the inputs are gathered again, a second decision record is made (the first stays and still reproduces), the case moves to the new outcome, and the earlier recommendation and approver are cleared (kept in the event). While the provider is still down it answers 503 and writes nothing; outside REVIEW, or for a case decided with every provider answering, 409 and nothing written; two at once make one record; other roles get 403. A case decided during an outage cannot be recommended for approval (only for decline), nor approved however it reached APPROVAL | `apps/api/test/booking-and-failures.e2e-spec.ts`, `packages/base/test/cases/lifecycle.test.ts` + component: `apps/backoffice/test/actions-panel.test.tsx` | ☑ |
 | L-1 | A case's status changes only along the transition table's edges, checked at both ends | `packages/base/test/cases/lifecycle.test.ts` + lint `house/no-case-status-assignment-outside-lifecycle` | ☑ |
 
+## Hardening
+
+| ID | Criterion | Test | Status |
+|---|---|---|---|
+| H-1 | Swagger (`/docs`, `/docs-json`) is an explicit opt-in: served only when `SWAGGER_ENABLED=true`; unset, blank or `false` (whatever `NODE_ENV` is) both answer 404; any other value stops the API at boot | `apps/api/test/hardening.e2e-spec.ts`, `apps/api/src/config/env.spec.ts` | ☑ |
+| H-2 | The backoffice `/api` proxy refuses a request body over 100 KiB with a 413 problem body and never calls the API: a declared Content-Length over the cap or not a number is refused before reading, a streamed body is cut off at the cap. A client body that stalls past the 15-second deadline is cancelled and answered 504 with a problem body. The backoffice env module throws if loaded in a browser, and lint stops it being imported outside route handlers and middleware | `apps/backoffice/test/api-route.test.ts`, `apps/backoffice/test/env-server-only.test.ts` + lint `house/no-server-env-in-client` (`packages/eslint-house/test/house-rules.test.ts`) | ☑ |
+| H-3 | The default rate limit is per signed-in staff member (300 a minute per route): one user's 301st request gets 429 while another user from the same address is served. Requests with no token or an unverifiable one count against the address, so forged tokens buy no fresh bucket and do not lock out signed-in staff. Sign-in stays per address even when the caller holds a session | `apps/api/test/hardening.e2e-spec.ts` | ☑ |
+
 ## Deferred (explicitly out of this release)
 
 Borrower app and borrower-side acceptance; information requests and document upload; OCR
