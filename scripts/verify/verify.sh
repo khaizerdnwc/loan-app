@@ -68,22 +68,11 @@ for s in "${STAGES[@]}"; do
 done
 wants() { case " ${STAGES[*]} " in *" $1 "*) return 0 ;; *) return 1 ;; esac }
 
-# Turbo filter: everything, or the packages changed since the base plus their dependents.
-# A change to root plumbing (lockfile, tsconfig.base, turbo.json) makes turbo treat every
-# package as changed, which is the safe answer.
-TURBO_FILTER=()
-if [ -n "$AFFECTED_BASE" ]; then
-  if git rev-parse --verify --quiet "$AFFECTED_BASE^{commit}" >/dev/null; then
-    TURBO_FILTER=(--filter="...[$AFFECTED_BASE]")
-    echo "verify: affected packages since $(git rev-parse --short "$AFFECTED_BASE")"
-  else
-    echo "verify: base $AFFECTED_BASE not found — running every package"
-  fi
-fi
-
 # --- helpers -------------------------------------------------------------------------
 SUMMARY=()
 CURRENT=""
+# Set to 1 only on the last line; never inherited from the environment.
+VERIFY_DONE=0
 STAGE_START=0
 
 step() { # <label> <command...> — echo, run, fail loudly
@@ -107,6 +96,11 @@ SERVICES_UP=0
 PIDS=()
 cleanup() {
   local code=$?
+  # Fail closed: a stage still marked as running did not finish, whatever $? says. Under
+  # bash 3.2 an error such as "unbound variable" can reach this trap with $? = 0.
+  if [ -n "$CURRENT" ] && [ "$code" = 0 ]; then code=1; fi
+  # And a run that never reached its last line did not pass, even outside a stage.
+  if [ "${VERIFY_DONE:-}" != 1 ] && [ "$code" = 0 ]; then code=1; fi
   for pid in "${PIDS[@]:-}"; do
     [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1 || true
   done
@@ -124,6 +118,23 @@ cleanup() {
 }
 trap cleanup EXIT
 trap 'exit 130' INT TERM
+
+# After the trap: everything from here on, including git, exits through cleanup().
+# Turbo filter: everything, or the packages changed since the base plus their dependents.
+# Expanded as ${TURBO_FILTER[@]+"${TURBO_FILTER[@]}"}: bash 3.2 (macOS) treats an empty
+# "${array[@]}" as unbound under `set -u`.
+# A change to root plumbing (lockfile, tsconfig.base, turbo.json) makes turbo treat every
+# package as changed, which is the safe answer.
+TURBO_FILTER=()
+if [ -n "$AFFECTED_BASE" ]; then
+  if git rev-parse --verify --quiet "$AFFECTED_BASE^{commit}" >/dev/null; then
+    TURBO_FILTER=(--filter="...[$AFFECTED_BASE]")
+    echo "verify: affected packages since $(git rev-parse --short "$AFFECTED_BASE")"
+  else
+    echo "verify: base $AFFECTED_BASE not found — running every package"
+  fi
+fi
+
 
 docker_ok() {
   if ! command -v docker >/dev/null 2>&1; then
@@ -189,15 +200,15 @@ stage_static() {
   stage_begin static
   step "house:check (house checks + lessons ledgers)" pnpm house:check
   step "dependency rules (dependency-cruiser)" pnpm deps:check
-  step "typecheck" pnpm exec turbo run typecheck "${TURBO_FILTER[@]}"
+  step "typecheck" pnpm exec turbo run typecheck ${TURBO_FILTER[@]+"${TURBO_FILTER[@]}"}
   step "biome" pnpm exec biome check .
-  step "eslint (house rules + plugins)" pnpm exec turbo run lint "${TURBO_FILTER[@]}"
+  step "eslint (house rules + plugins)" pnpm exec turbo run lint ${TURBO_FILTER[@]+"${TURBO_FILTER[@]}"}
   stage_end
 }
 
 stage_unit() {
   stage_begin unit
-  step "unit tests" pnpm exec turbo run test "${TURBO_FILTER[@]}"
+  step "unit tests" pnpm exec turbo run test ${TURBO_FILTER[@]+"${TURBO_FILTER[@]}"}
   stage_end
 }
 
@@ -309,3 +320,6 @@ fi
 for s in "${ALL_STAGES[@]}"; do
   if wants "$s"; then "stage_$s"; fi
 done
+
+# Reached only when every wanted stage passed; cleanup() refuses success without it.
+VERIFY_DONE=1
