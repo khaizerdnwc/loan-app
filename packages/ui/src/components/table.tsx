@@ -4,7 +4,7 @@ import { cn } from "../lib/cn";
 export interface Column<T> {
   key: string;
   header: string;
-  /** Right-align (amounts, counts). */
+  /** Right-align with tabular figures (amounts, counts), in the body font. */
   numeric?: boolean;
   render: (row: T) => ReactNode;
 }
@@ -53,7 +53,7 @@ export function Table<T>({ caption, columns, rows, rowKey, empty, footer }: Tabl
               {columns.map((c) => (
                 <td
                   key={c.key}
-                  className={cn("px-4 py-3 align-middle", c.numeric && "text-right font-mono")}
+                  className={cn("px-4 py-3 align-middle", c.numeric && "text-right tabular-nums")}
                 >
                   {c.render(row)}
                 </td>

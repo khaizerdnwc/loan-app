@@ -1,7 +1,8 @@
 "use client";
 
-import type { CaseSummary } from "@loan/core";
+import { type CaseSummary, productLabel } from "@loan/core";
 import {
+  Avatar,
   type Column,
   formatDateTime,
   formatPeso,
@@ -18,16 +19,24 @@ const COLUMNS: Column<CaseSummary>[] = [
     key: "applicant",
     header: "Applicant",
     render: (c) => (
-      <div>
-        <Link
-          href={`/cases/${c.id}`}
-          className="font-semibold text-ink-900 underline-offset-2 hover:underline"
-        >
-          {c.applicantName}
-        </Link>
-        <p className="font-mono text-xs text-mist-500">{c.reference}</p>
+      <div className="flex items-center gap-2.5">
+        <Avatar name={c.applicantName} />
+        <div>
+          <Link
+            href={`/cases/${c.id}`}
+            className="font-bold text-ink-900 underline-offset-2 hover:underline"
+          >
+            {c.applicantName}
+          </Link>
+          <p className="font-mono text-xs text-mist-500">{c.reference}</p>
+        </div>
       </div>
     ),
+  },
+  {
+    key: "product",
+    header: "Product",
+    render: (c) => <span>{productLabel(c.productCode)}</span>,
   },
   {
     key: "amount",
@@ -35,7 +44,7 @@ const COLUMNS: Column<CaseSummary>[] = [
     numeric: true,
     render: (c) => (
       <div>
-        {formatPeso(c.requestedAmount)}
+        <span className="font-bold text-ink-900">{formatPeso(c.requestedAmount)}</span>
         <p className="text-xs text-mist-500">{c.requestedTenorMonths} months</p>
       </div>
     ),

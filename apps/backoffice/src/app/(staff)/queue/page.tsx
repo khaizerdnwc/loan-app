@@ -1,13 +1,13 @@
 "use client";
 
 import type { CaseList, Role } from "@loan/core";
-import { buttonClass } from "@loan/ui";
+import { buttonClass, Icon } from "@loan/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
-import { CaseTable } from "@/components/case-table";
 import { LoadState } from "@/components/load-state";
+import { QueueBody, type StageFilter } from "@/components/queue-body";
 import { landingFor } from "@/lib/navigation";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
@@ -42,6 +42,7 @@ const COPY: Partial<Record<Role, { title: string; description: string; empty: st
 export default function QueuePage() {
   const me = useSession();
   const router = useRouter();
+  const [stage, setStage] = useState<StageFilter>("ALL");
   const hasQueue = landingFor(me.role) === "/queue";
   const queue = useApi<CaseList>(hasQueue ? "/cases?view=queue" : null);
   // Roles without a queue (admin, compliance) land on their own screen instead.
@@ -60,6 +61,7 @@ export default function QueuePage() {
         actions={
           me.role === "LOAN_OFFICER" ? (
             <Link href="/cases/new" className={buttonClass("accent")}>
+              <Icon name="plus" className="size-4" />
               New application
             </Link>
           ) : undefined
@@ -70,7 +72,15 @@ export default function QueuePage() {
         error={queue.error}
         onRetry={queue.reload}
       />
-      {queue.data && <CaseTable cases={queue.data.items} empty={copy.empty} />}
+      {queue.data && (
+        <QueueBody
+          staffRole={me.role}
+          items={queue.data.items}
+          stage={stage}
+          onStage={setStage}
+          empty={copy.empty}
+        />
+      )}
     </>
   );
 }

@@ -12,6 +12,8 @@ const config: NextConfig = {
   // The shared component package ships TypeScript source; @loan/core is a compiled build.
   transpilePackages: ["@loan/ui"],
   poweredByHeader: false,
+  // The dev-mode badge covers the sidebar footer during demos.
+  devIndicators: false,
   reactStrictMode: true,
   async headers() {
     return [{ source: "/:path*", headers: SECURITY_HEADERS }];

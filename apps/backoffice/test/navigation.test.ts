@@ -1,5 +1,5 @@
 import type { Role } from "@loan/core";
-import { landingFor, navFor } from "@/lib/navigation";
+import { breadcrumbFor, landingFor, navFor, pageIconFor } from "@/lib/navigation";
 
 describe("where each role lands and what its sidebar offers", () => {
   it.each([
@@ -23,5 +23,44 @@ describe("where each role lands and what its sidebar offers", () => {
   it("admin has no case screens and compliance has no queue", () => {
     expect(hrefs("ADMIN")).toEqual(["/simulation"]);
     expect(hrefs("COMPLIANCE")).toEqual(["/cases", "/simulation"]);
+  });
+});
+
+describe("breadcrumb and page icons", () => {
+  it.each([
+    ["LOAN_OFFICER", "/queue", "My work", "Work queue", "inbox"],
+    ["LOAN_OFFICER", "/cases/new", "My work", "New application", "plus"],
+    ["LOAN_OFFICER", "/cases", "My work", "All applications", "file"],
+    ["APPROVER", "/queue", "My work", "Approvals", "check"],
+    ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],
+    ["ADMIN", "/simulation", "System", "Simulated services", "sliders"],
+  ] as [Role, string, string, string, string][])(
+    "%s on %s reads %s / %s with the %s icon",
+    (role, path, section, page, icon) => {
+      expect(breadcrumbFor(role, path)).toEqual({ section, page });
+      expect(pageIconFor(role, path)).toBe(icon);
+    },
+  );
+
+  it("a case page sits under All applications", () => {
+    expect(breadcrumbFor("APPROVER", "/cases/0b6d")).toEqual({
+      section: "All applications",
+      page: "Case",
+    });
+    expect(pageIconFor("APPROVER", "/cases/0b6d")).toBe("file");
+  });
+
+  it("every nav item has an icon", () => {
+    const roles: Role[] = [
+      "LOAN_OFFICER",
+      "APPROVER",
+      "LOAN_OPERATIONS",
+      "LOAN_OPERATIONS_SUPERVISOR",
+      "COMPLIANCE",
+      "ADMIN",
+    ];
+    for (const role of roles) {
+      for (const item of navFor(role).flatMap((g) => g.items)) expect(item.icon).toBeTruthy();
+    }
   });
 });

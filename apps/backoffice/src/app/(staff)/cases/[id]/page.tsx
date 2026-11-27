@@ -1,6 +1,11 @@
 "use client";
 
-import { type CaseDetail, DECLINE_REASON_LABEL, OVERRIDE_REASON_LABEL } from "@loan/core";
+import {
+  type CaseDetail,
+  DECLINE_REASON_LABEL,
+  OVERRIDE_REASON_LABEL,
+  productLabel,
+} from "@loan/core";
 import {
   Button,
   Card,
@@ -48,7 +53,7 @@ export default function CasePage() {
           <p className="font-mono text-xs text-mist-500">Applications / {c.reference}</p>
           <h1 className="text-[32px] leading-tight font-extrabold">{c.applicant.fullName}</h1>
           <p className="mt-1 text-sm">
-            <strong className="text-ink-900">Personal loan</strong> ·{" "}
+            <strong className="text-ink-900">{productLabel(c.productCode)}</strong> ·{" "}
             {formatPeso(c.requestedAmount)} over {c.requestedTenorMonths} months · {c.purpose} ·
             created {formatDateTime(c.createdAt)}
           </p>

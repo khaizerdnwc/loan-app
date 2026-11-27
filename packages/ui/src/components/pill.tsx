@@ -1,4 +1,4 @@
-import type { CaseStatus, DecisionOutcome } from "@loan/core";
+import { type CaseStatus, type DecisionOutcome, STATUS_LABEL } from "@loan/core";
 import type { ReactNode } from "react";
 import { cn } from "../lib/cn";
 
@@ -25,22 +25,22 @@ export function Pill({ tone = "neutral", children }: { tone?: Tone; children: Re
   );
 }
 
-const STATUS: Record<CaseStatus, { label: string; tone: Tone }> = {
-  DRAFT: { label: "Draft", tone: "neutral" },
-  REVIEW: { label: "In review", tone: "warn" },
-  APPROVAL: { label: "Awaiting approval", tone: "warn" },
-  OFFER: { label: "Offer · awaiting signature", tone: "info" },
-  BOOKING: { label: "Ready to book", tone: "info" },
-  PENDING_CHECKER: { label: "Awaiting checker", tone: "warn" },
-  BOOKING_FAILED: { label: "Booking failed", tone: "bad" },
-  DISBURSED: { label: "Disbursed", tone: "ok" },
-  DECLINED: { label: "Declined", tone: "bad" },
+/** Each stage's colour; its wording is core's STATUS_LABEL (one source for every screen). */
+const STATUS_TONE: Record<CaseStatus, Tone> = {
+  DRAFT: "neutral",
+  REVIEW: "warn",
+  APPROVAL: "warn",
+  OFFER: "info",
+  BOOKING: "info",
+  PENDING_CHECKER: "warn",
+  BOOKING_FAILED: "bad",
+  DISBURSED: "ok",
+  DECLINED: "bad",
 };
 
 /** The case stage, in the one wording and colour used everywhere. */
 export function StagePill({ status }: { status: CaseStatus }) {
-  const s = STATUS[status];
-  return <Pill tone={s.tone}>{s.label}</Pill>;
+  return <Pill tone={STATUS_TONE[status]}>{STATUS_LABEL[status]}</Pill>;
 }
 
 const OUTCOME: Record<DecisionOutcome, { label: string; tone: Tone }> = {

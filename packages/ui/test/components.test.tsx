@@ -3,11 +3,17 @@ import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import { vi } from "vitest";
 import {
+  Avatar,
   Button,
   ConfirmDialog,
   Field,
+  GRADE_FILL,
   GradeTile,
+  ICON_NAMES,
+  Icon,
+  initials,
   OutcomePill,
+  SegmentedFilter,
   StageBar,
   StagePill,
   Table,
@@ -171,5 +177,92 @@ describe("Table", () => {
       <Table caption="Cases" columns={[]} rows={[]} rowKey={() => ""} empty="Queue is clear" />,
     );
     expect(screen.getByText("Queue is clear")).toBeInTheDocument();
+  });
+});
+
+describe("icons, avatars and grade tiles (prototype look)", () => {
+  it.each(ICON_NAMES)(
+    "the %s icon is a decorative 24px line drawing in the text colour",
+    (name) => {
+      const { container } = render(<Icon name={name} />);
+      const svg = container.querySelector("svg");
+      expect(svg).toHaveAttribute("aria-hidden", "true");
+      expect(svg).toHaveAttribute("viewBox", "0 0 24 24");
+      expect(svg).toHaveAttribute("stroke", "currentColor");
+      expect(svg).toHaveAttribute("stroke-width", "1.8");
+      expect(svg?.querySelectorAll("path").length).toBeGreaterThan(0);
+    },
+  );
+
+  it.each([
+    ["Joel Reyes", "JR"],
+    ["Maria Clara Santos", "MC"],
+    ["  leo  ", "L"],
+    ["Rina", "R"],
+  ])("initials of %j are %s", (name, expected) => {
+    expect(initials(name)).toBe(expected);
+  });
+
+  it("the avatar shows the initials and is hidden from screen readers", () => {
+    const { container } = render(<Avatar name="Paolo Tan" />);
+    const avatar = container.firstElementChild;
+    expect(avatar).toHaveTextContent("PT");
+    expect(avatar).toHaveAttribute("aria-hidden", "true");
+    expect(avatar?.className).toMatch(/bg-lav/);
+  });
+
+  it.each([
+    ["A", "bg-grade-a"],
+    ["B", "bg-grade-b"],
+    ["C", "bg-grade-c"],
+    ["D", "bg-grade-d"],
+    ["E", "bg-grade-e"],
+  ] as const)("grade %s is a solid %s tile with a white letter", (grade, fill) => {
+    render(<GradeTile grade={grade} />);
+    const tile = screen.getByRole("img", { name: `Grade ${grade}` });
+    expect(tile).toHaveTextContent(grade);
+    expect(tile).toHaveClass(fill, "text-white", "rounded-tile");
+  });
+
+  it("every grade has a different fill, and a missing grade is a neutral tile", () => {
+    expect(new Set(Object.values(GRADE_FILL)).size).toBe(5);
+    render(<GradeTile grade={null} />);
+    expect(screen.getByRole("img", { name: "No grade" })).toHaveTextContent("—");
+  });
+});
+
+function Filter({ onChange }: { onChange: (v: string) => void }) {
+  const [value, setValue] = useState("ALL");
+  return (
+    <SegmentedFilter
+      label="Filter by stage"
+      value={value}
+      onChange={(v) => {
+        setValue(v);
+        onChange(v);
+      }}
+      options={[
+        { value: "ALL", label: "All", count: 4 },
+        { value: "REVIEW", label: "In review", count: 3 },
+      ]}
+    />
+  );
+}
+
+describe("the segmented stage filter", () => {
+  it("is a named group of toggle buttons; the chosen one is pressed", async () => {
+    const onChange = vi.fn();
+    render(<Filter onChange={onChange} />);
+    const group = screen.getByRole("group", { name: "Filter by stage" });
+    expect(screen.queryByRole("tablist")).not.toBeInTheDocument();
+    const all = screen.getByRole("button", { name: /^All\s*4$/ });
+    const review = screen.getByRole("button", { name: /^In review\s*3$/ });
+    expect(group).toContainElement(review);
+    expect(all).toHaveAttribute("aria-pressed", "true");
+    expect(review).toHaveAttribute("aria-pressed", "false");
+    await userEvent.click(review);
+    expect(onChange).toHaveBeenCalledWith("REVIEW");
+    expect(review).toHaveAttribute("aria-pressed", "true");
+    expect(all).toHaveAttribute("aria-pressed", "false");
   });
 });

@@ -36,6 +36,9 @@ export const CaseStatus = {
 } as const;
 export type CaseStatus = (typeof CaseStatus)[keyof typeof CaseStatus];
 
+/** Every case status in lifecycle order (the declaration order above). */
+export const CASE_STATUSES: readonly CaseStatus[] = Object.values(CaseStatus);
+
 export const STATUS_LABEL: Record<CaseStatus, string> = {
   DRAFT: "Draft",
   REVIEW: "In review",
@@ -47,6 +50,14 @@ export const STATUS_LABEL: Record<CaseStatus, string> = {
   DISBURSED: "Disbursed",
   DECLINED: "Declined",
 };
+
+/** Product display names by product code (one product in this release). */
+export const PRODUCT_LABEL: Readonly<Record<string, string>> = { PL: "Personal loan" };
+
+/** A product's display name, or its code when the code is unknown. */
+export function productLabel(code: string): string {
+  return PRODUCT_LABEL[code] ?? code;
+}
 
 export const DecisionOutcome = {
   Approve: "AUTO_APPROVE",

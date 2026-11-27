@@ -1,7 +1,16 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { ApplicantView, CaseDetail, CreateCaseRequest } from "@loan/core";
+import {
+  type ApplicantView,
+  type CaseDetail,
+  type CreateCaseRequest,
+  productLabel,
+} from "@loan/core";
+
+/** The one product this release captures. */
+const PRODUCT_CODE = "PL";
+
 import { Button, Card, ConfirmDialog, Field, formatPeso, inputClass, useToast } from "@loan/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -90,7 +99,7 @@ export default function NewApplicationPage() {
     <>
       <PageHeader
         title="New application"
-        description="Personal loan for a seeded applicant. Submitting runs the identity and sanctions checks, the credit bureau pull and the decision rules."
+        description={`${productLabel(PRODUCT_CODE)} for a seeded applicant. Submitting runs the identity and sanctions checks, the credit bureau pull and the decision rules.`}
       />
       <LoadState
         loading={applicants.loading && !applicants.data}
@@ -138,7 +147,10 @@ export default function NewApplicationPage() {
                 </dl>
               )}
             </Card>
-            <Card title="2 · Loan request" aside="Personal loan (PL)">
+            <Card
+              title="2 · Loan request"
+              aside={`${productLabel(PRODUCT_CODE)} (${PRODUCT_CODE})`}
+            >
               <div className="grid gap-4 sm:grid-cols-2">
                 <Field
                   label="Amount (pesos)"

@@ -46,6 +46,15 @@
   --color-bad-100: #f8d8da;
   --color-bad-050: #fcecee;
 
+  /* Grade tiles: the prototype's solid fills with a white letter. B, C and D are darkened
+     from #4f8f63 / #be7320 / #c4602f (3.9, 3.7, 4.2:1) so white 14px text meets AA:
+     A 5.0, B 4.56, C 4.73, D 4.55, E 6.2 :1. */
+  --color-grade-a: #2e7d5b;
+  --color-grade-b: #47825a;
+  --color-grade-c: #a5641b;
+  --color-grade-d: #ba5b2c;
+  --color-grade-e: #b23138;
+
   --color-info-700: #435289;
   --color-info-100: #dee3f3;
   --color-info-050: #eef1f9;
@@ -57,6 +66,10 @@
 
   --radius-card: 14px;
   --radius-btn: 12px;
+  /* Sidebar links (10px), segmented filter buttons (9px), avatar and grade tiles (8px). */
+  --radius-nav: 10px;
+  --radius-tab: 9px;
+  --radius-tile: 8px;
 
   --shadow-card: 0 1px 2px rgba(30, 30, 41, 0.04);
   --shadow-modal: 0 24px 48px rgba(30, 30, 41, 0.18);
@@ -77,7 +90,13 @@ h3 {
   color: var(--color-ink-900);
 }
 
+/* gold-700 on the light surfaces (5.7:1 on white, 5.3:1 on mist-050; gold-500 was 2.8:1),
+   gold-500 inside the dark sidebar (4.8:1 on ink-800), both above the 3:1 non-text minimum. */
 :focus-visible {
-  outline: 2px solid var(--color-gold-500);
+  outline: 2px solid var(--color-gold-700);
   outline-offset: 2px;
+}
+
+[data-surface="dark"] :focus-visible {
+  outline-color: var(--color-gold-500);
 }
