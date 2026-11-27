@@ -1,5 +1,14 @@
 import { expect, test } from "@playwright/test";
-import { act, caseHeader, dialog, history, openCase, signIn, submitApplication } from "./support";
+import {
+  act,
+  caseHeader,
+  dialog,
+  history,
+  openCase,
+  signIn,
+  signInWithForm,
+  submitApplication,
+} from "./support";
 
 /**
  * F6 and CMP-005 in the browser (ACCEPTANCE CMP-1..CMP-5): a sanctions knockout reaches
@@ -116,7 +125,9 @@ test("CMP-4/CMP-5 a match before disbursement holds the booking until Compliance
 });
 
 test("AUD-1/AUD-7 the administrator finds their own sign-in in the audit log", async ({ page }) => {
-  await signIn(page, "leo");
+  // Through the form: the journey asserts on the sign-in event this writes (a reused session
+  // writes none).
+  await signInWithForm(page, "leo");
   await page.getByRole("link", { name: "Audit log" }).click();
   await page.getByLabel("Action").selectOption("SIGN_IN_SUCCEEDED");
   await page.getByRole("button", { name: "Search", exact: true }).click();

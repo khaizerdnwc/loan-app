@@ -105,5 +105,7 @@ test("RPT-1/RPT-2/RPT-4 the reports show counts for a period; Compliance reads t
   await signIn(page, "marco");
   await expect(page.getByRole("link", { name: "Origination funnel" })).toHaveCount(0);
   await page.goto("/reports/funnel");
-  await expect(page.getByRole("alert")).toContainText("Your role cannot do this.");
+  await expect(
+    page.getByRole("alert").filter({ hasText: "Your role cannot do this." }),
+  ).toBeVisible();
 });

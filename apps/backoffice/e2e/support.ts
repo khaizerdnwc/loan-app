@@ -1,4 +1,8 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import type { Role } from "@loan/core";
+import { type BrowserContext, expect, type Locator, type Page } from "@playwright/test";
+import { landingFor } from "../src/lib/navigation";
+
+type Cookie = Awaited<ReturnType<BrowserContext["cookies"]>>[number];
 
 /**
  * Each journey uses its own seeded applicant (one open application per applicant, INT-007).
@@ -25,14 +29,69 @@ export type Persona = keyof typeof PERSONA;
 /** The one seeded test password (packages/base/src/seed/seed.ts, docs/TEST-ACCOUNTS.md). */
 export const TEST_PASSWORD = "Password123!";
 
-/** Sign in with a test account's username and the test password; waits for the landing screen. */
-export async function signIn(page: Page, persona: Persona): Promise<void> {
+/** Each persona's role (packages/base/src/seed/seed.ts), for its landing screen. */
+const ROLE: Record<Persona, Role> = {
+  paolo: "LOAN_OFFICER",
+  rina: "APPROVER",
+  ben: "APPROVER",
+  marco: "LOAN_OPERATIONS",
+  ella: "LOAN_OPERATIONS_SUPERVISOR",
+  lito: "LOAN_OPERATIONS_SUPERVISOR",
+  diane: "COMPLIANCE",
+  leo: "ADMIN",
+  celia: "ADMIN",
+};
+
+/**
+ * Each persona's session cookie after its first sign-in in this worker. The API allows 60
+ * sign-ins a minute per address (SIGN_IN_LIMITS.perSource), and the whole suite runs from one
+ * address, so journeys reuse a persona's session instead of signing in again each time.
+ * sign-in.spec and sign-out.spec still sign in through the form (`signInWithForm`).
+ */
+const sessions = new Map<Persona, Cookie[]>();
+
+/** Drop a persona's cached session (after it signs out), so the next journey signs in again. */
+export function forgetSession(persona: Persona): void {
+  sessions.delete(persona);
+}
+
+/** Sign in through the sign-in form, every time; waits for the landing screen. */
+export async function signInWithForm(page: Page, persona: Persona): Promise<void> {
+  await page.context().clearCookies();
   await page.goto("/sign-in");
   await page.getByRole("textbox", { name: "Username" }).fill(persona);
   await page.getByLabel("Password", { exact: true }).fill(TEST_PASSWORD);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/sign-in/);
   await expect(page.getByRole("button", { name: "Sign out" })).toBeVisible();
+  sessions.set(persona, await page.context().cookies());
+}
+
+/**
+ * Be signed in as a persona on its landing screen: the first time through the form, then by
+ * putting that session's cookie back in the browser (no new sign-in). A session the API no
+ * longer accepts falls back to the form.
+ */
+export async function signIn(page: Page, persona: Persona): Promise<void> {
+  const cached = sessions.get(persona);
+  if (!cached) {
+    await signInWithForm(page, persona);
+    return;
+  }
+  await page.context().clearCookies();
+  await page.context().addCookies(cached);
+  await page.goto(landingFor(ROLE[persona]));
+  const signOut = page.getByRole("button", { name: "Sign out" });
+  const ok = await signOut
+    .waitFor({ state: "visible", timeout: 10_000 })
+    .then(() => !/\/sign-in/.test(page.url()))
+    .catch(() => false);
+  if (!ok) {
+    sessions.delete(persona);
+    await signInWithForm(page, persona);
+    return;
+  }
+  await expect(page.getByText(PERSONA[persona]).first()).toBeVisible();
 }
 
 /** The open dialog. */
