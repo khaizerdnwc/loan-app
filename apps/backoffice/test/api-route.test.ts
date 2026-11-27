@@ -62,6 +62,11 @@ describe("the /api/* proxy", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("forwards provider usage and decision latency (PR-4, PR-5)", async () => {
+    await call(GET, ["providers", "usage"]);
+    expect(sent().url).toBe(`${API}/providers/usage`);
+  });
+
   it("forwards the automation controls (AU-1)", async () => {
     await call(GET, ["automation", "PL", "history"]);
     expect(sent().url).toBe(`${API}/automation/PL/history`);

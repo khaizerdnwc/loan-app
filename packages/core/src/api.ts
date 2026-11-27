@@ -120,6 +120,12 @@ export interface DecisionRecordView {
   killSwitch: boolean;
   /** What the rules and score decided, before the mode applied (`outcome` is what the case did). */
   engineOutcome: DecisionOutcome;
+  /** 12-month probability of default for the grade (decimal string); null before SC-PL-2 or without a grade. */
+  pd: string | null;
+  /** The largest affordable amount up to the one requested; null before RS-PL-3 or without a grade. */
+  recommendedAmount: string | null;
+  /** Milliseconds from gathering the inputs to writing this record; null on older records. */
+  latencyMs: number | null;
 }
 
 export interface ReproduceResult {

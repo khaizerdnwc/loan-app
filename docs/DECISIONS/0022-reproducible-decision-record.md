@@ -70,3 +70,17 @@ which point rule sets would be stored as published, immutable data.
   fraud triggers through optional rule-set fields; RS-PL-1 has none of them and still replays
   every record made under it (ACCEPTANCE D-14, TR-2). A rule set refuses a snapshot that lacks
   an input it needs, instead of guessing it.
+
+## Amendment — estimates, bureau reuse and latency (28 Nov 2026)
+
+- **PD and the recommended amount are versioned results.** SC-PL-2 adds a PD per grade and
+  RS-PL-3 a recommended amount; both are stored on the record and compared by reproduce.
+  Earlier versions produce neither, so their records replay as stored (D-14, D-15), and eleven
+  RS-PL-3 decisions are frozen (D-17).
+- **Where the bureau report came from is in the snapshot.** From RS-PL-3 on, the bureau input
+  carries `retrievedAt` and `fromCache` (a report reused within 30 days); the engine ignores
+  them, the hash covers them.
+- **Latency is a measurement, not a result.** `latency_ms` is stored on the record and never
+  compared by reproduce. Rolling the migration back drops it, and the estimates, from records
+  made since: forward-only, as with RS-PL-2.
+

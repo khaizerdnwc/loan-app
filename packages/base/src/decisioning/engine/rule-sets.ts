@@ -40,6 +40,13 @@ export interface RuleSet {
    * is a new rule-set version, like any rule.
    */
   automationModes?: boolean;
+  /**
+   * The recommended (affordable) amount (PRD AIS-001): existing obligations plus the new
+   * loan's average monthly instalment (principal + add-on interest, ÷ tenor) within
+   * `maxDebtServiceRatio` of income, rounded down to `roundDownTo` pesos. The schedule's last
+   * instalment absorbs rounding (ADR 0019) and may exceed the average by a few centavos.
+   */
+  recommendedAmount?: { maxDebtServiceRatio: string; roundDownTo: number };
 }
 
 const RS_PL_1: RuleSet = {
@@ -55,20 +62,28 @@ const RS_PL_1: RuleSet = {
   monthlyRate: { A: "0.0120", B: "0.0140", C: "0.0160", D: "0.0180", E: "0.0200" },
 };
 
+/** RS-PL-1 plus the income-mismatch, fraud and related-party referral triggers. */
+const RS_PL_2: RuleSet = {
+  ...RS_PL_1,
+  version: "RS-PL-2",
+  incomeMismatchTolerance: "0.15",
+  fraudCheck: true,
+  relatedPartyReferral: true,
+  automationModes: true,
+};
+
 export const RULE_SETS: Readonly<Record<string, RuleSet>> = {
   "RS-PL-1": RS_PL_1,
-  /** RS-PL-1 plus the income-mismatch, fraud and related-party referral triggers. */
-  "RS-PL-2": {
-    ...RS_PL_1,
-    version: "RS-PL-2",
-    incomeMismatchTolerance: "0.15",
-    fraudCheck: true,
-    relatedPartyReferral: true,
-    automationModes: true,
+  "RS-PL-2": RS_PL_2,
+  /** RS-PL-2 plus a recommended amount (PRD AIS-001); every rule and trigger is unchanged. */
+  "RS-PL-3": {
+    ...RS_PL_2,
+    version: "RS-PL-3",
+    recommendedAmount: { maxDebtServiceRatio: "0.50", roundDownTo: 1000 },
   },
 };
 
-export const CURRENT_RULE_SET = "RS-PL-2";
+export const CURRENT_RULE_SET = "RS-PL-3";
 
 export function ruleSet(version: string): RuleSet {
   const rs = RULE_SETS[version];

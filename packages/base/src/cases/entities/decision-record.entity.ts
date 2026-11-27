@@ -1,5 +1,6 @@
-import type { AutomationMode, DecisionOutcome, Grade, ProviderMode } from "@loan/core";
+import type { AutomationMode, DecisionOutcome, Grade, Money, ProviderMode } from "@loan/core";
 import { Check, Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import { moneyColumn } from "../../database/money.transformer";
 import type {
   DecisionInputs,
   ReasonCode,
@@ -14,6 +15,8 @@ import type {
  */
 @Entity({ name: "decision_record" })
 @Index(["caseId"])
+/** The latency and decision-mix windows read by date (`GET /decisions/latency`). */
+@Index("IDX_decision_record_created", ["createdAt"])
 /** Only RS-PL-1 records (made before automation modes) may lack the engine's outcome. */
 @Check(
   "CHK_decision_record_engine_outcome",
@@ -89,6 +92,21 @@ export class DecisionRecordEntity {
    */
   @Column({ name: "engine_outcome", type: "varchar", length: 20, nullable: true })
   engineOutcome!: DecisionOutcome | null;
+
+  /** 12-month probability of default for the grade (SC-PL-2 on); null before or without a grade. */
+  @Column({ type: "varchar", length: 10, nullable: true })
+  pd!: string | null;
+
+  /** The largest affordable amount up to the one requested (RS-PL-3 on); null before. */
+  @Column(moneyColumn({ name: "recommended_amount", nullable: true }))
+  recommendedAmount!: Money | null;
+
+  /**
+   * Milliseconds from gathering the inputs to writing this record (PRD NFR-003). A
+   * measurement, not part of the decision: reproduce ignores it. Null on older records.
+   */
+  @Column({ name: "latency_ms", type: "integer", nullable: true })
+  latencyMs!: number | null;
 
   @Column({ name: "decided_by", type: "varchar", length: 40 })
   decidedBy!: string;

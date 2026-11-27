@@ -32,6 +32,9 @@ import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
 import { OperationsController } from "./operations/operations.controller";
 import { OperationsRepository } from "./operations/operations.repository";
 import { OperationsService } from "./operations/operations.service";
+import { ProviderGateway } from "./providers/provider-gateway.service";
+import { ProvidersController } from "./providers/providers.controller";
+import { ProvidersRepository } from "./providers/providers.repository";
 import { ReportsController } from "./reports/reports.controller";
 import { ReportsRepository } from "./reports/reports.repository";
 import { ReportsService } from "./reports/reports.service";
@@ -69,6 +72,7 @@ export class LendingModule {
         AutomationController,
         OperationsController,
         ReportsController,
+        ProvidersController,
       ],
       providers: [
         { provide: LENDING_OPTIONS, useValue: options },
@@ -93,6 +97,8 @@ export class LendingModule {
         OperationsService,
         ReportsRepository,
         ReportsService,
+        ProvidersRepository,
+        ProviderGateway,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
       exports: [SessionGuard, JwtModule, ExpiryService],

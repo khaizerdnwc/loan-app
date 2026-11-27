@@ -22,6 +22,18 @@ const schema = z
      */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
     /**
+     * The decision's provider calls (bureau, KYC/AML, fraud; PRD IH-003, IH-005): attempts per
+     * call (1 = no retry), the backoff base (0 = retry at once), the failed calls that open a
+     * service's circuit, how long it stays open (0 = every next call is a trial, so nothing is
+     * ever skipped), and the days a bureau report is reused (0 = never reuse). Keep attempts ×
+     * (provider timeout + backoff) well under the 60 s decision target (docs/DEPLOY.md).
+     */
+    PROVIDER_RETRY_ATTEMPTS: z.coerce.number().int().min(1).max(5).default(3),
+    PROVIDER_RETRY_BASE_MS: z.coerce.number().int().min(0).max(10_000).default(200),
+    PROVIDER_CIRCUIT_THRESHOLD: z.coerce.number().int().min(1).max(100).default(5),
+    PROVIDER_CIRCUIT_OPEN_MS: z.coerce.number().int().min(0).max(3_600_000).default(30_000),
+    BUREAU_CACHE_DAYS: z.coerce.number().int().min(0).max(90).default(30),
+    /**
      * Seconds between expiry sweeps (stale drafts and unsigned offers → EXPIRED, PRD INT-003).
      * 0 turns the sweep off (tests and the gate run it by hand).
      */

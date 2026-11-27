@@ -29,8 +29,11 @@ describe("F1 — Maria Santos, auto-approved ₱150,000 over 24 months", () => {
     const record = (await h.as("paolo").get(`/cases/${c.id}/decision`).expect(200))
       .body as DecisionRecordView;
     expect(record).toMatchObject({
-      ruleSetVersion: "RS-PL-2",
-      scorecardVersion: "SC-PL-1",
+      ruleSetVersion: "RS-PL-3",
+      scorecardVersion: "SC-PL-2",
+      // AIS-001: the grade A PD and the affordable amount (her ₱150,000 request).
+      pd: "0.0080",
+      recommendedAmount: "150000.00",
       providerMode: "SIMULATED",
       outcome: "AUTO_APPROVE",
       automationMode: "LIVE",

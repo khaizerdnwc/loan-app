@@ -1,15 +1,6 @@
-import {
-  type ApplicantIdentity,
-  CREDIT_BUREAU,
-  type CreditBureau,
-  FRAUD_CHECK,
-  type FraudCheck,
-  isProviderUnavailable,
-  KYC_AML,
-  type KycAml,
-} from "@loan/contracts";
-import type { ReproduceResult } from "@loan/core";
-import { Inject, Injectable } from "@nestjs/common";
+import { type ApplicantIdentity, isProviderUnavailable } from "@loan/contracts";
+import { Money, type ReproduceResult } from "@loan/core";
+import { Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
 import { AutomationService } from "../automation/automation.service";
 import {
@@ -21,6 +12,7 @@ import {
   decide,
   hashInputs,
 } from "../decisioning/engine";
+import { ProviderGateway } from "../providers/provider-gateway.service";
 import { CasesRepository } from "./cases.repository";
 import type { DecisionRecordEntity } from "./entities/decision-record.entity";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
@@ -34,21 +26,14 @@ import type { LoanCaseEntity } from "./entities/loan-case.entity";
  */
 @Injectable()
 export class DecisionService {
+  /** When each snapshot's gathering started, for the record's latency (NFR-003). */
+  private readonly started = new WeakMap<DecisionInputs, number>();
+
   constructor(
-    @Inject(CREDIT_BUREAU) private readonly bureau: CreditBureau,
-    @Inject(KYC_AML) private readonly kycAml: KycAml,
-    @Inject(FRAUD_CHECK) private readonly fraud: FraudCheck,
+    private readonly providers: ProviderGateway,
     private readonly repo: CasesRepository,
     private readonly automation: AutomationService,
-  ) {
-    // A decision record holds one provider mode; mixing a real and a simulated provider
-    // would make it ambiguous, so that wiring is refused at boot.
-    if (bureau.mode !== kycAml.mode || bureau.mode !== fraud.mode) {
-      throw new Error(
-        `Credit bureau (${bureau.mode}), KYC/AML (${kycAml.mode}) and fraud check (${fraud.mode}) must run in the same provider mode.`,
-      );
-    }
-  }
+  ) {}
 
   async gatherInputs(c: LoanCaseEntity, asOfDate: string): Promise<DecisionInputs> {
     const a = c.applicant;
@@ -58,8 +43,11 @@ export class DecisionService {
       birthDate: a.birthDate,
       governmentIdLast4: a.governmentIdLast4,
     };
+    const startedAt = Date.now();
+    // Through the provider gateway: bureau reuse, retry with backoff, circuit breaker and the
+    // per-call cost counter (PRD IH-003, IH-005, IH-006). A call that still fails is UNAVAILABLE.
     const [screening, bureau, fraud] = await Promise.all([
-      this.kycAml.screen(identity).then(
+      this.providers.screen(identity, c.id).then(
         (s) => ({
           status: "OK" as const,
           sanctionsMatch: s.sanctionsMatch,
@@ -67,9 +55,11 @@ export class DecisionService {
         }),
         (err: unknown) => unavailable(err),
       ),
-      this.bureau.pull(identity).then(
+      this.providers.pullBureau(identity, c.id).then(
         (b) => ({
           status: "OK" as const,
+          retrievedAt: b.retrievedAt,
+          fromCache: b.fromCache,
           fileDepth: b.fileDepth,
           bureauScore: b.bureauScore,
           tradeLines: b.tradeLines,
@@ -80,12 +70,12 @@ export class DecisionService {
         }),
         (err: unknown) => unavailable(err),
       ),
-      this.fraud.assess(identity).then(
+      this.providers.assessFraud(identity, c.id).then(
         (f) => ({ status: "OK" as const, flagged: f.flagged, signals: [...f.signals] }),
         (err: unknown) => unavailable(err),
       ),
     ]);
-    return {
+    const inputs: DecisionInputs = {
       asOfDate,
       application: {
         productCode: c.productCode,
@@ -105,6 +95,8 @@ export class DecisionService {
       bureau,
       fraud,
     };
+    this.started.set(inputs, startedAt);
+    return inputs;
   }
 
   /** Whether a stored decision was made while the bureau, screening or fraud check could not answer. */
@@ -160,9 +152,14 @@ export class DecisionService {
       referralTriggers: result.referralTriggers,
       debtToIncome: result.debtToIncome,
       monthlyRate: result.monthlyRate,
-      // Both input providers share one mode (checked at boot); swapping them for real ones
+      pd: result.pd,
+      recommendedAmount: result.recommendedAmount ? Money.of(result.recommendedAmount) : null,
+      // Not part of the decision: how long gathering and deciding took (null when the inputs
+      // did not come from gatherInputs).
+      latencyMs: latencyOf(this.started.get(gathered)),
+      // Every input provider shares one mode (checked at boot); swapping them for real ones
       // changes no line here (Engineering Standard 9).
-      providerMode: this.bureau.mode,
+      providerMode: this.providers.mode,
       automationMode: automation.mode,
       killSwitch: automation.killSwitch,
       engineOutcome: result.engineOutcome,
@@ -190,6 +187,8 @@ export class DecisionService {
       referralTriggers: record.referralTriggers,
       debtToIncome: record.debtToIncome,
       monthlyRate: record.monthlyRate,
+      pd: record.pd,
+      recommendedAmount: record.recommendedAmount?.toString() ?? null,
     };
     // A record from before automation modes has no engine outcome column: it ran live, so
     // its engine outcome is its outcome. Its mode columns hold the migration's LIVE backfill.
@@ -212,6 +211,10 @@ export class DecisionService {
       inputsHashMatches: hashInputs(record.inputs) === record.inputsHash,
     };
   }
+}
+
+function latencyOf(startedAt: number | undefined): number | null {
+  return startedAt === undefined ? null : Math.max(0, Date.now() - startedAt);
 }
 
 function unavailable(err: unknown): { status: "UNAVAILABLE"; reason: string } {

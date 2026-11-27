@@ -32,4 +32,5 @@ export { MIGRATIONS } from "./database/migrations";
 export { moneyColumn, moneyTransformer } from "./database/money.transformer";
 export * from "./decisioning/engine";
 export { LendingModule, type LendingModuleOptions } from "./lending.module";
+export { ProvidersRepository } from "./providers/providers.repository";
 export { SEED_APPLICANTS, SEED_STAFF, SEED_TEST_PASSWORD, seed } from "./seed/seed";

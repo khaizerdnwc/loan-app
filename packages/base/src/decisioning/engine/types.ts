@@ -50,6 +50,10 @@ export interface DecisionInputs {
   bureau:
     | {
         status: "OK";
+        /** When the bureau produced the report (ISO 8601); recorded from RS-PL-3 on. */
+        retrievedAt?: string;
+        /** True when a report pulled within the reuse window was used (PRD IH-005). */
+        fromCache?: boolean;
         fileDepth: "FULL" | "THIN" | "NO_HIT";
         bureauScore: number | null;
         tradeLines: number;
@@ -111,4 +115,14 @@ export interface DecisionResult {
   debtToIncome: string | null;
   /** Add-on monthly rate for the grade, when there is a grade. */
   monthlyRate: string | null;
+  /**
+   * 12-month probability of default for the grade (decimal string, "0.0300"), from scorecards
+   * that carry one (SC-PL-2 on); null otherwise or without a grade (PRD AIS-001).
+   */
+  pd: string | null;
+  /**
+   * The largest amount up to the one requested that stays affordable (rule sets with
+   * `recommendedAmount`, RS-PL-3 on); null otherwise or without a grade (PRD AIS-001).
+   */
+  recommendedAmount: string | null;
 }

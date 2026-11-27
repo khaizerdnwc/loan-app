@@ -6,7 +6,9 @@ import {
   Card,
   formatAmountsInText,
   formatMonthlyRate,
+  formatPeso,
   formatRatioPercent,
+  formatSeconds,
   GradeTile,
   OUTCOME_LABEL,
   OutcomePill,
@@ -66,8 +68,39 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
           <dd className="text-right text-ink-900">{formatRatioPercent(decision.debtToIncome)}</dd>
           <dt className="text-mist-500">Rate for grade</dt>
           <dd className="text-right text-ink-900">{formatMonthlyRate(decision.monthlyRate)}</dd>
+          {decision.pd && (
+            <>
+              <dt className="text-mist-500">
+                Probability of default, grade {decision.grade} (12 months)
+              </dt>
+              <dd className="text-right text-ink-900">{formatRatioPercent(decision.pd)}</dd>
+            </>
+          )}
+          {decision.recommendedAmount && (
+            <>
+              <dt className="text-mist-500">Affordable amount (engine)</dt>
+              <dd className="text-right text-ink-900">
+                {nothingAffordable(decision.recommendedAmount)
+                  ? "None"
+                  : formatPeso(decision.recommendedAmount)}
+              </dd>
+            </>
+          )}
+          {typeof decision.latencyMs === "number" && (
+            <>
+              <dt className="text-mist-500">Decided in</dt>
+              <dd className="text-right text-ink-900">{formatSeconds(decision.latencyMs)}</dd>
+            </>
+          )}
         </dl>
       </div>
+      {decision.recommendedAmount && (
+        <p className="mt-3 text-xs text-mist-500">
+          {nothingAffordable(decision.recommendedAmount)
+            ? `Nothing is affordable at this grade's rate within the debt-service limit of ${decision.ruleSetVersion}.`
+            : `Affordable amount: indicative, the most the applicant can repay, up to the amount asked, within the debt-service limit of ${decision.ruleSetVersion} at this grade's rate. Not an offer.`}
+        </p>
+      )}
 
       {(decision.automationMode !== "LIVE" || decision.killSwitch) && (
         <Callout
@@ -173,4 +206,10 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
       </div>
     </Card>
   );
+}
+
+/** The engine found no affordable amount ("0.00"): said in words, never shown as ₱0.00. */
+function nothingAffordable(amount: string): boolean {
+  // The API sends amounts as two-decimal strings (ADR 0019 R2), so zero is exactly "0.00".
+  return amount === "0.00";
 }
