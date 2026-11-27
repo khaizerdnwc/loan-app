@@ -76,12 +76,25 @@ The rules that came out of this, and the component list, are in
 | # | Screen | Difference | Status |
 |---|---|---|---|
 | 38 | AML escalations list | Prototype rows are plain (an action button per row); our rule is that a list of records the user opens has clickable rows. Ours: only the name opened it | **fixed** — rows open the escalation through the name link (`ROW_LINK`); the case reference stays its own link |
-| 39 | AML escalations list | The Open / All filter shows no counts (the Applications and queue filters do) and is not kept in the URL | **later** — counts need both lists from the API; the URL scope follows the All applications pattern |
+| 39 | AML escalations list | The Open / All filter showed no counts and was not kept in the URL | **fixed** — one list (`view=all`) gives both filters their counts (open = not closed, as the API filters); the choice is kept in the URL (`?view=all`), so Back restores it |
 | 40 | AML escalation detail | Its own crumb ("AML escalations / APP-…") showed beside the top bar's "Compliance / AML escalations" at any width | **fixed** — the top bar reads "Compliance / AML escalations (a link) / APP-…" for any detail page under a nav item; the header crumb shows only below 860px, like the case page |
 | 41 | AML escalation detail | "Open case APP-…" was an underlined text link beside the title | **fixed** — a secondary button, like the case page's "Decision record" |
 | 42 | Audit log | "What happened" showed server sentences with raw amounts ("₱20000.00") | **fixed** — through `formatAmountsInText` |
-| 43 | Audit log | Prototype: one free-text filter, rows open their case; ours: person, action, dates and case filters (richer, kept), case reference as a link | **kept** (filters); rows opening the case — **later** (rows without a case would need a non-clickable state per row) |
+| 43 | Audit log | Prototype: one free-text filter, rows open their case; ours: person, action, dates and case filters, case reference as a link | **kept** (filters); **fixed** — for Compliance, an entry about a visible case opens it from anywhere on its row; entries with no case (sign-ins, simulation changes) and every row for the administrator stay plain rows (new `Table rowClickable`) |
 | 44 | Audit log | Monospace on the action code under its label and on the case reference; the time is in the body font (prototype monospace) | **kept** — codes and references are identifiers |
+
+## Automation and documents (lanes C and A)
+
+| # | Screen | Difference | Status |
+|---|---|---|---|
+| 45 | Automation controls | The product's mode, effect and kill switch were a two-column list with labels on the left, unlike the facts block everywhere else | **fixed** — `KeyValues` (Mode, Kill switch) with the mode's effect as a sentence under it |
+| 46 | Automation controls | A blocked action's reason was muted grey; on the case it is the error colour under the button | **fixed** — the same `text-bad-700` reason under the button |
+| 47 | Automation controls | Dividers (history list, kill-switch section) used the card border weight | **fixed** — the soft divider (`line-soft`), as inside every card |
+| 48 | Decision panel automation banner | An info `Callout` with a bold lead ("Automation shadow: the engine's outcome was …") | matches the shared parts; no change. The prototype has no case-level equivalent (its automation controls live under Configuration › AI models) |
+| 49 | Documents card | Prototype `.doc` row: a small file tile ("PDF"), the name, the status pill on the right; ours had no tile and a full-strength divider | **fixed** — the lavender file tile ("PDF" once uploaded, a dash while requested) and the soft divider; the pill stays beside the name so the row's actions keep the right edge |
+| 50 | Documents card | Prototype header has an "All versions" ghost button opening the document repository | **later** — no document versions in this release |
+| 51 | Request information dialog | The "Documents" group's legend used its own bold style, unlike every form label | **fixed** — the one label style (small, uppercase, tracked), like `Field` |
+| 52 | Request information dialog | Prototype offers a free-text list of documents; ours checkboxes of the document types, due in 3 or 5 days | **kept** (typed documents feed the checklist) |
 
 ## States checked on every screen
 

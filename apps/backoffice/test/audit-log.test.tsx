@@ -118,6 +118,33 @@ describe("AuditLog (AUD-6, AUD-7)", () => {
     expect(screen.queryByLabelText("Case reference")).not.toBeInTheDocument();
   });
 
+  it("for Compliance, an entry about a case opens it from anywhere on its row; other rows stay plain", async () => {
+    stubApi([
+      {
+        items: [
+          entry({}),
+          entry({ seq: 6, caseId: null, caseReference: null, action: "SIGN_IN_FAILED" }),
+        ],
+        nextBefore: null,
+      },
+    ]);
+    render(<AuditLog canOpenCases />);
+    await screen.findByRole("table");
+    const [, caseRow, plainRow] = screen.getAllByRole("row") as HTMLElement[];
+    expect(caseRow).toHaveAttribute("data-clickable", "true");
+    expect(within(caseRow as HTMLElement).getByRole("link", { name: "APP-1001" })).toHaveAttribute(
+      "data-row-link",
+    );
+    expect(plainRow).not.toHaveAttribute("data-clickable");
+  });
+
+  it("for the administrator, no row opens a case", async () => {
+    stubApi([{ items: [entry({})], nextBefore: null }]);
+    render(<AuditLog canOpenCases={false} />);
+    await screen.findByRole("table");
+    expect(screen.getAllByRole("row")[1]).not.toHaveAttribute("data-clickable");
+  });
+
   it("shows the amounts in an entry's summary through formatPeso (U-2)", async () => {
     stubApi([
       {

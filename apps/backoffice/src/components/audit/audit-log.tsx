@@ -17,6 +17,7 @@ import {
   formatAmountsInText,
   formatDateTime,
   Input,
+  ROW_LINK,
   Select,
   Table,
 } from "@loan/ui";
@@ -72,6 +73,7 @@ function columns(canOpenCases: boolean): Column<AuditEventView>[] {
           <span className="text-xs text-mist-500">—</span>
         ) : canOpenCases && e.caseId ? (
           <Link
+            {...ROW_LINK}
             href={`/cases/${e.caseId}`}
             className="font-mono text-xs underline-offset-2 hover:underline"
           >
@@ -222,6 +224,10 @@ export function AuditLog({ canOpenCases }: { canOpenCases: boolean }) {
           rows={items}
           rowKey={(e) => String(e.seq)}
           empty="No entries match these filters."
+          // The prototype's audit rows open their case. Only Compliance may read cases, and only
+          // an entry about a visible case has one to open.
+          clickableRows={canOpenCases}
+          rowClickable={(e) => Boolean(e.caseId && !e.caseHidden && e.caseReference)}
         />
       )}
       {items && nextBefore !== null && (

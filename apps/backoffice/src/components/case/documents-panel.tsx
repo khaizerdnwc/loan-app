@@ -142,10 +142,17 @@ export function DocumentsPanel({
       {detail.documents.length === 0 ? (
         <EmptyState title="No documents requested yet." />
       ) : (
-        <ul className="flex flex-col divide-y divide-line" aria-label="Document checklist">
+        <ul className="flex flex-col divide-y divide-line-soft" aria-label="Document checklist">
           {detail.documents.map((doc) => (
-            <li key={doc.type} className="flex flex-wrap items-start justify-between gap-3 py-3">
-              <div className="min-w-0 text-sm">
+            <li key={doc.type} className="flex flex-wrap items-start gap-3 py-3">
+              {/* The prototype's .doc row: a small file tile, the document, its status. */}
+              <span
+                aria-hidden="true"
+                className="grid h-8 w-7 shrink-0 place-items-center rounded-nav bg-lav font-mono text-2xs font-bold text-ink-700"
+              >
+                {doc.upload ? "PDF" : "—"}
+              </span>
+              <div className="min-w-0 flex-1 text-sm">
                 <p className="flex flex-wrap items-center gap-2">
                   <span className="text-ink-900">{DOCUMENT_TYPE_LABEL[doc.type]}</span>
                   <Pill tone={STATUS_TONE[doc.status]}>{DOCUMENT_STATUS_LABEL[doc.status]}</Pill>

@@ -3,7 +3,8 @@
 import { type AmlEscalationView, SCREENING_STAGE_LABEL } from "@loan/core";
 import { type Column, formatDateTime, ROW_LINK, SegmentedFilter, Table } from "@loan/ui";
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { EscalationStatusPill } from "@/components/compliance/escalation-pills";
 import { LoadState } from "@/components/load-state";
@@ -53,13 +54,36 @@ const COLUMNS: Column<AmlEscalationView>[] = [
   },
 ];
 
+/** Open means not closed yet (open or acknowledged), as the API's `view=open` filters. */
+const isOpen = (e: AmlEscalationView) => e.status !== "CLOSED";
+
 /**
  * AML escalations (PRD CMP-005, F6): screening matches escalated from cases, at application
  * or before disbursement. Compliance opens one to acknowledge it and close it with notes.
+ * One list (`view=all`) gives both filters their counts; the choice lives in the URL
+ * (`?view=all`; none means open), so Back from an escalation restores it.
  */
 export default function EscalationsPage() {
-  const [view, setView] = useState<"open" | "all">("open");
-  const list = useApi<AmlEscalationView[]>(`/compliance/escalations?view=${view}`);
+  // useSearchParams needs a Suspense boundary in a statically rendered page.
+  return (
+    <Suspense fallback={null}>
+      <Escalations />
+    </Suspense>
+  );
+}
+
+function Escalations() {
+  const router = useRouter();
+  const view = useSearchParams().get("view") === "all" ? "all" : "open";
+  const setView = (next: "open" | "all") =>
+    router.replace(
+      next === "all" ? "/compliance/escalations?view=all" : "/compliance/escalations",
+      { scroll: false },
+    );
+  const list = useApi<AmlEscalationView[]>("/compliance/escalations?view=all");
+  const all = list.data ?? [];
+  const rows = view === "open" ? all.filter(isOpen) : all;
+  const counted = list.data !== null;
   return (
     <>
       <PageHeader
@@ -71,19 +95,22 @@ export default function EscalationsPage() {
           label="Which escalations"
           value={view}
           options={[
-            { value: "open", label: "Open" },
-            { value: "all", label: "All" },
+            {
+              value: "open" as const,
+              label: "Open",
+              count: counted ? all.filter(isOpen).length : undefined,
+            },
+            { value: "all" as const, label: "All", count: counted ? all.length : undefined },
           ]}
           onChange={setView}
         />
       </div>
-      <LoadState loading={list.loading} error={list.error} onRetry={list.reload} />
-      {/* Hidden while a new view loads, so Open rows never sit under "All". */}
-      {list.data && !list.loading && (
+      <LoadState loading={list.loading && !list.data} error={list.error} onRetry={list.reload} />
+      {list.data && (
         <Table
           caption="AML escalations"
           columns={COLUMNS}
-          rows={list.data}
+          rows={rows}
           rowKey={(e) => e.id}
           empty={view === "open" ? "No open escalations." : "No escalations yet."}
           clickableRows

@@ -24,6 +24,11 @@ export interface TableProps<T> {
    * path, and a click anywhere else in the row follows it.
    */
   clickableRows?: boolean;
+  /**
+   * With `clickableRows`, which rows open something: a row without a record to open (an audit
+   * entry with no case) stays a plain row, with no pointer and no hover.
+   */
+  rowClickable?: (row: T) => boolean;
 }
 
 /** Spread onto the one link in a row that the whole row should open: `<Link {...ROW_LINK}>`. */
@@ -59,6 +64,7 @@ export function Table<T>({
   empty,
   footer,
   clickableRows = false,
+  rowClickable,
 }: TableProps<T>) {
   if (rows.length === 0) {
     return (
@@ -88,27 +94,33 @@ export function Table<T>({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
-            <tr
-              key={rowKey(row)}
-              data-clickable={clickableRows || undefined}
-              onClick={clickableRows ? followRowLink : undefined}
-              className={cn(
-                "border-b border-line-soft last:border-b-0",
-                clickableRows &&
-                  "cursor-pointer transition-colors focus-within:bg-mist-050 hover:bg-mist-050",
-              )}
-            >
-              {columns.map((c) => (
-                <td
-                  key={c.key}
-                  className={cn("px-4 py-3.5 align-middle", c.numeric && "text-right tabular-nums")}
-                >
-                  {c.render(row)}
-                </td>
-              ))}
-            </tr>
-          ))}
+          {rows.map((row) => {
+            const clickable = clickableRows && (rowClickable?.(row) ?? true);
+            return (
+              <tr
+                key={rowKey(row)}
+                data-clickable={clickable || undefined}
+                onClick={clickable ? followRowLink : undefined}
+                className={cn(
+                  "border-b border-line-soft last:border-b-0",
+                  clickable &&
+                    "cursor-pointer transition-colors focus-within:bg-mist-050 hover:bg-mist-050",
+                )}
+              >
+                {columns.map((c) => (
+                  <td
+                    key={c.key}
+                    className={cn(
+                      "px-4 py-3.5 align-middle",
+                      c.numeric && "text-right tabular-nums",
+                    )}
+                  >
+                    {c.render(row)}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
         </tbody>
         {footer && (
           <tfoot className="border-t border-line bg-mist-050 font-semibold">{footer}</tfoot>
