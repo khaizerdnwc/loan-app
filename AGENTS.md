@@ -7,8 +7,10 @@ The canonical spec for every AI tool working in this repo. `CLAUDE.md` points he
 A web MVP that takes a WhiteBank personal loan from application through automated credit
 decision, referral review, approval within authority, and booking with disbursement into a
 simulated core banking system. Staff-facing only (no borrower app, no mobile). All data is
-synthetic; every external service is simulated in this repo. Scope, assumptions and
-deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
+synthetic; every external service is simulated in this repo. With the MVP done, work
+continues through the PRD backlog in `docs/PRD-COVERAGE.md` §2 (the list of what is built
+and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
+`docs/ASSUMPTIONS.md`, `docs/PRD-COVERAGE.md`.
 
 ## 2. Non-negotiables
 

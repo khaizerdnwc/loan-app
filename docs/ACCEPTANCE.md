@@ -103,8 +103,12 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 
 ## Deferred (explicitly out of this release)
 
-Borrower app and borrower-side acceptance; information requests and document upload; OCR
-and statement analysis; credit memo; credit committee and voting; collateral and home
-loans; collections; configuration screens (products, rules, bands); SLA timers and
-notifications; MFA/SSO; multi-tenancy; sandbox/live provider modes; real AML list
-screening; fees and disclosure statement (stretch).
+After the MVP, the build continues through the PRD backlog in `docs/PRD-COVERAGE.md` §2.
+That table is the one list of what is in this release: an item marked ✅ Done has its
+criteria above; every other item there is deferred, with its PRD IDs, size and reason.
+
+Out of reach under the challenge mechanics whatever the backlog reaches (§2, items 35–38):
+borrower app and borrower-side acceptance; SSO and reuse of WhiteBank identity; sandbox and
+live provider modes and real providers (including real AML list screening); models trained
+on real repayment outcomes; availability, RPO/RTO, data residency and third-party
+penetration testing.

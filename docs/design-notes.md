@@ -18,13 +18,17 @@ overrides, approval within amount-and-grade authority, simulated e-signature, bo
 disbursement with maker-checker and idempotency, full case history, and simulated bureau,
 KYC/AML, core banking, disbursement and e-signature behind ports.
 
-**Deferred (against the PRD)** — borrower app; information requests, documents, OCR and
-statement analysis; credit memo; credit committee; collateral and home loans; collections;
-configuration screens; SLA timers and notifications; MFA/SSO; multi-tenancy; sandbox and
-live provider modes; real AML list screening (the mechanics forbid real providers).
+**Beyond the MVP** — the build continues through the PRD backlog, ordered by value to the
+PRD's Phase 1 exit criteria (`docs/PRD-COVERAGE.md` §2). Items marked ✅ Done there are in
+this release with their own acceptance criteria; the rest are deferred with a reason.
+
+**Deferred (against the PRD)** — everything in that backlog not yet marked done, and
+always: the borrower app; SSO; sandbox and live provider modes and any real provider
+(including real AML list screening — the mechanics forbid real providers); models trained
+on real outcomes; production operations targets.
 
 **Success criteria** — every acceptance criterion in `docs/ACCEPTANCE.md` names a passing
-test (46 criteria, all ☑); the full gate is green on the pull request (security, static,
+test (all ☑); the full gate is green on the pull request (security, static,
 unit, integration on a fresh Postgres, build and Playwright) and `main` requires all five; F1, F2, an authority breach, a
 bureau outage and a failed-then-retried booking pass as browser journeys. Evidence today: 78
 API integration tests, 545 unit tests (API 332, domain 72, backoffice 78, UI 24, money 37,
