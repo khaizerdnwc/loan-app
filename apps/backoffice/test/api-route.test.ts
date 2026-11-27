@@ -1,7 +1,7 @@
 // @vitest-environment node
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GET, POST } from "@/app/api/[...path]/route";
+import { GET, MAX_REQUEST_BODY_BYTES, POST, UPSTREAM_TIMEOUT_MS } from "@/app/api/[...path]/route";
 import { resetEnvForTests } from "@/config/env";
 
 const API = "http://api.test:9000";
@@ -92,6 +92,108 @@ describe("the /api/* proxy", () => {
     });
     expect(sent().init).toMatchObject({ method: "POST", body: '{"amount":"150000.00"}' });
     expect(sent().init.headers.get("content-type")).toBe("application/json");
+  });
+
+  it("forwards a body of exactly the cap", async () => {
+    const body = "x".repeat(MAX_REQUEST_BODY_BYTES);
+    const res = await call(POST, ["cases"], { method: "POST", body });
+    expect(res.status).toBe(200);
+    expect(sent().init.body).toBe(body);
+  });
+
+  it("refuses a body over the cap with 413, without calling the API", async () => {
+    const res = await call(POST, ["cases"], {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: "x".repeat(MAX_REQUEST_BODY_BYTES + 1),
+    });
+    expect(res.status).toBe(413);
+    expect(res.headers.get("content-type")).toBe("application/problem+json");
+    expect(await res.json()).toMatchObject({ status: 413, code: "VALIDATION_FAILED" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a declared Content-Length over the cap before reading the body", async () => {
+    const res = await call(POST, ["cases"], {
+      method: "POST",
+      headers: { "content-length": String(MAX_REQUEST_BODY_BYTES + 1) },
+      body: "{}",
+    });
+    expect(res.status).toBe(413);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses a non-numeric Content-Length with 413, without calling the API", async () => {
+    const res = await call(POST, ["cases"], {
+      method: "POST",
+      headers: { "content-length": "abc" },
+      body: "{}",
+    });
+    expect(res.status).toBe(413);
+    expect(await res.json()).toMatchObject({ status: 413, code: "VALIDATION_FAILED" });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("answers 504 when the client's body stalls past the deadline, and cancels the read", async () => {
+    vi.useFakeTimers({ toFake: ["setTimeout", "clearTimeout"] });
+    try {
+      let cancelled = false;
+      const stalled = new ReadableStream<Uint8Array>({
+        start(controller) {
+          controller.enqueue(new TextEncoder().encode('{"amount":'));
+        },
+        pull: () => new Promise<void>(() => undefined), // never sends the rest
+        cancel() {
+          cancelled = true;
+        },
+      });
+      const request = new NextRequest("http://office.test/api/cases", {
+        method: "POST",
+        body: stalled,
+        duplex: "half",
+        // Node's fetch needs duplex for a stream body; Next's RequestInit type does not list it.
+      } as unknown as ConstructorParameters<typeof NextRequest>[1]);
+      let settled = false;
+      const pending = POST(request, { params: Promise.resolve({ path: ["cases"] }) }).finally(
+        () => {
+          settled = true;
+        },
+      );
+      await vi.advanceTimersByTimeAsync(UPSTREAM_TIMEOUT_MS - 1);
+      expect(settled).toBe(false);
+      await vi.advanceTimersByTimeAsync(1);
+      const res = await pending;
+      expect(res.status).toBe(504);
+      expect(res.headers.get("content-type")).toBe("application/problem+json");
+      expect(await res.json()).toMatchObject({ status: 504, code: "PROVIDER_UNAVAILABLE" });
+      expect(cancelled).toBe(true);
+      expect(fetchMock).not.toHaveBeenCalled();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("counts a streamed body with no Content-Length and stops at the cap", async () => {
+    let pulled = 0;
+    const chunk = new Uint8Array(16 * 1024);
+    const chunks = MAX_REQUEST_BODY_BYTES / chunk.byteLength + 20; // well past the cap
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        pulled++;
+        if (pulled > chunks) controller.close();
+        else controller.enqueue(chunk);
+      },
+    });
+    const request = new NextRequest("http://office.test/api/cases", {
+      method: "POST",
+      body: stream,
+      duplex: "half",
+      // Node's fetch needs duplex for a stream body; Next's RequestInit type does not list it.
+    } as unknown as ConstructorParameters<typeof NextRequest>[1]);
+    const res = await POST(request, { params: Promise.resolve({ path: ["cases"] }) });
+    expect(res.status).toBe(413);
+    expect(pulled).toBeLessThan(MAX_REQUEST_BODY_BYTES / chunk.byteLength + 4);
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 
   it("passes every Set-Cookie back and drops other upstream headers", async () => {

@@ -8,11 +8,12 @@ import {
 } from "@loan/base";
 import { Controller, Get, Module } from "@nestjs/common";
 import { APP_GUARD } from "@nestjs/core";
-import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
+import { ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SimulatedProvidersModule } from "./adapters/simulated/simulated-providers.module";
 import { env } from "./config/env";
 import { ExpirySweep } from "./expiry-sweep";
+import { SessionThrottlerGuard } from "./throttler.guard";
 
 @Controller("health")
 class HealthController {
@@ -35,7 +36,7 @@ class HealthController {
       useFactory: () => dataSourceOptions(env().DATABASE_URL, env().MIGRATE_ON_BOOT),
     }),
     ThrottlerModule.forRoot([
-      // Every route, per caller address.
+      // Every route: per signed-in staff member, else per caller address (throttler.guard.ts).
       { name: "default", ttl: 60_000, limit: 300 },
       // Sign-in only (@SignInRoute), per address + username: guessing one account's password
       // is capped, and one person's typos do not lock out the others behind the proxy.
@@ -60,7 +61,7 @@ class HealthController {
   ],
   controllers: [HealthController],
   providers: [
-    { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: SessionThrottlerGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
     ExpirySweep,
   ],

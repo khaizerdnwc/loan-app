@@ -1,7 +1,7 @@
 # API contract
 
 The NestJS API (apps/api, port 3101 in development). Request and response shapes are the
-types in `packages/core/src/api.ts`. Swagger UI is served at `/docs`. Every error is an
+types in `packages/core/src/api.ts`. Swagger UI is served at `/docs` only when `SWAGGER_ENABLED=true` (local development). Every error is an
 RFC 9457 problem body (`packages/core/src/problem.ts`) with a stable `code`.
 
 Duplicates: `POST /cases` answers 409 `DUPLICATE_APPLICATION` (naming the open case) when the applicant already has an open application for the product.

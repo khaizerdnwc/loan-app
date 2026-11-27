@@ -18,6 +18,12 @@ const ALLOWED_ROOTS = new Set([
 /** How long the API may take before the browser is told it is not answering. */
 export const UPSTREAM_TIMEOUT_MS = 15_000;
 
+/**
+ * The largest request body forwarded: the API's own JSON body limit (Express's 100 kB
+ * default), so an oversized body is refused here instead of being buffered and sent on.
+ */
+export const MAX_REQUEST_BODY_BYTES = 100 * 1024;
+
 const SESSION_COOKIE = "session";
 
 /**
@@ -47,16 +53,34 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
   if (session) headers.set("cookie", `${SESSION_COOKIE}=${session}`);
   const hasBody = !["GET", "HEAD"].includes(request.method);
 
-  // Reading the body is inside the try too: a body that stalls past the timeout is a 502,
-  // not a hung request. A client's x-forwarded-for is never passed on (it is client-chosen).
+  // One deadline covers the whole exchange: reading the client's body, then the API's answer.
+  // A client body that stalls past it is a 504; an API that does not answer in time is a 502.
+  // A client's x-forwarded-for is never passed on (it is client-chosen).
+  const deadline = new AbortController();
+  const timer = setTimeout(
+    () => deadline.abort(new DOMException("timed out", "TimeoutError")),
+    UPSTREAM_TIMEOUT_MS,
+  );
   try {
+    let requestBody: string | undefined;
+    try {
+      const read = hasBody
+        ? await readCapped(request, MAX_REQUEST_BODY_BYTES, deadline.signal)
+        : undefined;
+      if (read === TOO_LARGE) {
+        return problem(413, "Request too large", "That request is larger than the API accepts.");
+      }
+      requestBody = read;
+    } catch {
+      return problem(504, "Request timed out", "The request did not arrive in time. Try again.");
+    }
     const upstream = await fetch(target, {
       method: request.method,
       headers,
-      body: hasBody ? await request.text() : undefined,
+      body: requestBody,
       redirect: "manual",
       cache: "no-store",
-      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+      signal: deadline.signal,
     });
     const out = new Headers();
     const contentType = upstream.headers.get("content-type");
@@ -70,12 +94,56 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
       "API unavailable",
       "The lending service is not answering. Try again in a moment.",
     );
+  } finally {
+    clearTimeout(timer);
   }
+}
+
+const TOO_LARGE = Symbol("too large");
+
+/**
+ * The request body as text, or TOO_LARGE once it passes `limit` bytes. A declared
+ * Content-Length over the limit is refused before reading; a chunked or understated body is
+ * counted as it streams in and dropped at the limit, so it is never buffered whole. Each read
+ * races `signal`: when it aborts, the reader is cancelled and the read rejects.
+ */
+async function readCapped(
+  request: NextRequest,
+  limit: number,
+  signal: AbortSignal,
+): Promise<string | typeof TOO_LARGE> {
+  const declared = Number(request.headers.get("content-length") ?? 0);
+  if (!Number.isFinite(declared) || declared > limit) return TOO_LARGE;
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const aborted = new Promise<never>((_, reject) => {
+    if (signal.aborted) reject(signal.reason);
+    signal.addEventListener("abort", () => reject(signal.reason), { once: true });
+  });
+  aborted.catch(() => undefined); // observed below; never an unhandled rejection
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  try {
+    for (;;) {
+      const { done, value } = await Promise.race([reader.read(), aborted]);
+      if (done) break;
+      size += value.byteLength;
+      if (size > limit) {
+        void reader.cancel().catch(() => undefined);
+        return TOO_LARGE;
+      }
+      chunks.push(value);
+    }
+  } catch (err) {
+    void reader.cancel().catch(() => undefined);
+    throw err;
+  }
+  return new TextDecoder().decode(Buffer.concat(chunks));
 }
 
 function problem(status: number, title: string, detail: string): Response {
   const code =
-    status === 502 ? "PROVIDER_UNAVAILABLE" : status === 404 ? "NOT_FOUND" : "VALIDATION_FAILED";
+    status >= 500 ? "PROVIDER_UNAVAILABLE" : status === 404 ? "NOT_FOUND" : "VALIDATION_FAILED";
   return NextResponse.json(
     { type: "about:blank", title, status, detail, code },
     { status, headers: { "content-type": "application/problem+json" } },

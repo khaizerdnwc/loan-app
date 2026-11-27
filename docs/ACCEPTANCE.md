@@ -84,6 +84,14 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 | W-2 | GIVEN a draft unchanged for 30 days (PRD INT-003) or an offer unsigned 5 days after it was made THEN editing (even consent only), submitting or signing it is refused with 409 naming the expiry date and nothing changes, the case shows when it expires while open, and the scheduled sweep (`EXPIRY_SWEEP_SECONDS`) moves it to Expired with a SYSTEM event, one case per transaction under a row lock; younger cases and every other status are untouched; a second (or concurrent) sweep changes nothing more; an expired application frees the applicant for a new one | `apps/api/test/withdraw-and-expiry.e2e-spec.ts`, `apps/api/src/expiry-sweep.spec.ts`, `packages/base/test/cases/lifecycle.test.ts` + component: `apps/backoffice/test/actions-panel.test.tsx` | ☑ |
 | L-1 | A case's status changes only along the transition table's edges, checked at both ends | `packages/base/test/cases/lifecycle.test.ts` + lint `house/no-case-status-assignment-outside-lifecycle` | ☑ |
 
+## Hardening
+
+| ID | Criterion | Test | Status |
+|---|---|---|---|
+| H-1 | Swagger (`/docs`, `/docs-json`) is an explicit opt-in: served only when `SWAGGER_ENABLED=true`; unset, blank or `false` (whatever `NODE_ENV` is) both answer 404; any other value stops the API at boot | `apps/api/test/hardening.e2e-spec.ts`, `apps/api/src/config/env.spec.ts` | ☑ |
+| H-2 | The backoffice `/api` proxy refuses a request body over 100 KiB with a 413 problem body and never calls the API: a declared Content-Length over the cap or not a number is refused before reading, a streamed body is cut off at the cap. A client body that stalls past the 15-second deadline is cancelled and answered 504 with a problem body. The backoffice env module throws if loaded in a browser, and lint stops it being imported outside route handlers and middleware | `apps/backoffice/test/api-route.test.ts`, `apps/backoffice/test/env-server-only.test.ts` + lint `house/no-server-env-in-client` (`packages/eslint-house/test/house-rules.test.ts`) | ☑ |
+| H-3 | The default rate limit is per signed-in staff member (300 a minute per route): one user's 301st request gets 429 while another user from the same address is served. Requests with no token or an unverifiable one count against the address, so forged tokens buy no fresh bucket and do not lock out signed-in staff. Sign-in stays per address even when the caller holds a session | `apps/api/test/hardening.e2e-spec.ts` | ☑ |
+
 ## Deferred (explicitly out of this release)
 
 Borrower app and borrower-side acceptance; information requests and document upload; OCR

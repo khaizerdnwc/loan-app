@@ -14,7 +14,18 @@ export async function createApp(): Promise<INestApplication> {
   return app;
 }
 
-export function configureApp(app: INestApplication): void {
+export interface AppOptions {
+  /**
+   * Serve the Swagger UI at /docs and the OpenAPI document at /docs-json. Defaults to
+   * SWAGGER_ENABLED, which is off unless set to "true" (local development's .env.example).
+   */
+  swagger?: boolean;
+}
+
+export function configureApp(
+  app: INestApplication,
+  { swagger = env().SWAGGER_ENABLED }: AppOptions = {},
+): void {
   // Trust X-Forwarded-For only from the configured number of proxies (default none), so a
   // client cannot pick its own throttle bucket by sending the header itself.
   (app.getHttpAdapter().getInstance() as { set(k: string, v: unknown): void }).set(
@@ -27,6 +38,7 @@ export function configureApp(app: INestApplication): void {
     new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }),
   );
   app.useGlobalFilters(new ProblemFilter());
+  if (!swagger) return;
   const doc = new DocumentBuilder()
     .setTitle("WhiteBank Lending API (MVP)")
     .setDescription(

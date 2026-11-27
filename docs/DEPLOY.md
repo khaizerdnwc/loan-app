@@ -30,11 +30,13 @@ effect on behaviour. Pruning is the next image change.
 | api | `NODE_ENV` | `production` (the image sets it): the session cookie is then `Secure`, so serve over HTTPS |
 | api | `TRUST_PROXY_HOPS` | `0` unless an appending load balancer sits in front of the API |
 | api | `EXPIRY_SWEEP_SECONDS` | `300` (default): seconds between expiry sweeps (drafts after 30 days, offers after 5). `0` turns the sweep off; run one API instance with it on, or accept that two instances sweep (each case is still expired once, under a row lock) |
+| api | `SWAGGER_ENABLED` | leave unset (off). `true` serves Swagger at `/docs`; only local development's `.env.example` sets it |
 | web | `API_URL` | the API's internal URL, e.g. `http://api:3101` (required in production) |
 
 Only the backoffice needs to be public. The browser talks only to the backoffice's `/api`
-proxy, so the API can stay on a private network. Swagger at `/docs` is then reachable only
-inside it.
+proxy, so the API can stay on a private network. Swagger is not served unless
+`SWAGGER_ENABLED=true`. The proxy forwards request bodies up to 100 KiB, and gives the whole
+exchange (the client's body, then the API's answer) 15 seconds.
 
 ## Rehearse locally
 

@@ -14,6 +14,7 @@ import noMathRandomInServer from "../src/rules/no-math-random-in-server.js";
 import noProcessEnvOutsideConfig from "../src/rules/no-process-env-outside-config.js";
 import noProviderImportOutsideAdapters from "../src/rules/no-provider-import-outside-adapters.js";
 import noRawColour from "../src/rules/no-raw-colour.js";
+import noServerEnvInClient from "../src/rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "../src/rules/no-status-only-assertion.js";
 import noTodoComment from "../src/rules/no-todo-comment.js";
 import noTypeormSynchronize from "../src/rules/no-typeorm-synchronize.js";
@@ -544,6 +545,54 @@ ruleTester.run("require-shape-with-validate-nested", asRule(requireShapeWithVali
       filename: at("apps/api/src/simulation/dto.ts"),
       code: `import { ValidateNested } from "class-validator";\nclass D { @ValidateNested() c!: C; }`,
       errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+  ],
+});
+
+ruleTester.run("no-server-env-in-client", asRule(noServerEnvInClient), {
+  valid: [
+    {
+      filename: at("apps/backoffice/src/app/api/[...path]/route.ts"),
+      code: `import { env } from "@/config/env";`,
+    },
+    {
+      filename: at("apps/backoffice/src/middleware.ts"),
+      code: `import { env } from "./config/env";`,
+    },
+    { filename: at("apps/backoffice/src/lib/api.ts"), code: `import { x } from "@/lib/env";` },
+    { filename: at("apps/backoffice/test/api-route.test.ts"), code: `import "@/config/env";` },
+    { filename: API, code: `import { env } from "../config/env";` },
+    {
+      filename: WEB,
+      code: `// eslint-disable-next-line rule-to-test/no-server-env-in-client -- server component\nimport { env } from "@/config/env";`,
+    },
+  ],
+  invalid: [
+    {
+      filename: at("apps/backoffice/src/components/x.tsx"),
+      code: `"use client";\nimport { env } from "@/config/env";`,
+      errors: [{ messageId: "clientImport" }],
+    },
+    {
+      filename: at("apps/backoffice/src/lib/api.ts"),
+      code: `import { env } from "../config/env.ts";`,
+      errors: [{ messageId: "clientImport" }],
+    },
+    {
+      filename: WEB,
+      code: "export { env } from '@/config/env';\nexport * from '../../config/env/index';",
+      errors: [{ messageId: "clientImport" }, { messageId: "clientImport" }],
+    },
+    {
+      filename: at("apps/backoffice/src/lib/x.ts"),
+      code: "const a = import(`@/config/env`);\nconst b = require('../config/env');",
+      errors: [{ messageId: "clientImport" }, { messageId: "clientImport" }],
+    },
+    {
+      // A file merely named route.ts outside app/ is not a route handler.
+      filename: at("apps/backoffice/src/lib/route.ts"),
+      code: `import { env } from "@/config/env";`,
+      errors: [{ messageId: "clientImport" }],
     },
   ],
 });

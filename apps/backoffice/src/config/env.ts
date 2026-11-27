@@ -8,6 +8,13 @@ import { z } from "zod";
  */
 const LOCAL_API = "http://localhost:3101";
 
+// Server only (what the `server-only` package would enforce): a module that ends up in a
+// client bundle fails as soon as it loads in the browser, instead of shipping server
+// configuration to it. house/no-server-env-in-client stops the import at lint time.
+if (typeof window !== "undefined") {
+  throw new Error("config/env is server-only: it was loaded in the browser.");
+}
+
 const schema = z.object({
   NODE_ENV: z.string().optional(),
   API_URL: z.string().url().optional(),

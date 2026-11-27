@@ -33,6 +33,7 @@
  *   - no-arbitrary-text-size             : text sizes come from the type scale, never text-[…px]
  *   - no-title-on-disabled-control       : a disabled control's title tooltip never shows
  *   - require-label-in-name              : an aria-label must contain the visible label
+ *   - no-server-env-in-client            : the backoffice's config/env only from route handlers and middleware
  */
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
 import noArbitraryTextSize from "./rules/no-arbitrary-text-size.js";
@@ -48,6 +49,7 @@ import noProcessEnvOutsideConfig from "./rules/no-process-env-outside-config.js"
 import noProviderImportOutsideAdapters from "./rules/no-provider-import-outside-adapters.js";
 import noRawColour from "./rules/no-raw-colour.js";
 import noRingColorWithoutWidth from "./rules/no-ring-color-without-width.js";
+import noServerEnvInClient from "./rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "./rules/no-status-only-assertion.js";
 import noTitleOnDisabledControl from "./rules/no-title-on-disabled-control.js";
 import noTodoComment from "./rules/no-todo-comment.js";
@@ -84,5 +86,6 @@ export default {
     "no-arbitrary-text-size": noArbitraryTextSize,
     "no-title-on-disabled-control": noTitleOnDisabledControl,
     "require-label-in-name": requireLabelInName,
+    "no-server-env-in-client": noServerEnvInClient,
   },
 };

@@ -26,6 +26,14 @@ const schema = z
      * 0 turns the sweep off (tests and the gate run it by hand).
      */
     EXPIRY_SWEEP_SECONDS: z.coerce.number().int().min(0).max(86_400).default(300),
+    /**
+     * Serve the Swagger UI at /docs and the OpenAPI document at /docs-json. An explicit
+     * opt-in, off when unset or blank: a deployment that forgets a variable publishes nothing.
+     */
+    SWAGGER_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
     /** Run pending migrations when the API starts (deployments); off by default. */
     MIGRATE_ON_BOOT: z
       .enum(["true", "false"])
@@ -61,4 +69,9 @@ export function env(): Env {
   }
   cached = parsed.data;
   return cached;
+}
+
+/** Forget the parsed environment (tests only). */
+export function resetEnvForTests(): void {
+  cached = null;
 }

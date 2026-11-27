@@ -7,7 +7,7 @@ export {
   SignInRoute,
 } from "./auth/auth.decorators";
 export { SESSION_COOKIE, type SessionUser } from "./auth/session";
-export { SessionGuard } from "./auth/session.guard";
+export { SessionGuard, sessionTokenFrom } from "./auth/session.guard";
 export { assertReconciles } from "./cases/booking.service";
 export { CasesRepository } from "./cases/cases.repository";
 export { DecisionService } from "./cases/decision.service";
