@@ -69,6 +69,7 @@ export default tseslint.config(
       "house/no-arbitrary-text-size": "error",
       "house/no-title-on-disabled-control": "error",
       "house/require-label-in-name": "error",
+      "house/problem-code-through-constant": "error",
       "house/no-reason-code-literal": "error",
       // eslint-plugin-security: the generic Node security checks.
       "security/detect-eval-with-expression": "error",

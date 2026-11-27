@@ -5,6 +5,7 @@ import { StaffSignIn1764300000003 } from "./1764300000003-StaffSignIn";
 import { ConsentRecords1764300000004 } from "./1764300000004-ConsentRecords";
 import { OneOpenApplication1764300000005 } from "./1764300000005-OneOpenApplication";
 import { WithdrawAndExpiry1764300000006 } from "./1764300000006-WithdrawAndExpiry";
+import { AuditLogAndAmlEscalations1764300002000 } from "./1764300002000-AuditLogAndAmlEscalations";
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
 
 /**
@@ -21,5 +22,6 @@ export const MIGRATIONS = [
   ConsentRecords1764300000004,
   OneOpenApplication1764300000005,
   WithdrawAndExpiry1764300000006,
+  AuditLogAndAmlEscalations1764300002000,
   AutomationAndTriggers1764300003000,
 ];

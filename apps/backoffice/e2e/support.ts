@@ -16,6 +16,7 @@ export const PERSONA = {
   marco: "Marco Bautista",
   ella: "Ella Reyes",
   lito: "Lito Garcia",
+  diane: "Diane Yu",
   leo: "Leo Santiago",
   celia: "Celia Ortiz",
 } as const;

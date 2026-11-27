@@ -16,6 +16,9 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        simulation/  admin switches for the simulators
                        automation/  per-product automation mode and kill switch
                                     (maker-checker between two administrators)
+                       compliance/  AML escalations, screening again before disbursement
+                       audit/       the hash-chained audit log (every case event, sign-ins,
+                                    simulation changes) and its verification
                        decisioning/engine/  pure, versioned decide()
                        database/    data source, migrations, transaction runner
                        seed/        synthetic staff, applicants, product
@@ -34,6 +37,20 @@ decision reads the product's mode under a share lock inside the case's own trans
 (`DecisionService.decideAndRecord` → `AutomationService.forDecision`), so both need the same
 transaction runner, and a separate module would only re-export it. Split it out if automation
 grows its own consumers (rules editor, model registry).
+
+### Why compliance and audit stay in the lending module
+
+An AML escalation has its own table, repository, small lifecycle (open, acknowledged, closed)
+and controller, so it could look like the "second aggregate" that would justify its own Nest
+module. It stays in `LendingModule` on purpose: escalations are opened inside the lending
+transaction that holds the case row lock (the decision on submit, the failed booking before
+disbursement), and the booking's hold check runs inside the checker's locked transaction.
+Both need the same `TransactionRunner`, `ActivityService` and `CasesRepository` as the case
+services, and a separate module would only re-export them. The audit log is written by
+`ActivityService` in every case transaction, so it is shared infrastructure of the same
+module. `cases/` and `compliance/` import each other's services (no file or DI cycle);
+`activity.service.ts` imports `audit/` only, never `compliance/`. Revisit when collections
+or a committee adds a real second aggregate.
 
 ## Ports and simulators
 
@@ -75,6 +92,8 @@ state change happens in one transaction with its activity event.
 | Case visible to the role (404 outside it) | `canView` (reads), `CasesRepository.list` (lists) |
 | Authority: amount and grade | `CasesService.approve`, read from `staff` in the transaction |
 | Maker-checker | `CasesService.approve` (recommender ≠ approver), `BookingService.book` (maker ≠ checker) |
+| AML hold before disbursement | `ComplianceService.screenBeforeDisbursement`, inside the booking's locked transaction |
+| Audit trail | `ActivityService.record` → `AuditService.append` (same transaction); triggers refuse UPDATE, DELETE, TRUNCATE |
 | Override needs a reason | `CasesService.recommend` |
 | Pre-booking checklist (BKG-001) | `BookingService.submit`, under the row lock; `cases/booking-checklist.ts` is the one gate the view and `allowedActions` also use |
 | One booking, one payment | row lock + unique constraints + idempotent providers (ADR 0020) |

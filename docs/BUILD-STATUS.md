@@ -30,6 +30,9 @@ commit passed the review loop. Blocked items carry the evidence.
 | P13 | PRD backlog #13: indicative repayment before a decision (INT-004) | done | IR-1 (integration incl. every core failure mode, conformance for `quote`, component, browser) · `GET /products/PL/quote` · core's `quote()` now follows the simulated failure modes and is labelled simulated; an approved case opens with the instalment null when core is down · two synthetic personas (Teresa Lopez, Paz Ocampo) · no migration |
 | P10 | PRD backlog #10: per-product automation mode (off, shadow, live) and kill switch (§7.5, AIS-007, F8) | done (lane C, batch 1) | AU-1..AU-3 (integration, component, browser `automation.spec.ts`), D-13 (unit) · `packages/base/src/automation/` (entities, repository, service, controller, DTOs) · mode in the hashed decision snapshot and three record columns · second administrator Celia Ortiz · Automation controls screen · migration 1764300003000 rehearsed on a populated loan_c_test at the previous head (revert, insert RS-PL-1-style records, migrate, revert, migrate) |
 | P11 | PRD backlog #11: RS-PL-2 referral triggers (income mismatch, fraud flag and fraud check unavailable, related party) and a simulated fraud port (DEC-006, CMP-006, F3) | done (lane C, batch 1) | D-10..D-12, D-14 and D-15 (unit: ten frozen RS-PL-1 and twelve frozen RS-PL-2 records replay), TR-1, TR-2 (integration: old records reproduce through the API) · `FraudCheck` port + simulator (ok, outage, timeout, malformed) in the conformance suite · personas Dante Flores, Paula Mercado, Teresa Navarro |
+| U2 | Prototype UI/UX parity, batch 2: case breadcrumb with the reference (parity 24), queue figures grid at phone width (27), All applications In progress / Closed / All with counts and New application (28) | done | U-5..U-7 (Vitest) · no schema change |
+| B6 | PRD backlog #6: AML escalation to Compliance and screening again before disbursement (CMP-005, F6) | done | CMP-1..CMP-10 (integration, simulator conformance, component, browser) · migration 1764300002000 (with #8) · AML escalations list and detail screens · booking held on a match or a screening outage, released by a false-positive clearance · export to an AML system not built |
+| B8 | PRD backlog #8: searchable, tamper-evident audit log (PLT-004, CMP-010) | done | AUD-1..AUD-8 (integration, unit, component, browser) · migration 1764300002000 (`audit_event`, hash chain, UPDATE/DELETE/TRUNCATE refused) rehearsed on the populated lane B test database (revert, migrate) · `/audit` screen with filters and chain verification for compliance and admin |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 
@@ -39,6 +42,8 @@ commit passed the review loop. Blocked items carry the evidence.
 - 28 Nov, later — full parallel restored (user); heavy jobs (verify build/e2e, next build,
   Playwright, image builds) stay serialised and run by the integrator at merge; Jest and
   Vitest capped at 2 workers; verify containers stopped after each run.
+- 28 Nov 01:56–04:31 — paused at the 5-hour usage limit; continued automatically
+  (autoContinueAtUsageLimit); lanes B and C relaunched in their worktrees per rule 11.
 
 ## Blocked / waiting
 

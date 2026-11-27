@@ -35,6 +35,7 @@
  *   - no-title-on-disabled-control       : a disabled control's title tooltip never shows
  *   - require-label-in-name              : an aria-label must contain the visible label
  *   - no-server-env-in-client            : the backoffice's config/env only from route handlers and middleware
+ *   - problem-code-through-constant      : the backoffice compares err.code / blockedBy with ProblemCode, never a literal
  *   - no-reason-code-literal             : screens never branch on reason codes ("R10"); use the API's view
  */
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
@@ -58,6 +59,7 @@ import noStatusOnlyAssertion from "./rules/no-status-only-assertion.js";
 import noTitleOnDisabledControl from "./rules/no-title-on-disabled-control.js";
 import noTodoComment from "./rules/no-todo-comment.js";
 import noTypeormSynchronize from "./rules/no-typeorm-synchronize.js";
+import problemCodeThroughConstant from "./rules/problem-code-through-constant.js";
 import requireLabelInName from "./rules/require-label-in-name.js";
 import requireOrderWithTake from "./rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "./rules/require-roles-on-controller-handler.js";
@@ -92,6 +94,7 @@ export default {
     "no-title-on-disabled-control": noTitleOnDisabledControl,
     "require-label-in-name": requireLabelInName,
     "no-server-env-in-client": noServerEnvInClient,
+    "problem-code-through-constant": problemCodeThroughConstant,
     "no-reason-code-literal": noReasonCodeLiteral,
   },
 };

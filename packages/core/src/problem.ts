@@ -35,6 +35,10 @@ export const ProblemCode = {
   ProviderUnavailable: "PROVIDER_UNAVAILABLE",
   ScheduleMismatch: "SCHEDULE_DOES_NOT_RECONCILE",
   RateLimited: "RATE_LIMITED",
+  /** Screening before disbursement matched a watchlist: nothing booked, escalated. */
+  ScreeningMatch: "SCREENING_MATCH",
+  /** A booking held by an AML escalation that Compliance has not cleared. */
+  ComplianceHold: "COMPLIANCE_HOLD",
   Internal: "INTERNAL_ERROR",
 } as const;
 export type ProblemCode = (typeof ProblemCode)[keyof typeof ProblemCode];

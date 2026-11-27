@@ -127,6 +127,8 @@ export function allowedActions(
    * now (checklistRefusal), or null.
    */
   bookingRefusal: string | null = null,
+  /** Why an AML escalation holds the booking (PRD CMP-005), or null. */
+  bookingHold: string | null = null,
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -211,6 +213,15 @@ export function allowedActions(
         });
         continue;
       }
+    }
+    if ((action === "APPROVE_BOOKING" || action === "RETRY_BOOKING") && bookingHold) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.ComplianceHold,
+        detail: bookingHold,
+      });
+      continue;
     }
     if (
       (action === "APPROVE_BOOKING" || action === "RETRY_BOOKING") &&

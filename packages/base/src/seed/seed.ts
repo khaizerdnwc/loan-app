@@ -141,6 +141,8 @@ interface ApplicantSeed {
     sanctionsMatch: boolean;
     matchedList: string | null;
     politicallyExposed: boolean;
+    /** The simulated watchlist adds them after onboarding (matched before disbursement). */
+    listedBeforeDisbursement?: { matchedList: string };
   };
   /** The simulated fraud check's answer; absent means no signals. */
   fraud?: { flagged: boolean; signals: string[] };
@@ -543,6 +545,61 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     depositAccount: "WB-SAV-0021-0175",
     bureau: GOOD_BUREAU,
     screening: CLEAR,
+  },
+  {
+    // Same profile as Ramon (sanctions match at application): the compliance browser journey.
+    id: "APL-ERNESTO",
+    fullName: "Ernesto Lacson",
+    birthDate: "1972-02-14",
+    governmentIdLast4: "6620",
+    employer: "Visayas Agri Supply",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0102-5521",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: {
+      kycVerified: true,
+      sanctionsMatch: true,
+      matchedList: "Simulated watchlist",
+      politicallyExposed: false,
+    },
+  },
+  {
+    // Same profile as Maria (742, A) at application; the simulated watchlist adds him before
+    // disbursement, so the screening the booking runs again matches (PRD CMP-005).
+    id: "APL-DARIO",
+    fullName: "Dario Mercado",
+    birthDate: "1993-08-22",
+    governmentIdLast4: "4418",
+    employer: "Pasig Logistics Corp.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0021-9035",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: {
+      ...CLEAR,
+      listedBeforeDisbursement: { matchedList: "Simulated watchlist (updated list)" },
+    },
   },
 ];
 

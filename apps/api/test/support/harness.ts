@@ -88,14 +88,22 @@ export async function startHarness(): Promise<Harness> {
   };
 }
 
-/** Empty every case table and reset the simulators; staff, applicants and personas stay. */
+/**
+ * Empty every case table and reset the simulators; staff, applicants and personas stay.
+ * Decision records and activity are insert-only by trigger; truncation is still allowed (one
+ * statement, since aml_escalation references both loan_case and decision_record).
+ *
+ * The audit log (`audit_event`) is never emptied: its triggers refuse TRUNCATE, so its hash
+ * chain keeps growing across test files within a run. global-setup drops and re-migrates the
+ * test database at the start of every run, which is what resets it. If a run is killed in
+ * the middle of AUD-5 (trigger disabled, an entry edited), the next run's global-setup
+ * rebuilds the database; to repair a retained test database by hand, drop and recreate it.
+ */
 export async function resetData(ds: DataSource): Promise<void> {
-  await ds.query(`TRUNCATE consent_record, schedule_line, disbursement, loan_account, booking_request, loan_case,
+  await ds.query(`TRUNCATE aml_escalation, consent_record, schedule_line, disbursement, loan_account, booking_request, loan_case,
+    decision_record, activity_event, automation_change, automation_event,
     sim.core_account, sim.disbursement, sim.signature, sim.service_mode`);
-  // Decision records and activity are insert-only by trigger; truncation is still allowed.
-  await ds.query("TRUNCATE decision_record, activity_event");
   // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
-  await ds.query("TRUNCATE automation_change, automation_event");
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
       kill_switch_set_by = NULL, kill_switch_set_at = NULL`);

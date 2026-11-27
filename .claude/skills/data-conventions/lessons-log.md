@@ -19,6 +19,19 @@ for the current version, captured when it ships.
   any snapshot carrying `automation`, whatever the rule set; RS-PL-1 was frozen with a fixture,
   but no RS-PL-2 records (with modes, fraud, income mismatch) were frozen. Found by the data
   reviewer.
+## data-20261128-booking-failure-after-lost-reply
+
+Gate: test: apps/api/test/compliance-and-audit.e2e-spec.ts (CMP-11)
+
+A booking failure path that stops before the core call (a refusal, a screening match) must not
+say "nothing was booked or paid out" on a retry: an earlier attempt may have reached the
+simulated core or the disbursement service and lost only the reply, so the account or the
+payout already exists under the same idempotency key. Why: the Lane B pre-disbursement
+screening (2026-11-28) holds a retried booking with exactly that text, and opens the AML
+escalation without noting that the core may already hold an account and a payout for a now
+listed person; the record then contradicts the simulator's state. Word the text from
+`booking.attempts` / `fromStatus`, or ask the core by key, and pin it with a lost-reply retry
+test.
 
 ## data-20261128-unique-violation-mapping-forced-test
 

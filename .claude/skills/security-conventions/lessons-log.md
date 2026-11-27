@@ -4,6 +4,20 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## security-20261128-compliance-findings-stay-out-of-case-history
+
+Before a Compliance action writes free text or match details into `ActivityService.record`
+`details`, decide who reads `/cases/:id/activity`: every role that can view the case (loan
+officer, approver, loan operations) gets `details` verbatim. Why: lane B #6 closed AML
+escalations with `details: { notes }` and opened pre-disbursement ones with `matchedList`, so
+Compliance's investigation notes ("Name, birth date and ID match the list entry") and the list
+name reached the front-line staff who talk to the borrower: a need-to-know and tipping-off
+exposure. The audit log is the right home for the full record (Compliance reads it); the case
+history needs only "an AML review is open / closed, booking held / released". Not lint-shaped:
+which fields are sensitive is a judgement. Nearest gate: an integration test that closes an
+escalation with notes and asserts `/cases/:id/activity` as a loan officer carries no `notes`
+or `matchedList`.
+
 ## security-20261127-precondition-rechecked-under-the-lock
 
 When a service checks a precondition before calling a provider outside the transaction (the

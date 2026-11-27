@@ -32,6 +32,20 @@ export function navFor(role: Role): NavGroup[] {
 
   const groups: NavGroup[] = [];
   if (work.length) groups.push({ heading: "My work", items: work });
+  // Compliance screens (PRD CMP-005, PLT-004): the audit log for compliance and the
+  // administrator, AML escalations for compliance only.
+  const compliance: NavItem[] = [];
+  if (role === "COMPLIANCE") {
+    compliance.push({
+      href: "/compliance/escalations",
+      label: "AML escalations",
+      icon: "shieldAlert",
+    });
+  }
+  if (role === "COMPLIANCE" || role === "ADMIN") {
+    compliance.push({ href: "/audit", label: "Audit log", icon: "list" });
+  }
+  if (compliance.length) groups.push({ heading: "Compliance", items: compliance });
   const system: NavItem[] = [{ href: "/simulation", label: "Simulated services", icon: "sliders" }];
   // Automation controls (PRD §7.5): administrators change them, compliance reads them.
   if (role === "ADMIN" || role === "COMPLIANCE")

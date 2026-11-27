@@ -1,6 +1,7 @@
 import type { CaseStatus } from "@loan/core";
 import { Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
+import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
 import { ActivityEventEntity } from "./entities/activity-event.entity";
 
@@ -14,14 +15,22 @@ export interface ActivityInput {
   details?: Record<string, unknown>;
   /** The name shown for a SYSTEM actor (default: the decision engine). */
   systemName?: string;
+  /**
+   * Written to the audit log only, never to the case history that case workers read: e.g.
+   * Compliance's notes, outcome and the matched list on an AML review (no tipping-off).
+   */
+  auditOnly?: { summary?: string; details?: Record<string, unknown> };
 }
 
 /**
  * Writes the case history. Always called with the manager of the transaction that makes
- * the change, so the change and its history commit together (AGENTS.md non-negotiable 5).
+ * the change, so the change and its history commit together (AGENTS.md non-negotiable 5),
+ * and mirrors each event into the audit log in that same transaction.
  */
 @Injectable()
 export class ActivityService {
+  constructor(private readonly audit: AuditService) {}
+
   async record(manager: EntityManager, input: ActivityInput): Promise<void> {
     const system = input.actor === "SYSTEM";
     const actor = input.actor as SessionUser;
@@ -37,5 +46,21 @@ export class ActivityService {
     event.toStatus = input.toStatus ?? null;
     event.details = input.details ?? {};
     await repo.save(event);
+    // Every case event is also an entry in the hash-chained audit log, in this transaction.
+    await this.audit.append(manager, {
+      actor: system
+        ? { id: "SYSTEM", fullName: input.systemName ?? "Decision engine", role: "SYSTEM" }
+        : actor,
+      action: input.action,
+      summary: input.auditOnly?.summary ?? input.summary,
+      caseId: input.caseId,
+      details: {
+        ...(input.details ?? {}),
+        ...(input.auditOnly?.details ?? {}),
+        ...(input.fromStatus || input.toStatus
+          ? { fromStatus: input.fromStatus ?? null, toStatus: input.toStatus ?? null }
+          : {}),
+      },
+    });
   }
 }

@@ -238,6 +238,59 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/api/cases/case-1", expect.anything());
   });
 
+  it("after a watchlist match before disbursement, closes the dialog and shows the hold (CMP-4)", async () => {
+    const hold =
+      "This booking is held: screening before disbursement matched a watchlist and Compliance has not cleared it yet.";
+    const message =
+      "Screening before disbursement matched Simulated watchlist (updated list). Nothing was booked or paid out; the booking is held until Compliance reviews the match.";
+    const held = detail({
+      status: "BOOKING_FAILED",
+      allowedActions: [
+        { action: "RETRY_BOOKING", enabled: false, blockedBy: "COMPLIANCE_HOLD", detail: hold },
+      ],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ status: 409, code: "SCREENING_MATCH", detail: message }), {
+            status: 409,
+          }),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify(held), { status: 200 })),
+    );
+    const onChanged = vi.fn();
+    renderPanel(
+      detail({
+        status: "PENDING_CHECKER",
+        allowedActions: [{ action: "APPROVE_BOOKING", enabled: true }],
+      }),
+      onChanged,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Approve booking" }));
+    const buttons = screen.getAllByRole("button", { name: "Approve booking" });
+    await userEvent.click(buttons[buttons.length - 1] as HTMLElement);
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledWith(held));
+    await vi.waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(await screen.findByText(message)).toBeInTheDocument();
+  });
+
+  it("a booking held for Compliance offers the retry disabled, with the reason (CMP-4)", () => {
+    const hold = "This booking is held: Compliance has not cleared the match yet.";
+    renderPanel(
+      detail({
+        status: "BOOKING_FAILED",
+        allowedActions: [
+          { action: "RETRY_BOOKING", enabled: false, blockedBy: "COMPLIANCE_HOLD", detail: hold },
+        ],
+      }),
+    );
+    expect(screen.getByRole("button", { name: "Retry booking" })).toBeDisabled();
+    expect(screen.getByText(hold)).toBeInTheDocument();
+    expect(screen.getByText(/Held for Compliance/)).toBeInTheDocument();
+  });
+
   it("says to reload when the case cannot be re-read after a refusal that changed it", async () => {
     const fetchMock = vi
       .fn()

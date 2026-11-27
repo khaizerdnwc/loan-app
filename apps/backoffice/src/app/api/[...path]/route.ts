@@ -13,6 +13,8 @@ const ALLOWED_ROOTS = new Set([
   "products",
   "decisions",
   "simulation",
+  "compliance",
+  "audit",
   "automation",
 ]);
 
