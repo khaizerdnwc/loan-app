@@ -16,6 +16,8 @@ const ALLOWED_ROOTS = new Set([
   "compliance",
   "audit",
   "automation",
+  "operations",
+  "reports",
 ]);
 
 /** How long the API may take before the browser is told it is not answering. */

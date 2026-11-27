@@ -1,4 +1,9 @@
-import type { Disbursement, DisbursementReceipt, DisbursementRequest } from "@loan/contracts";
+import type {
+  Disbursement,
+  DisbursementReceipt,
+  DisbursementRequest,
+  PaymentRecord,
+} from "@loan/contracts";
 import { Money, ProviderMode, ServiceName } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
@@ -26,6 +31,29 @@ export class SimulatedDisbursement implements Disbursement {
     private readonly modes: SimulationModesService,
     @Inject(SIMULATION_OPTIONS) private readonly options: SimulationOptions,
   ) {}
+
+  /** The simulated payment feed: every payment, oldest first, labelled simulated. */
+  async listPayments(): Promise<PaymentRecord[]> {
+    const mode = await applyFailureMode(ServiceName.Disbursement, this.modes, this.options);
+    const rows: { idempotency_key: string; payload: StoredPayment }[] = await this.ds.query(
+      "SELECT idempotency_key, payload FROM sim.disbursement ORDER BY created_at, idempotency_key",
+    );
+    return rows.map((r) => {
+      const record: Partial<PaymentRecord> = {
+        mode: ProviderMode.Simulated,
+        idempotencyKey: r.idempotency_key,
+        reference: r.payload.reference,
+        loanAccountNumber: r.payload.loanAccountNumber,
+        amount: Money.of(r.payload.amount),
+        disbursedAt: r.payload.disbursedAt,
+      };
+      if (mode === "MALFORMED") record.reference = undefined;
+      return requireFields<PaymentRecord>(ServiceName.Disbursement, record, [
+        "reference",
+        "amount",
+      ]);
+    });
+  }
 
   async disburse(request: DisbursementRequest): Promise<DisbursementReceipt> {
     const mode = await applyFailureMode(ServiceName.Disbursement, this.modes, this.options);

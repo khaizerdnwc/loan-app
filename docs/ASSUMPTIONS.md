@@ -60,6 +60,7 @@ project team's prototype; values marked *ours* are our own.
 | Oscar Belmonte | Same profile as Maria; used only by the automation browser journey | Auto-approve live; Refer in shadow (engine outcome Auto-approve) |
 | Ernesto Lacson | Same profile as Ramon (sanctions match) | Auto-decline, no score (R11); AML escalation |
 | Dario Mercado | Same profile as Maria; the simulated list adds him after onboarding | Auto-approve, 742 A; screening before disbursement matches and holds the booking |
+| Hernan Salazar | Same profile as Maria (742, A); the booking-exceptions and reconciliation browser journey | Auto-approve, 742 A |
 
 ## Roles and authority
 
@@ -121,5 +122,18 @@ project team's prototype; values marked *ours* are our own.
 | Four-eyes on clearing a match | One Compliance user acknowledges and closes an escalation, and a false positive releases the held booking, with no second Compliance approver: there is one Compliance persona. A real deployment would put maker-checker on closing a pre-disbursement match | ours (open question for the user) |
 | A match after a lost reply | When the screening on a retry matches after an earlier attempt failed, that earlier attempt may have reached core banking (lost reply, ADR 0020). The refusal says so instead of "nothing was booked", and the escalation stores the number of earlier attempts so Compliance knows the account and payout may already exist in core under the same key. If another supervisor booked the case meanwhile, the match is written to the audit log (PRE_DISBURSEMENT_MATCH_AFTER_BOOKING) and the call answers 409 | ours (data review) |
 | Audit date filters | From and to are Philippine business dates (UTC+8), inclusive | ours |
+
+## Booking exceptions, reconciliation and reports
+
+| Item | Choice | Source |
+|---|---|---|
+| Booking exceptions | The cases in Booking failed, oldest change first, with the booking key, attempts, last error, and why a retry is blocked now (an AML hold, else the pre-booking checklist). Retrying stays on the case page under the booking rules; the list itself is read-only. Loan operations, the supervisor and Compliance read it | ours (PRD BKG-005; prototype Booking exceptions) |
+| Reconciliation | On demand, not scheduled: loan operations runs it from the exceptions screen. It reads lending's booking records first, then core's account feed and the rail's payment feed through their ports (`CoreBanking.listAccounts`, `Disbursement.listPayments`, both simulated), and compares them by booking key. Lending is read first so a booking committing during the run shows as "core holds an account lending has not recorded" (which says retry), never as "missing in core". Those "core ahead of lending" findings are then checked again: a booking lending has recorded by the end of the run was in flight, not lost, so its finding is dropped and counted as settled during the run (runs are insert-only, so a false finding would stay). A run is stored insert-only with an audit entry; it changes no case, account or payment. Reversing or closing an open, undisbursed core account is a manual step outside this system | ours (PRD BKG-005) |
+| Reconciliation findings | Open in core, not disbursed (a lost reply; a later retry that passes reuses the account) · paid in core, not recorded (retry with the same key to record it) · missing in core · account differs (number or principal) · payment differs (missing, other reference or amount) · unknown to lending (orphan account or payment). Duplicates count applications with more than one core account | ours |
+| Feed unavailable | If either feed cannot answer, the run answers 503 and records nothing: a partial comparison could report healthy bookings as missing | ours (PRD NFR-005 spirit) |
+| Report periods | A range of Philippine business dates, inclusive; the default is the last 30 days with today; at most 366 days. The screens offer 7, 30 and 90 days | ours |
+| Decision mix | Counts every decision record made in the period (a case decided again after an outage counts twice, as two decisions). Straight-through = (auto-approve + auto-decline) ÷ all decisions. Overrides come from the recommendation events in the history (insert-only), not the case row, which a re-decision clears | ours (PRD RPT-003; prototype Decisioning dashboard) |
+| Origination funnel | Cohort by application start date: started, submitted (has a decision), approved (has approved terms: automatically or by an approver), disbursed, each with its conversion from the stage before. Booked value is the sum of disbursed principals. There is one product and one channel, so no product or channel split | ours (PRD RPT-001; prototype Origination funnel) |
+| Who reads reports | Counts only, no applicant data: loan officers, approvers, Compliance and the administrator (the prototype's Reports group); not loan operations | ours |
 
 Add a row whenever the build makes a choice the materials do not dictate.

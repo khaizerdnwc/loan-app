@@ -1,5 +1,6 @@
 import {
   type BookingRequest,
+  type CoreAccountRecord,
   type CoreBanking,
   type CoreLoanAccount,
   type LoanTerms,
@@ -91,6 +92,40 @@ export class SimulatedCoreBanking implements CoreBanking {
       "principal",
       "schedule",
     ]);
+  }
+
+  /** The simulated account feed: every account, oldest first, labelled simulated. */
+  async listAccounts(): Promise<CoreAccountRecord[]> {
+    const mode = await applyFailureMode(ServiceName.CoreBanking, this.modes, this.options);
+    if (mode === "LOST_REPLY") {
+      throw new ProviderUnavailableError(
+        ServiceName.CoreBanking,
+        "TIMEOUT",
+        "Core banking did not answer in time (simulated: the account feed reply was lost)",
+      );
+    }
+    const rows: {
+      idempotency_key: string;
+      application_id: string;
+      payload: StoredAccount;
+    }[] = await this.ds.query(
+      "SELECT idempotency_key, application_id, payload FROM sim.core_account ORDER BY created_at, idempotency_key",
+    );
+    return rows.map((r) => {
+      const record: Partial<CoreAccountRecord> = {
+        mode: ProviderMode.Simulated,
+        idempotencyKey: r.idempotency_key,
+        accountNumber: r.payload.accountNumber,
+        applicationId: r.application_id,
+        principal: Money.of(r.payload.principal),
+        openedAt: r.payload.openedAt,
+      };
+      if (mode === "MALFORMED") record.accountNumber = undefined;
+      return requireFields<CoreAccountRecord>(ServiceName.CoreBanking, record, [
+        "accountNumber",
+        "principal",
+      ]);
+    });
   }
 
   private async find(key: string): Promise<StoredAccount | null> {

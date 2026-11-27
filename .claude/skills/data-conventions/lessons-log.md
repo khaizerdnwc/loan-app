@@ -4,6 +4,15 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-reconcile-every-feed-record
+
+A reconciliation accounts for every record in every feed exactly once: it is matched,
+reported as a finding, or reported as an orphan. It never drops a record through a `continue`. Why: in Lane B's
+`reconcile.ts` (2026-11-28) a lending key with no lending account and no core account skips
+the rail's payment under that key. A payout with no account behind it, which is exactly what
+reconciliation exists to catch, would leave no trace, and the summary would still add up.
+Pin it with a unit property: matched + findings referencing each feed record = feed length.
+
 ## data-20261128-engine-step-needs-a-version
 
 Every piece of logic `decide()` runs must be reachable only through a version the record

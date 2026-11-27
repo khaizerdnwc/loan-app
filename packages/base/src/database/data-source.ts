@@ -19,6 +19,7 @@ import { ConsentRecordEntity } from "../cases/entities/consent-record.entity";
 import { DecisionRecordEntity } from "../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { AmlEscalationEntity } from "../compliance/entities/aml-escalation.entity";
+import { ReconciliationRunEntity } from "../operations/entities/reconciliation-run.entity";
 import { MIGRATIONS } from "./migrations";
 
 /** Every lending entity, listed explicitly (no glob: the same list works from src and dist). */
@@ -39,6 +40,7 @@ export const ENTITIES = [
   AutomationChangeEntity,
   AutomationEventEntity,
   CaseDocumentEntity,
+  ReconciliationRunEntity,
 ];
 
 /**

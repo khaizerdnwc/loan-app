@@ -624,6 +624,29 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  // Maria's profile again (742, A), for the booking-exceptions and reconciliation journey.
+  {
+    id: "APL-HERNAN",
+    fullName: "Hernan Salazar",
+    birthDate: "1994-03-15",
+    governmentIdLast4: "2791",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0021-2791",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: CLEAR,
+  },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */

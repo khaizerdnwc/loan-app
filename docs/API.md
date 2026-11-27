@@ -75,6 +75,12 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | POST | /automation/:product/changes/:id/approve | admin, not the drafter | `{ note? }` → `AutomationView[]`. The change takes effect. 403 `MAKER_CHECKER_VIOLATION` for the drafter; 409 if no longer pending |
 | POST | /automation/:product/changes/:id/reject | admin | `{ note? }` → `AutomationView[]`. Closes it unchanged: REJECTED, or WITHDRAWN when the drafter closes it |
 | POST | /automation/:product/kill-switch | admin | `{ reason }` → `AutomationView[]`. Turns the kill switch on at once (409 if already on); turning it off is a change request |
+| GET | /operations/exceptions | loan operations, supervisor, compliance | `BookingExceptionView[]`: Booking failed cases with key, attempts, last error, why a retry is blocked, and the latest reconciliation finding |
+| POST | /operations/reconciliation/runs | loan operations, supervisor | → 201 `ReconciliationRunView` (stored insert-only, audited). 503 when core's account feed or the payment feed cannot answer (nothing recorded) |
+| GET | /operations/reconciliation/latest | loan operations, supervisor, compliance | `LatestReconciliationView` (`run` null before the first run) |
+| GET | /operations/reconciliation/runs | loan operations, supervisor, compliance | `ReconciliationRunSummaryView[]`, newest first (20) |
+| GET | /reports/decision-mix?from=&to= | loan officer, approver, compliance, admin | `DecisionMixReport` (business dates, inclusive; default the last 30 days; at most 366) |
+| GET | /reports/funnel?from=&to= | loan officer, approver, compliance, admin | `OriginationFunnelReport` (same period rules) |
 
 Who sees what (`GET /cases`, `GET /cases/:id`):
 

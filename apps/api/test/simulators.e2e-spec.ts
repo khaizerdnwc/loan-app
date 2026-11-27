@@ -252,6 +252,64 @@ describe("simulated providers conform to their ports", () => {
       expect((err as ProviderUnavailableError).service).toBe(service);
     },
   );
+
+  it("the account and payment feeds list what core and the rail hold, labelled simulated (REC)", async () => {
+    const core = h.app.get<CoreBanking>(CORE_BANKING);
+    const pay = h.app.get<Disbursement>(DISBURSEMENT);
+    const account = await core.bookLoan({
+      idempotencyKey: "feed-1",
+      applicationId: "feed-app",
+      customerRef: "APL-MARIA",
+      terms,
+      bookingDate: "2026-11-28",
+    });
+    await pay.disburse({
+      idempotencyKey: "feed-1",
+      loanAccountNumber: account.accountNumber,
+      amount: account.principal,
+      destinationAccount: "WB-SAV-1",
+    });
+    expect((await core.listAccounts()).find((a) => a.idempotencyKey === "feed-1")).toMatchObject({
+      mode: "SIMULATED",
+      accountNumber: account.accountNumber,
+      applicationId: "feed-app",
+    });
+    const payment = (await pay.listPayments()).find((p) => p.idempotencyKey === "feed-1");
+    expect(payment).toMatchObject({ mode: "SIMULATED", loanAccountNumber: account.accountNumber });
+    expect(payment?.amount.equals(account.principal)).toBe(true);
+  });
+
+  it.each([
+    ["CORE_BANKING", "OUTAGE"],
+    ["CORE_BANKING", "TIMEOUT"],
+    ["CORE_BANKING", "MALFORMED"],
+    ["CORE_BANKING", "LOST_REPLY"],
+    ["DISBURSEMENT", "OUTAGE"],
+    ["DISBURSEMENT", "TIMEOUT"],
+    ["DISBURSEMENT", "MALFORMED"],
+  ])("the %s feed in %s fails with ProviderUnavailableError", async (service, mode) => {
+    await setMode(h, service, mode);
+    if (mode === "MALFORMED") {
+      // A malformed feed needs at least one record to garble.
+      await h.ds.query(
+        `INSERT INTO sim.core_account (idempotency_key, account_number, application_id, payload)
+         VALUES ('feed-m', 'LN-FEED-M', 'x', '{"accountNumber":"LN-FEED-M","principal":"1.00","openedAt":"2026-11-28T00:00:00.000Z"}')
+         ON CONFLICT DO NOTHING`,
+      );
+      await h.ds.query(
+        `INSERT INTO sim.disbursement (idempotency_key, reference, payload)
+         VALUES ('feed-m', 'DSB-FEED-M', '{"reference":"DSB-FEED-M","amount":"1.00","loanAccountNumber":"LN-FEED-M","disbursedAt":"2026-11-28T00:00:00.000Z"}')
+         ON CONFLICT DO NOTHING`,
+      );
+    }
+    const call =
+      service === "CORE_BANKING"
+        ? () => h.app.get<CoreBanking>(CORE_BANKING).listAccounts()
+        : () => h.app.get<Disbursement>(DISBURSEMENT).listPayments();
+    const err = await call().catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ProviderUnavailableError);
+    expect((err as ProviderUnavailableError).service).toBe(service);
+  });
 });
 
 describe("simulation controls", () => {
