@@ -34,6 +34,11 @@ const schema = z
       .enum(["true", "false"])
       .default("false")
       .transform((v) => v === "true"),
+    /**
+     * How long a migrator waits for another process holding the migration lock before it
+     * gives up with an error (MIGRATE_ON_BOOT and db.js migrate). Five minutes by default.
+     */
+    MIGRATION_LOCK_TIMEOUT_MS: z.coerce.number().int().positive().default(300_000),
     /** Run pending migrations when the API starts (deployments); off by default. */
     MIGRATE_ON_BOOT: z
       .enum(["true", "false"])

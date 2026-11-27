@@ -1,6 +1,7 @@
 import {
   dataSourceOptions,
   LendingModule,
+  openDataSource,
   Public,
   SessionGuard,
   SIGN_IN_KEY,
@@ -33,7 +34,14 @@ class HealthController {
 @Module({
   imports: [
     TypeOrmModule.forRootAsync({
-      useFactory: () => dataSourceOptions(env().DATABASE_URL, env().MIGRATE_ON_BOOT),
+      useFactory: () => dataSourceOptions(env().DATABASE_URL),
+      // MIGRATE_ON_BOOT migrates under a Postgres advisory lock, so replicas can start together.
+      dataSourceFactory: async (options) => {
+        if (!options) throw new Error("unreachable: useFactory always returns options");
+        return openDataSource(options, env().MIGRATE_ON_BOOT, {
+          timeoutMs: env().MIGRATION_LOCK_TIMEOUT_MS,
+        });
+      },
     }),
     ThrottlerModule.forRoot([
       // Every route: per signed-in staff member, else per caller address (throttler.guard.ts).

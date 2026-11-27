@@ -16,7 +16,7 @@
 #
 # Stages, cheapest first, stopping at the first failure:
 #   security     gitleaks (full history) · semgrep · pnpm audit · audit-ci · licences ·
-#                actionlint · hadolint
+#                actionlint · hadolint · shellcheck
 #   static       house:check · dependency rules · typecheck · biome + eslint
 #   unit         every package's unit tests (no database)
 #   db           throwaway postgres · migrations from empty · entity/migration drift · seed
@@ -147,19 +147,83 @@ docker_ok() {
   fi
 }
 
-# A scanner container sees the checkout at the same absolute path as the host, plus the
-# git common dir, so history scans work from a linked worktree (whose .git is a pointer
-# outside the checkout). safe.directory: the container's uid does not own the mount.
+# A scanner container sees the checkout at a fixed path, /src, never at the host's absolute
+# path: from a linked worktree under .claude/worktrees, a same-path bind mount was seen to
+# come up empty under Docker Desktop, and the scanners then passed having scanned nothing.
+# The git common dir is mounted at /gitcommon and GIT_DIR points into it, so history scans
+# work from a linked worktree too (its .git is a pointer outside the checkout; the
+# worktree's own git dir finds the common dir through its relative `commondir` file).
+# safe.directory: the container's uid does not own the mount.
 docker_scan() { # <image> <args...>
   local image="$1"
   shift
-  local common
+  local common gitdir
   common="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
-  local mounts=(-v "$ROOT:$ROOT")
-  case "$common" in "$ROOT"/*) ;; *) mounts+=(-v "$common:$common") ;; esac
-  docker run --rm ${mounts[@]+"${mounts[@]}"} -w "$ROOT" \
+  gitdir="$(cd "$(git rev-parse --git-dir)" && pwd)"
+  local mounts=(-v "$ROOT:/src") envs=(-e GIT_WORK_TREE=/src)
+  case "$gitdir" in
+    "$ROOT"/*) envs+=(-e "GIT_DIR=/src/${gitdir#"$ROOT"/}") ;;
+    "$common" | "$common"/*)
+      mounts+=(-v "$common:/gitcommon")
+      envs+=(-e "GIT_DIR=/gitcommon${gitdir#"$common"}")
+      ;;
+    *)
+      echo "✖ docker_scan: git dir $gitdir is neither in the checkout nor the common dir" >&2
+      return 1
+      ;;
+  esac
+  docker run --rm ${mounts[@]+"${mounts[@]}"} ${envs[@]+"${envs[@]}"} -w /src \
     -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
     "$image" "$@"
+}
+
+# gitleaks through docker_scan, failing unless it reports having scanned at least one commit
+# (a scan that saw no history must not pass as "no leaks found").
+gitleaks_scan() {
+  local out code=0
+  out="$(docker_scan "$VERIFY_GITLEAKS_IMAGE" git . --config .gitleaks.toml --redact \
+    --no-banner 2>&1)" || code=$?
+  printf '%s\n' "$out"
+  if [ "$code" -ne 0 ]; then return "$code"; fi
+  if ! printf '%s\n' "$out" | grep -Eq '(^|[^0-9])[1-9][0-9]* commits scanned'; then
+    echo "✖ gitleaks: it reported no commits scanned; the history was not visible to it" >&2
+    return 1
+  fi
+}
+
+# Tracked files matching a pathspec, as NUL-separated names; fails when there are none.
+tracked_or_fail() { # <label> <pathspec...>
+  local label="$1"
+  shift
+  local list
+  list="$(git ls-files -- "$@")"
+  if [ -z "$list" ]; then
+    echo "✖ $label: no tracked files match $*" >&2
+    return 1
+  fi
+  echo "  $label: $(printf '%s\n' "$list" | wc -l | tr -d ' ') files" >&2
+  git ls-files -z -- "$@"
+}
+
+# actionlint on the tracked workflow files, named explicitly: a missing file is an error,
+# and an empty set fails here rather than passing as "nothing to lint".
+actionlint_scan() {
+  local files=() f
+  while IFS= read -r -d '' f; do files+=("$f"); done \
+    < <(tracked_or_fail actionlint ".github/workflows/*.yml" ".github/workflows/*.yaml")
+  if [ "${#files[@]}" -eq 0 ]; then return 1; fi
+  docker_scan "$VERIFY_ACTIONLINT_IMAGE" -color ${files[@]+"${files[@]}"}
+}
+
+# Lint every tracked script under scripts/ with ShellCheck, each named explicitly, mounted at
+# /src (see docker_scan). A file the container cannot read makes it exit 2: the step fails.
+shellcheck_scan() {
+  local files=() f
+  while IFS= read -r -d '' f; do files+=("$f"); done \
+    < <(tracked_or_fail shellcheck "scripts/*.sh")
+  if [ "${#files[@]}" -eq 0 ]; then return 1; fi
+  docker run --rm -e LANG=C.UTF-8 -v "$ROOT:/src:ro" -w /src "$VERIFY_SHELLCHECK_IMAGE" \
+    -x --shell=bash --severity=warning ${files[@]+"${files[@]}"}
 }
 
 # Semgrep gets the tracked files streamed in as a tar instead of a bind mount: through
@@ -179,8 +243,7 @@ semgrep_scan() { # <paths...>
 # --- stages --------------------------------------------------------------------------
 stage_security() {
   stage_begin security
-  step "gitleaks (full history)" docker_scan "$VERIFY_GITLEAKS_IMAGE" \
-    git . --config .gitleaks.toml --redact --no-banner
+  step "gitleaks (full history)" gitleaks_scan
   # The BLOCKING SAST gate. --error: any finding fails. Fix it, or annotate the line
   #   // nosemgrep: <rule-id> -- <why>
   # A bare nosemgrep is an unreviewed exception.
@@ -199,11 +262,14 @@ stage_security() {
   step "pnpm audit (moderate+)" pnpm audit --audit-level=moderate
   step "audit-ci (allowlist)" pnpm exec audit-ci --config audit-ci.json
   step "licence allowlist" pnpm exec tsx scripts/check-licenses.ts
-  step "actionlint (workflows)" docker_scan "$VERIFY_ACTIONLINT_IMAGE" -color
+  step "actionlint (workflows)" actionlint_scan
   # shellcheck disable=SC2046
   step "hadolint (Dockerfiles)" bash -c 'for f in $(git ls-files "*Dockerfile"); do
       echo "  $f"; docker run --rm -i "$VERIFY_HADOLINT_IMAGE" hadolint --failure-threshold warning - <"$f" || exit 1;
     done'
+  # Every tracked script under scripts/ (the backup and restore scripts among them). Here and
+  # not in static: static runs in the pre-push hook, which needs no Docker.
+  step "shellcheck (scripts/**/*.sh)" shellcheck_scan
   stage_end
 }
 

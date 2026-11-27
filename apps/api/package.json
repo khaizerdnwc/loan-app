@@ -4,6 +4,9 @@
   "private": true,
   "description": "WhiteBank Lending API: NestJS bootstrap, environment, composition root and the simulated external services.",
   "main": "./dist/main.js",
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env --watch-path=dist --watch-path=../../packages/base/dist --watch-path=../../packages/core/dist --watch-path=../../packages/contracts/dist dist/main.js",
