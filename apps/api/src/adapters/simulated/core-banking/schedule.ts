@@ -14,7 +14,7 @@ import { Money } from "@loan/core";
  *   interest part   = instalment − principal part
  * Every value here is non-negative, so truncation and floor agree.
  */
-export function quote(terms: LoanTerms): Quote {
+export function quote(terms: LoanTerms): Omit<Quote, "mode"> {
   assertTerms(terms);
   const { principal, monthlyRate, tenorMonths } = terms;
   const interest = principal.times(monthlyRate).times(tenorMonths).round("HALF_UP");

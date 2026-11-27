@@ -68,5 +68,6 @@ state change happens in one transaction with its activity event.
 | Authority: amount and grade | `CasesService.approve`, read from `staff` in the transaction |
 | Maker-checker | `CasesService.approve` (recommender ≠ approver), `BookingService.book` (maker ≠ checker) |
 | Override needs a reason | `CasesService.recommend` |
+| Pre-booking checklist (BKG-001) | `BookingService.submit`, under the row lock; `cases/booking-checklist.ts` is the one gate the view and `allowedActions` also use |
 | One booking, one payment | row lock + unique constraints + idempotent providers (ADR 0020) |
 | UI | shows `allowedActions` with the API's reason; never decides |

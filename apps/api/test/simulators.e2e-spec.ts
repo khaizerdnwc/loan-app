@@ -80,6 +80,31 @@ describe("simulated providers conform to their ports", () => {
     expect(first.schedule[0]?.dueDate).toBe("2026-12-28");
   });
 
+  it("core banking quotes the terms (ADR 0019), labelled simulated, and opens nothing", async () => {
+    const core = h.app.get<CoreBanking>(CORE_BANKING);
+    const before = await h.ds.query("SELECT count(*)::int AS n FROM sim.core_account");
+    const q = await core.quote({ ...terms, monthlyRate: "0.0160", tenorMonths: 36 });
+    expect(q.mode).toBe("SIMULATED");
+    // 60,000 × 1.60% × 36 = 34,560 interest; 94,560 ÷ 36 = 2,626.66…, the last absorbs the rest.
+    expect(q.totalRepayable.toString()).toBe("94560.00");
+    expect(q.regularInstalment.toString()).toBe("2626.66");
+    expect(q.finalInstalment.toString()).toBe("2626.90");
+    expect(await h.ds.query("SELECT count(*)::int AS n FROM sim.core_account")).toEqual(before);
+  });
+
+  it.each(["OUTAGE", "TIMEOUT", "MALFORMED", "LOST_REPLY"])(
+    "core banking's quote in %s fails with ProviderUnavailableError, never a wrong answer",
+    async (mode) => {
+      await setMode(h, "CORE_BANKING", mode);
+      const err = await h.app
+        .get<CoreBanking>(CORE_BANKING)
+        .quote(terms)
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProviderUnavailableError);
+      expect((err as ProviderUnavailableError).service).toBe("CORE_BANKING");
+    },
+  );
+
   it("disbursement and e-signature are idempotent on the key", async () => {
     const pay = h.app.get<Disbursement>(DISBURSEMENT);
     const req = {

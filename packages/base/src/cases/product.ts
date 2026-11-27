@@ -2,6 +2,7 @@ import {
   CaseStatus,
   DRAFT_EXPIRY_DAYS,
   type FieldError,
+  type Grade,
   Money,
   OFFER_EXPIRY_DAYS,
   type ProductView,
@@ -20,6 +21,9 @@ export const PERSONAL_LOAN = {
   minTenorMonths: 6,
   maxTenorMonths: 36,
 } as const;
+
+/** The grade whose pricing an indicative repayment uses before a decision (prototype: grade C). */
+export const INDICATIVE_GRADE: Grade = "C";
 
 const DAY_MS = 86_400_000;
 
@@ -77,6 +81,19 @@ export function productView(): ProductView {
     autoApprovalLimit: rs.autoApprovalLimit,
     monthlyRateByGrade: rs.monthlyRate,
   };
+}
+
+/**
+ * A request's decimal string as Money, or null when Money cannot read it ("." or "+5" pass
+ * `@IsDecimal`; `Money.of` throws on them). `termErrors` then reports the amount field (400).
+ */
+export function parseRequestAmount(raw: string | undefined | null): Money | null {
+  if (raw === undefined || raw === null || raw === "") return null;
+  try {
+    return Money.of(String(raw));
+  } catch {
+    return null;
+  }
 }
 
 /** Field errors for an amount and tenor against the product limits (A-1, A-2). */

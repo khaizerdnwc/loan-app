@@ -154,8 +154,10 @@ export class CasesRepository {
     return (await repo.findOne({ where: { id } })) as DecisionRecordEntity;
   }
 
-  findDecision(id: string): Promise<DecisionRecordEntity | null> {
-    return this.cases.manager.getRepository(DecisionRecordEntity).findOne({ where: { id } });
+  findDecision(id: string, manager?: EntityManager): Promise<DecisionRecordEntity | null> {
+    return (manager ?? this.cases.manager)
+      .getRepository(DecisionRecordEntity)
+      .findOne({ where: { id } });
   }
 
   // --- history -----------------------------------------------------------------------------

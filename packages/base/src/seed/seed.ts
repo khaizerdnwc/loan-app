@@ -409,6 +409,53 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  // Maria's profile again, for the pre-booking checklist and indicative repayment journey (BK-1, IR-1).
+  {
+    id: "APL-TERESA",
+    fullName: "Teresa Lopez",
+    birthDate: "1995-05-10",
+    governmentIdLast4: "9576",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "WB-SAV-0021-9964",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: CLEAR,
+  },
+  // Maria's profile, but salary goes to another bank's account: the checklist's disbursement
+  // account item fails, so the booking cannot be submitted (BK-1).
+  {
+    id: "APL-PAZ",
+    fullName: "Paz Ocampo",
+    birthDate: "1995-05-10",
+    governmentIdLast4: "0687",
+    employer: "Luzon Freight Services Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "78000.00",
+    monthlyObligations: "9000.00",
+    depositAccount: "EXT-BANK-0042-1180",
+    bureau: {
+      fileDepth: "FULL",
+      bureauScore: 748,
+      tradeLines: 6,
+      utilisationPct: 35,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 96,
+    },
+    screening: CLEAR,
+  },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */

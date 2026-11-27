@@ -13,6 +13,7 @@ import type { EntityManager } from "typeorm";
 import type { SessionUser } from "../auth/session";
 import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
+import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { canView } from "./case-access";
 import { CasesRepository } from "./cases.repository";
 import { CasesService } from "./cases.service";
@@ -51,6 +52,7 @@ export class BookingService {
       const existing = await this.repo.findBooking(c.id, m);
       if (existing) return;
       this.assert("SUBMIT_BOOKING", c.status);
+      await this.assertChecklist(m, c);
       const booking = new BookingRequestEntity();
       booking.caseId = c.id;
       booking.idempotencyKey = `bk-${randomUUID()}`;
@@ -114,6 +116,9 @@ export class BookingService {
     if (booking.makerId === user.id) {
       throw makerChecker("You submitted this booking; a different supervisor must approve it.");
     }
+    // The checklist again at the checker step (and on a retry): something may have changed
+    // since the maker submitted. Under the row lock; refused with nothing written.
+    await this.assertChecklist(m, c);
     if (!c.approvedAmount || !c.approvedTenorMonths || !c.approvedMonthlyRate) {
       throw invalidState("This case has no approved terms.");
     }
@@ -216,6 +221,16 @@ export class BookingService {
       toStatus: CaseStatus.BookingFailed,
       details: { idempotencyKey: booking.idempotencyKey, code: failure.code },
     });
+  }
+
+  /**
+   * The pre-booking checklist (BKG-001), read in the caller's transaction under the row lock:
+   * 409 BOOKING_CHECKLIST_INCOMPLETE naming the first failing item, so nothing is written.
+   */
+  private async assertChecklist(m: EntityManager, c: LoanCaseEntity): Promise<void> {
+    const decision = c.decisionId ? await this.repo.findDecision(c.decisionId, m) : null;
+    const refusal = checklistRefusal(bookingChecklist(c, decision, new Date()));
+    if (refusal) throw new DomainError(409, ProblemCode.BookingChecklistIncomplete, refusal);
   }
 
   private async lock(m: EntityManager, user: SessionUser, id: string): Promise<LoanCaseEntity> {

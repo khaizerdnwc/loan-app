@@ -4,6 +4,7 @@ import {
   type CaseDetail,
   type CaseList,
   type DecisionRecordView,
+  type IndicativeRepaymentView,
   type LoanAccountView,
   type ProductView,
   type ReproduceResult,
@@ -28,9 +29,16 @@ import { CaseViews } from "./case-views";
 import { CasesRepository } from "./cases.repository";
 import { CasesService } from "./cases.service";
 import { ageOn, DecisionService } from "./decision.service";
-import { notFound } from "./domain-error";
-import { CreateCaseDto, DeclineDto, RecommendDto, UpdateDraftDto, WithdrawDto } from "./dto";
-import { productView } from "./product";
+import { notFound, validation } from "./domain-error";
+import {
+  CreateCaseDto,
+  DeclineDto,
+  IndicativeQuoteQueryDto,
+  RecommendDto,
+  UpdateDraftDto,
+  WithdrawDto,
+} from "./dto";
+import { parseRequestAmount, productView, termErrors } from "./product";
 
 const CASE_READERS = [
   Role.LoanOfficer,
@@ -61,6 +69,20 @@ export class CasesController {
   @Roles(...Object.values(Role))
   product(): ProductView {
     return productView();
+  }
+
+  /**
+   * The indicative monthly repayment for terms being captured (PRD INT-004): core banking's
+   * quote at INDICATIVE_GRADE pricing. 400 for terms outside the product; when core cannot
+   * answer, 200 with status UNAVAILABLE, so the form never breaks on it. Writes nothing.
+   */
+  @Get("products/PL/quote")
+  @Roles(Role.LoanOfficer)
+  quote(@Query() query: IndicativeQuoteQueryDto): Promise<IndicativeRepaymentView> {
+    const amount = parseRequestAmount(query.amount);
+    const errors = termErrors(amount, query.tenorMonths);
+    if (errors.length || !amount) throw validation("Check the highlighted fields.", errors);
+    return this.views.indicativeRepayment(amount, query.tenorMonths);
   }
 
   @Get("applicants")

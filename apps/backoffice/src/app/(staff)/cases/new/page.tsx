@@ -29,6 +29,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { PageHeader } from "@/components/app-shell";
+import { IndicativeRepayment } from "@/components/case/indicative-repayment";
 import { LoadState } from "@/components/load-state";
 import { api, errorMessage, fieldErrorsOf } from "@/lib/api";
 import {
@@ -41,6 +42,7 @@ import {
 import { CONSENT_LABEL } from "@/lib/consent";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
+import { useIndicativeRepayment } from "@/lib/use-indicative-repayment";
 
 type Intent = "draft" | "submit";
 
@@ -73,6 +75,7 @@ export default function NewApplicationPage() {
   });
   const errors = form.formState.errors;
   const selected = applicants.data?.find((a) => a.id === form.watch("applicantId"));
+  const indicative = useIndicativeRepayment(form.watch("amount"), form.watch("tenorMonths"));
 
   if (me.role !== "LOAN_OFFICER") {
     return (
@@ -221,6 +224,9 @@ export default function NewApplicationPage() {
                 <Field label="Purpose" error={errors.purpose?.message}>
                   <Input {...form.register("purpose")} />
                 </Field>
+              </div>
+              <div className="mt-4">
+                <IndicativeRepayment {...indicative} />
               </div>
             </Card>
           </div>

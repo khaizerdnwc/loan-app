@@ -57,6 +57,8 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     consent: null,
     booking: null,
     loanAccountId: null,
+    bookingChecklist: null,
+    indicativeRepayment: null,
     allowedActions: [],
     ...patch,
   };
@@ -170,6 +172,69 @@ describe("ActionsPanel shows only what the API allows", () => {
       expect(screen.getByRole("alert")).toHaveTextContent(message);
     },
   );
+
+  it("shows Submit booking disabled with the failing checklist item as the reason (BK-1)", () => {
+    const reason =
+      "Pre-booking checklist: Disbursement account verified — No valid WhiteBank deposit account on record for the applicant. The booking cannot go ahead until every item passes.";
+    renderPanel(
+      detail({
+        status: "BOOKING",
+        allowedActions: [
+          {
+            action: "SUBMIT_BOOKING",
+            enabled: false,
+            blockedBy: "BOOKING_CHECKLIST_INCOMPLETE",
+            detail: reason,
+          },
+        ],
+      }),
+    );
+    const submit = screen.getByRole("button", { name: "Submit booking for checker" });
+    expect(submit).toBeDisabled();
+    expect(submit).toHaveAccessibleDescription(
+      /Disbursement account verified — No valid WhiteBank deposit account/,
+    );
+  });
+
+  it("after a checklist refusal (409), closes the dialog and shows the re-read case with the disabled action (BK-1)", async () => {
+    const reason =
+      "Pre-booking checklist: KYC valid — Identity was not verified. The booking cannot go ahead until every item passes.";
+    const blocked = detail({
+      status: "BOOKING",
+      allowedActions: [
+        {
+          action: "SUBMIT_BOOKING",
+          enabled: false,
+          blockedBy: "BOOKING_CHECKLIST_INCOMPLETE",
+          detail: reason,
+        },
+      ],
+    });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({ status: 409, code: "BOOKING_CHECKLIST_INCOMPLETE", detail: reason }),
+          { status: 409 },
+        ),
+      )
+      .mockResolvedValueOnce(new Response(JSON.stringify(blocked), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onChanged = vi.fn();
+    renderPanel(
+      detail({ status: "BOOKING", allowedActions: [{ action: "SUBMIT_BOOKING", enabled: true }] }),
+      onChanged,
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Submit booking for checker" }));
+    const buttons = screen.getAllByRole("button", { name: "Submit booking for checker" });
+    await userEvent.click(buttons[buttons.length - 1] as HTMLElement);
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalledWith(blocked));
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(
+      (await screen.findAllByText(/KYC valid — Identity was not verified/)).length,
+    ).toBeGreaterThan(0);
+    expect(fetchMock).toHaveBeenLastCalledWith("/api/cases/case-1", expect.anything());
+  });
 
   it("says to reload when the case cannot be re-read after a refusal that changed it", async () => {
     const fetchMock = vi
