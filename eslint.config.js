@@ -63,6 +63,7 @@ export default tseslint.config(
       "house/money-through-formatter": "error",
       "house/no-ring-color-without-width": "error",
       "house/text-size-before-leading": "error",
+      "house/no-arbitrary-text-size": "error",
       "house/no-title-on-disabled-control": "error",
       "house/require-label-in-name": "error",
       // eslint-plugin-security: the generic Node security checks.

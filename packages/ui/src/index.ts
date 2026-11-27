@@ -1,7 +1,15 @@
 export { Avatar, initials } from "./components/avatar";
 export { Button, type ButtonProps, type ButtonVariant, buttonClass } from "./components/button";
 export { Card, type CardProps } from "./components/card";
-export { Field, type FieldProps, inputClass } from "./components/field";
+export {
+  Field,
+  type FieldProps,
+  FormGrid,
+  FormStack,
+  Input,
+  Select,
+  Textarea,
+} from "./components/field";
 export { GRADE_FILL, GradeTile } from "./components/grade-tile";
 export { ICON_NAMES, Icon, type IconName } from "./components/icon";
 export { ConfirmDialog, type ConfirmDialogProps, Modal, type ModalProps } from "./components/modal";

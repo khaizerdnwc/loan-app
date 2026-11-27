@@ -20,7 +20,7 @@ export function Avatar({ name, className }: { name: string; className?: string }
     <span
       aria-hidden="true"
       className={cn(
-        "inline-grid size-7 shrink-0 place-items-center rounded-tile bg-lav text-[11px] font-extrabold text-ink-800",
+        "inline-grid size-7 shrink-0 place-items-center rounded-tile bg-lav text-2xs font-extrabold text-ink-800",
         className,
       )}
     >

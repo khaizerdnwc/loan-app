@@ -41,9 +41,9 @@ export function ScoreBand({ score, declineBelow, approveFrom }: ScoreBandProps) 
           style={{ left: pct(clamped) }}
         />
       </div>
-      <figcaption className="flex justify-between font-mono text-[11px] text-mist-500">
+      <figcaption className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 text-2xs text-mist-500">
         <span>{MIN}</span>
-        <span>
+        <span className="order-last basis-full text-center sm:order-none sm:basis-auto">
           decline &lt; {declineBelow} · refer {declineBelow}–{approveFrom - 1} · approve{" "}
           {approveFrom}+
         </span>

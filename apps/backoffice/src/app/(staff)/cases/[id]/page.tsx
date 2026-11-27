@@ -51,7 +51,7 @@ export default function CasePage() {
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="font-mono text-xs text-mist-500">Applications / {c.reference}</p>
-          <h1 className="text-[32px] leading-tight font-extrabold">{c.applicant.fullName}</h1>
+          <h1 className="text-display leading-tight font-extrabold">{c.applicant.fullName}</h1>
           <p className="mt-1 text-sm">
             <strong className="text-ink-900">{productLabel(c.productCode)}</strong> ·{" "}
             {formatPeso(c.requestedAmount)} over {c.requestedTenorMonths} months · {c.purpose} ·
@@ -140,26 +140,34 @@ function OutcomeBanner({ detail: c }: { detail: CaseDetail }) {
 
 function ApplicantPanel({ detail: c }: { detail: CaseDetail }) {
   const a = c.applicant;
-  const rows: [string, string][] = [
-    ["Age", String(a.ageYears)],
-    ["Government ID", a.governmentIdMasked],
-    ["Employer", a.employer],
-    ["Employed", `${a.employmentMonths} months`],
+  // Identifiers in monospace; every other value in the body font.
+  const rows: [string, string, boolean][] = [
+    ["Age", String(a.ageYears), false],
+    ["Government ID", a.governmentIdMasked, true],
+    ["Employer", a.employer, false],
+    ["Employed", `${a.employmentMonths} months`, false],
     [
       "WhiteBank customer",
       a.relationshipMonths === 0 ? "New to bank" : `${a.relationshipMonths} months`,
+      false,
     ],
-    ["Monthly income", formatPeso(a.monthlyIncome)],
-    ["Monthly obligations", formatPeso(a.monthlyObligations)],
-    ["Disburse to", a.depositAccount],
+    ["Monthly income", formatPeso(a.monthlyIncome), false],
+    ["Monthly obligations", formatPeso(a.monthlyObligations), false],
+    ["Disburse to", a.depositAccount, true],
   ];
   return (
     <Card title="Applicant" aside="Synthetic persona">
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        {rows.map(([label, value]) => (
+        {rows.map(([label, value, identifier]) => (
           <div key={label} className="contents">
             <dt className="text-mist-500">{label}</dt>
-            <dd className="text-right font-mono text-ink-900">{value}</dd>
+            <dd
+              className={
+                identifier ? "text-right font-mono text-ink-900" : "text-right text-ink-900"
+              }
+            >
+              {value}
+            </dd>
           </div>
         ))}
       </dl>
@@ -199,19 +207,19 @@ function TermsPanel({ detail: c }: { detail: CaseDetail }) {
         <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
           <div>
             <dt className="text-xs text-mist-500">Approved amount</dt>
-            <dd className="font-mono text-ink-900">{formatPeso(c.approved.amount)}</dd>
+            <dd className="text-ink-900">{formatPeso(c.approved.amount)}</dd>
           </div>
           <div>
             <dt className="text-xs text-mist-500">Tenor</dt>
-            <dd className="font-mono text-ink-900">{c.approved.tenorMonths} months</dd>
+            <dd className="text-ink-900">{c.approved.tenorMonths} months</dd>
           </div>
           <div>
             <dt className="text-xs text-mist-500">Rate</dt>
-            <dd className="font-mono text-ink-900">{formatMonthlyRate(c.approved.monthlyRate)}</dd>
+            <dd className="text-ink-900">{formatMonthlyRate(c.approved.monthlyRate)}</dd>
           </div>
           <div>
             <dt className="text-xs text-mist-500">Monthly instalment</dt>
-            <dd className="font-mono text-ink-900">{formatPeso(c.approved.regularInstalment)}</dd>
+            <dd className="text-ink-900">{formatPeso(c.approved.regularInstalment)}</dd>
           </div>
           <div className="col-span-full text-xs text-mist-500">
             {c.approved.by ? "Approved by an approver" : "Approved automatically"} · instalment

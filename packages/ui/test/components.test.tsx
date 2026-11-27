@@ -7,16 +7,21 @@ import {
   Button,
   ConfirmDialog,
   Field,
+  FormGrid,
+  FormStack,
   GRADE_FILL,
   GradeTile,
   ICON_NAMES,
   Icon,
+  Input,
   initials,
   OutcomePill,
   SegmentedFilter,
+  Select,
   StageBar,
   StagePill,
   Table,
+  Textarea,
 } from "../src";
 
 describe("Button", () => {
@@ -143,6 +148,70 @@ describe("Field", () => {
     const input = screen.getByLabelText("Amount");
     expect(input).toHaveAttribute("aria-invalid", "true");
     expect(input).toHaveAccessibleDescription("Amount is below the minimum");
+  });
+});
+
+describe("form controls", () => {
+  it("Input, Select and Textarea share one look; inputs and selects share one height", () => {
+    render(
+      <>
+        <Field label="Amount">
+          <Input defaultValue="1" />
+        </Field>
+        <Field label="Reason">
+          <Select defaultValue="a">
+            <option value="a">A</option>
+          </Select>
+        </Field>
+        <Field label="Note" error="Too short">
+          <Textarea defaultValue="x" />
+        </Field>
+      </>,
+    );
+    const input = screen.getByLabelText("Amount");
+    const select = screen.getByLabelText("Reason");
+    const textarea = screen.getByLabelText("Note");
+    for (const el of [input, select, textarea]) {
+      for (const cls of ["rounded-btn", "border-line", "text-base", "px-3"]) {
+        expect(el.className).toContain(cls);
+      }
+    }
+    expect(input.className).toContain("h-11");
+    expect(select.className).toContain("h-11");
+    expect(textarea.className).toContain("min-h-24");
+    expect(textarea).toHaveAttribute("aria-invalid", "true");
+    expect(textarea).toHaveAccessibleDescription("Too short");
+  });
+
+  it("passes a ref through, so focus can be moved to a control", () => {
+    let node: HTMLInputElement | null = null;
+    render(
+      <Field label="Password">
+        <Input
+          ref={(el) => {
+            node = el;
+          }}
+          type="password"
+        />
+      </Field>,
+    );
+    expect(node).toBe(screen.getByLabelText("Password"));
+  });
+
+  it("lays fields out with one gap: side by side in a grid, stacked in a stack", () => {
+    const { container } = render(
+      <FormStack>
+        <FormGrid>
+          <span>a</span>
+          <span>b</span>
+        </FormGrid>
+      </FormStack>,
+    );
+    const stack = container.firstElementChild as HTMLElement;
+    const grid = stack.firstElementChild as HTMLElement;
+    expect(stack.className).toContain("gap-4");
+    expect(grid.className).toContain("gap-4");
+    expect(grid.className).toContain("sm:grid-cols-2");
   });
 });
 

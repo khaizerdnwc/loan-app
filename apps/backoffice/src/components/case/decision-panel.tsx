@@ -47,7 +47,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         <OutcomePill outcome={decision.outcome} />
         {decision.score !== null ? (
           <>
-            <span className="font-mono text-[32px] leading-none font-bold text-ink-900">
+            <span className="text-display leading-none font-extrabold text-ink-900">
               {decision.score}
             </span>
             <GradeTile grade={decision.grade} />
@@ -59,9 +59,9 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         )}
         <dl className="ml-auto grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
           <dt className="text-mist-500">Debt-to-income</dt>
-          <dd className="font-mono text-ink-900">{formatRatioPercent(decision.debtToIncome)}</dd>
+          <dd className="text-right text-ink-900">{formatRatioPercent(decision.debtToIncome)}</dd>
           <dt className="text-mist-500">Rate for grade</dt>
-          <dd className="font-mono text-ink-900">{formatMonthlyRate(decision.monthlyRate)}</dd>
+          <dd className="text-right text-ink-900">{formatMonthlyRate(decision.monthlyRate)}</dd>
         </dl>
       </div>
 
@@ -77,9 +77,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
 
       {decision.reasonCodes.length > 0 && (
         <div className="mt-5">
-          <h3 className="text-[11px] font-semibold tracking-wide text-mist-500 uppercase">
-            Reasons
-          </h3>
+          <h3 className="text-2xs font-bold tracking-wider text-mist-500 uppercase">Reasons</h3>
           <ul className="mt-2 flex flex-col gap-2">
             {decision.reasonCodes.map((r) => (
               <li key={r.code} className="flex gap-3 text-sm">
@@ -102,7 +100,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
 
       <div className="mt-5 grid gap-5 min-[1100px]:grid-cols-2">
         <div>
-          <h3 className="text-[11px] font-semibold tracking-wide text-mist-500 uppercase">
+          <h3 className="text-2xs font-bold tracking-wider text-mist-500 uppercase">
             Policy rules
           </h3>
           <ul className="mt-2 flex flex-col divide-y divide-line">
@@ -120,7 +118,9 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
                     </span>
                     {rule.kind === "KNOCKOUT" && <Pill>Knockout</Pill>}
                   </span>
-                  <span className="text-right font-mono text-xs text-mist-500">{rule.value}</span>
+                  <span className="text-right text-xs text-mist-500 tabular-nums">
+                    {rule.value}
+                  </span>
                 </li>
               );
             })}
@@ -128,7 +128,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         </div>
         {decision.scoreContributions.length > 0 && (
           <div>
-            <h3 className="text-[11px] font-semibold tracking-wide text-mist-500 uppercase">
+            <h3 className="text-2xs font-bold tracking-wider text-mist-500 uppercase">
               How the score was built
             </h3>
             <ul className="mt-2 flex flex-col divide-y divide-line">
@@ -138,7 +138,9 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
                     {c.factor}
                     <span className="block text-xs text-mist-500">{c.detail}</span>
                   </span>
-                  <span className={`font-mono ${c.points < 0 ? "text-bad-700" : "text-ink-900"}`}>
+                  <span
+                    className={`tabular-nums ${c.points < 0 ? "text-bad-700" : "text-ink-900"}`}
+                  >
                     {c.points > 0 && c.factor !== "Base points" ? `+${c.points}` : c.points}
                   </span>
                 </li>

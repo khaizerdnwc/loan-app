@@ -4,9 +4,10 @@ import type { CoreBankingSimulationMode, SimulationServiceView } from "@loan/cor
 import {
   Card,
   ConfirmDialog,
+  Field,
   formatDateTime,
-  inputClass,
   Pill,
+  Select,
   SimulatedLabel,
   useToast,
 } from "@loan/ui";
@@ -84,26 +85,24 @@ export default function SimulationPage() {
                 {s.setBy && <span className="text-xs text-mist-500">Set by {s.setBy}</span>}
               </div>
               {isAdmin ? (
-                <label className="mt-4 flex flex-col gap-1.5 text-sm">
-                  <span className="text-[10.5px] font-semibold tracking-wide text-mist-500 uppercase">
-                    Failure mode
-                  </span>
-                  <select
-                    className={inputClass}
-                    value={s.mode}
-                    onChange={(e) =>
-                      setChange({ service: s, mode: e.target.value as CoreBankingSimulationMode })
-                    }
-                  >
-                    {s.supportedModes.map((m) => (
-                      <option key={m} value={m}>
-                        {MODE_LABEL[m]}
-                      </option>
-                    ))}
-                  </select>
-                </label>
+                <div className="mt-4">
+                  <Field label="Failure mode">
+                    <Select
+                      value={s.mode}
+                      onChange={(e) =>
+                        setChange({ service: s, mode: e.target.value as CoreBankingSimulationMode })
+                      }
+                    >
+                      {s.supportedModes.map((m) => (
+                        <option key={m} value={m}>
+                          {MODE_LABEL[m]}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                </div>
               ) : (
-                <p className="mt-3 text-xs text-mist-500">
+                <p className="mt-4 text-xs text-mist-500">
                   Only an administrator can change failure modes.
                 </p>
               )}

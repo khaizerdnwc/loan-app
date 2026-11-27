@@ -1,7 +1,7 @@
 "use client";
 
 import type { StaffView } from "@loan/core";
-import { Button, Card, Field, inputClass } from "@loan/ui";
+import { Button, Card, Field, Input } from "@loan/ui";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
@@ -51,8 +51,10 @@ export default function SignInPage() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-6 px-4 py-10">
       <div>
-        <p className="font-mono text-xs tracking-wide text-gold-700 uppercase">WhiteBank Lending</p>
-        <h1 className="mt-1 text-[32px] leading-tight font-extrabold">Sign in</h1>
+        <p className="text-2xs font-bold tracking-wider text-gold-700 uppercase">
+          WhiteBank Lending
+        </p>
+        <h1 className="mt-1 text-display leading-tight font-extrabold">Sign in</h1>
         <p className="mt-2 text-sm">
           Test accounts only. Every applicant is synthetic and every external service is simulated.
         </p>
@@ -69,8 +71,7 @@ export default function SignInPage() {
             </p>
           )}
           <Field label="Username" error={missing.username}>
-            <input
-              className={inputClass}
+            <Input
               name="username"
               autoComplete="username"
               value={username}
@@ -78,9 +79,8 @@ export default function SignInPage() {
             />
           </Field>
           <Field label="Password" error={missing.password}>
-            <input
+            <Input
               ref={passwordRef}
-              className={inputClass}
               name="password"
               type="password"
               autoComplete="current-password"

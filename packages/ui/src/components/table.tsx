@@ -38,7 +38,7 @@ export function Table<T>({ caption, columns, rows, rowKey, empty, footer }: Tabl
                 key={c.key}
                 scope="col"
                 className={cn(
-                  "px-4 py-3 text-[11px] font-semibold tracking-wide text-mist-500 uppercase",
+                  "px-4 py-3 text-2xs font-bold tracking-wider text-mist-500 uppercase",
                   c.numeric ? "text-right" : "text-left",
                 )}
               >

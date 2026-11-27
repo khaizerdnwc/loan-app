@@ -222,7 +222,10 @@ describe("ActionsPanel shows only what the API allows", () => {
     renderPanel(referred, onChanged);
 
     expect(screen.getByText(/decides it again once the provider is back/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Recommend a decision" })).toHaveClass("bg-white");
+    expect(screen.getByRole("button", { name: "Recommend a decision" })).toHaveAttribute(
+      "data-variant",
+      "secondary",
+    );
     await userEvent.click(screen.getByRole("button", { name: "Decide again" }));
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Joel Reyes");
@@ -238,6 +241,25 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(
       await screen.findByText("Decided again — approved; waiting for the borrower's e-signature"),
     ).toBeInTheDocument();
+  });
+
+  it("draws the approver's actions by their weight: approve primary, decline danger, viewing the record secondary", () => {
+    renderPanel(
+      detail({
+        allowedActions: [
+          { action: "APPROVE", enabled: true },
+          { action: "DECLINE", enabled: true },
+          { action: "RETURN", enabled: true },
+          { action: "REPRODUCE_DECISION", enabled: true },
+        ],
+      }),
+    );
+    const variant = (name: string) =>
+      screen.getByRole("button", { name }).getAttribute("data-variant");
+    expect(variant("Approve")).toBe("primary");
+    expect(variant("Decline")).toBe("danger");
+    expect(variant("Return to loan officer")).toBe("secondary");
+    expect(variant("View decision record")).toBe("secondary");
   });
 
   it("offers no action the API did not list", () => {

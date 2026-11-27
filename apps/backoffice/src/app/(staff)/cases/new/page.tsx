@@ -11,7 +11,17 @@ import {
 /** The one product this release captures. */
 const PRODUCT_CODE = "PL";
 
-import { Button, Card, ConfirmDialog, Field, formatPeso, inputClass, useToast } from "@loan/ui";
+import {
+  Button,
+  Card,
+  ConfirmDialog,
+  Field,
+  FormGrid,
+  formatPeso,
+  Input,
+  Select,
+  useToast,
+} from "@loan/ui";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
@@ -115,20 +125,20 @@ export default function NewApplicationPage() {
           <div className="flex flex-col gap-5">
             <Card title="1 · Applicant">
               <Field label="Applicant" error={errors.applicantId?.message}>
-                <select className={inputClass} {...form.register("applicantId")}>
+                <Select {...form.register("applicantId")}>
                   <option value="">Choose an applicant</option>
                   {applicants.data.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.fullName} · {a.employer}
                     </option>
                   ))}
-                </select>
+                </Select>
               </Field>
               {selected && (
                 <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div>
                     <dt className="text-xs text-mist-500">Age</dt>
-                    <dd className="font-semibold text-ink-900">{selected.ageYears}</dd>
+                    <dd className="text-ink-900">{selected.ageYears}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-mist-500">Government ID</dt>
@@ -136,13 +146,11 @@ export default function NewApplicationPage() {
                   </div>
                   <div>
                     <dt className="text-xs text-mist-500">Monthly income</dt>
-                    <dd className="font-mono text-ink-900">{formatPeso(selected.monthlyIncome)}</dd>
+                    <dd className="text-ink-900">{formatPeso(selected.monthlyIncome)}</dd>
                   </div>
                   <div>
                     <dt className="text-xs text-mist-500">Monthly obligations</dt>
-                    <dd className="font-mono text-ink-900">
-                      {formatPeso(selected.monthlyObligations)}
-                    </dd>
+                    <dd className="text-ink-900">{formatPeso(selected.monthlyObligations)}</dd>
                   </div>
                 </dl>
               )}
@@ -151,35 +159,25 @@ export default function NewApplicationPage() {
               title="2 · Loan request"
               aside={`${productLabel(PRODUCT_CODE)} (${PRODUCT_CODE})`}
             >
-              <div className="grid gap-4 sm:grid-cols-2">
+              <FormGrid>
                 <Field
                   label="Amount (pesos)"
                   hint={`${formatPeso(MIN_AMOUNT)} to ${formatPeso(MAX_AMOUNT)}`}
                   error={errors.amount?.message}
                 >
-                  <input
-                    className={inputClass}
-                    inputMode="decimal"
-                    autoComplete="off"
-                    {...form.register("amount")}
-                  />
+                  <Input inputMode="decimal" autoComplete="off" {...form.register("amount")} />
                 </Field>
                 <Field
                   label="Tenor (months)"
                   hint="6 to 36 months"
                   error={errors.tenorMonths?.message}
                 >
-                  <input
-                    className={inputClass}
-                    inputMode="numeric"
-                    autoComplete="off"
-                    {...form.register("tenorMonths")}
-                  />
+                  <Input inputMode="numeric" autoComplete="off" {...form.register("tenorMonths")} />
                 </Field>
-              </div>
+              </FormGrid>
               <div className="mt-4">
                 <Field label="Purpose" error={errors.purpose?.message}>
-                  <input className={inputClass} {...form.register("purpose")} />
+                  <Input {...form.register("purpose")} />
                 </Field>
               </div>
             </Card>

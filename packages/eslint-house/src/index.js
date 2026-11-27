@@ -29,10 +29,12 @@
  *   - money-through-formatter            : peso amounts are displayed through formatPeso()
  *   - no-ring-color-without-width        : a ring colour needs a ring width to show
  *   - text-size-before-leading           : a text-size class after leading-* resets line height
+ *   - no-arbitrary-text-size             : text sizes come from the type scale, never text-[…px]
  *   - no-title-on-disabled-control       : a disabled control's title tooltip never shows
  *   - require-label-in-name              : an aria-label must contain the visible label
  */
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
+import noArbitraryTextSize from "./rules/no-arbitrary-text-size.js";
 import noCaseStatusAssignmentOutsideLifecycle from "./rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "./rules/no-commented-out-code.js";
 import noConsoleInServer from "./rules/no-console-in-server.js";
@@ -76,6 +78,7 @@ export default {
     "money-through-formatter": moneyThroughFormatter,
     "no-ring-color-without-width": noRingColorWithoutWidth,
     "text-size-before-leading": textSizeBeforeLeading,
+    "no-arbitrary-text-size": noArbitraryTextSize,
     "no-title-on-disabled-control": noTitleOnDisabledControl,
     "require-label-in-name": requireLabelInName,
   },

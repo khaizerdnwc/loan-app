@@ -82,7 +82,7 @@ export function DecisionRecordDialog({
         <summary className="cursor-pointer text-sm font-semibold text-ink-800">
           Inputs snapshot
         </summary>
-        <pre className="mt-2 max-h-64 overflow-auto rounded-btn bg-mist-050 p-3 font-mono text-[11px] text-ink-800">
+        <pre className="mt-2 max-h-64 overflow-auto rounded-btn bg-mist-050 p-3 font-mono text-2xs text-ink-800">
           {JSON.stringify(decision.inputs, null, 2)}
         </pre>
       </details>

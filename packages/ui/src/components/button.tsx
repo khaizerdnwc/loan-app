@@ -16,10 +16,14 @@ const VARIANT: Record<ButtonVariant, string> = {
   ghost: "text-ink-700 hover:bg-mist-100",
 };
 
-/** A button's classes, for a link that should look like one (never a <button> inside <a>). */
+/**
+ * A button's classes, for a link that should look like one (never a <button> inside <a>).
+ * `min-h-11` is 38.5px at the 14px root (spacing is 0.875× Tailwind's 16px-root values), the
+ * same rendered height as Input and Select, so a button beside a field lines up.
+ */
 export function buttonClass(variant: ButtonVariant = "secondary", className?: string): string {
   return cn(
-    "inline-flex items-center justify-center gap-2 rounded-btn px-4 py-2 text-sm font-semibold",
+    "inline-flex min-h-11 items-center justify-center gap-2 rounded-btn px-4 py-2 text-sm font-semibold",
     "transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-gold-700",
     "disabled:cursor-not-allowed disabled:opacity-50",
     VARIANT[variant],
@@ -46,6 +50,7 @@ export function Button({
     <button
       type={type ?? "button"}
       className={buttonClass(variant, className)}
+      data-variant={variant}
       disabled={disabled || busy}
       aria-busy={busy || undefined}
       {...rest}

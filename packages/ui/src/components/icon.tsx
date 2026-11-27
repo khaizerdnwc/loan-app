@@ -47,7 +47,7 @@ export function Icon({ name, className }: { name: IconName; className?: string }
       aria-hidden="true"
       focusable="false"
       data-icon={name}
-      className={cn("size-[18px] shrink-0", className)}
+      className={cn("size-5 shrink-0", className)}
     >
       {PATHS[name].map((d) => (
         <path key={d} d={d} />

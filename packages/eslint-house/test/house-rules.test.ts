@@ -4,6 +4,7 @@ import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
 import moneyThroughFormatter from "../src/rules/money-through-formatter.js";
+import noArbitraryTextSize from "../src/rules/no-arbitrary-text-size.js";
 import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "../src/rules/no-commented-out-code.js";
 import noConsoleInServer from "../src/rules/no-console-in-server.js";
@@ -425,3 +426,61 @@ ruleTester.run(
     ],
   },
 );
+
+ruleTester.run("no-arbitrary-text-size", asRule(noArbitraryTextSize), {
+  valid: [
+    // The type-scale tokens.
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="text-2xs text-title text-display">x</p>;`,
+    },
+    // Arbitrary non-size text utilities (a colour, a line-height) are not sizes.
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="text-[var(--c)] leading-[19px]">x</p>;`,
+    },
+    // A string outside any className or cn() is not a class list.
+    { filename: WEB, code: `export const note = "set text-[13px] in the design doc";` },
+    // Server code and tests are out of scope.
+    { filename: API, code: `export const k = cn("text-[13px]");` },
+    {
+      filename: at("apps/backoffice/test/a.test.tsx"),
+      code: `export const A = () => <p className="text-[13px]">x</p>;`,
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="font-bold text-[13.5px]">x</p>;`,
+      errors: [{ messageId: "arbitrary", data: { token: "text-[13.5px]" } }],
+    },
+    // Under a variant, in rem or em, and the length: form.
+    {
+      filename: at("packages/ui/src/components/a.tsx"),
+      code: `export const A = () => <p className="md:text-[1.1rem] hover:text-[0.9em] text-[length:var(--s)]">x</p>;`,
+      errors: [{ messageId: "arbitrary" }, { messageId: "arbitrary" }, { messageId: "arbitrary" }],
+    },
+    // Inside cn(), a template literal and a ternary in a className expression.
+    {
+      filename: WEB,
+      code: `export const A = ({ big }) => <p className={cn("p-2", big && "text-[28px]")}>x</p>;`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+    {
+      filename: WEB,
+      code: "export const A = ({ t }) => <p className={`${t} text-[15px]`}>x</p>;",
+      errors: [{ messageId: "arbitrary" }],
+    },
+    {
+      filename: WEB,
+      code: `export const A = ({ on }) => <p className={on ? "text-[11px]" : "text-xs"}>x</p>;`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+    // cn() outside JSX, building a class constant.
+    {
+      filename: WEB,
+      code: `export const k = cn("rounded", "text-[12.5px]");`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+  ],
+});

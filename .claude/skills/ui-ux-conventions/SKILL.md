@@ -41,8 +41,18 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 
 ## Money and accessibility
 
-- Amounts are shown only through `formatPeso()` (`house/money-through-formatter`), right-aligned
-  in tables, monospaced.
+- Amounts are shown only through `formatPeso()` (`house/money-through-formatter`), in the body
+  font. Values stacked in a column (tables, score contributions, the schedule) are
+  right-aligned with `tabular-nums`; a single value in a `<dl>` keeps proportional figures.
+  Monospace is only for identifiers: references, IDs, account numbers, booking keys, reason
+  codes and rule-set versions.
+- Text sizes come only from the type scale in `globals.css` `@theme`: `text-2xs` (11px
+  labels, table headings), `text-xs` (12), `text-sm` (13), `text-base` (14, body and
+  controls), `text-title` (15, card titles), `text-lg` (18), `text-stat` (28), `text-display`
+  (32, page titles). No `text-[…px]` (`house/no-arbitrary-text-size`).
+- Forms are built only from `Field` with `Input`, `Select` or `Textarea`, laid out with
+  `FormGrid` (side by side) or `FormStack` (stacked); never a native control with its own
+  classes. Controls and buttons render at the same height.
 - `eslint-plugin-jsx-a11y` (recommended) runs on every .tsx; plus the ported nxlvl rules
   `no-title-on-disabled-control`, `require-label-in-name`, `no-ring-color-without-width`,
   `text-size-before-leading`. Visible focus, labels on every input, keyboard-reachable dialogs.

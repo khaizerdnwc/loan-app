@@ -11,12 +11,12 @@ export function StatCard({
   note?: string;
 }) {
   return (
-    <div className="h-full rounded-card border border-line bg-white px-[18px] py-4 shadow-card">
-      <p className="text-[13px] font-medium text-mist-500">{label}</p>
-      <p className="mt-1.5 text-[28px] leading-tight font-extrabold text-ink-900 tabular-nums">
+    <div className="h-full rounded-card border border-line bg-white px-5 py-4 shadow-card">
+      <p className="text-sm font-medium text-mist-500">{label}</p>
+      <p className="mt-1.5 text-stat leading-tight font-extrabold text-ink-900 tabular-nums">
         {value}
       </p>
-      {note && <p className="text-[12.5px] text-mist-500">{note}</p>}
+      {note && <p className="text-xs text-mist-500">{note}</p>}
     </div>
   );
 }

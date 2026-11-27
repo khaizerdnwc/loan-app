@@ -16,7 +16,7 @@ import { LoadState } from "@/components/load-state";
 import { useApi } from "@/lib/use-api";
 
 const COLUMNS: Column<ScheduleLineView>[] = [
-  { key: "n", header: "#", render: (l) => <span className="font-mono">{l.number}</span> },
+  { key: "n", header: "#", render: (l) => <span className="tabular-nums">{l.number}</span> },
   { key: "due", header: "Due", render: (l) => formatDate(l.dueDate) },
   { key: "principal", header: "Principal", numeric: true, render: (l) => formatPeso(l.principal) },
   { key: "interest", header: "Interest", numeric: true, render: (l) => formatPeso(l.interest) },
@@ -42,19 +42,19 @@ export function LoanAccountPanel({ caseId }: { caseId: string }) {
       <dl className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
         <div>
           <dt className="text-xs text-mist-500">Principal</dt>
-          <dd className="font-mono text-ink-900">{formatPeso(a.principal)}</dd>
+          <dd className="text-ink-900">{formatPeso(a.principal)}</dd>
         </div>
         <div>
           <dt className="text-xs text-mist-500">Interest (add-on)</dt>
-          <dd className="font-mono text-ink-900">{formatPeso(a.interest)}</dd>
+          <dd className="text-ink-900">{formatPeso(a.interest)}</dd>
         </div>
         <div>
           <dt className="text-xs text-mist-500">Total repayable</dt>
-          <dd className="font-mono text-ink-900">{formatPeso(a.totalRepayable)}</dd>
+          <dd className="text-ink-900">{formatPeso(a.totalRepayable)}</dd>
         </div>
         <div>
           <dt className="text-xs text-mist-500">Rate · tenor</dt>
-          <dd className="font-mono text-ink-900">
+          <dd className="text-ink-900">
             {formatMonthlyRate(a.monthlyRate)} · {a.tenorMonths} mo
           </dd>
         </div>
@@ -95,9 +95,9 @@ export function LoanAccountPanel({ caseId }: { caseId: string }) {
               <td className="px-4 py-3" colSpan={2}>
                 Total ({a.schedule.length} instalments)
               </td>
-              <td className="px-4 py-3 text-right font-mono">{formatPeso(a.principal)}</td>
-              <td className="px-4 py-3 text-right font-mono">{formatPeso(a.interest)}</td>
-              <td className="px-4 py-3 text-right font-mono">{formatPeso(a.totalRepayable)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formatPeso(a.principal)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formatPeso(a.interest)}</td>
+              <td className="px-4 py-3 text-right tabular-nums">{formatPeso(a.totalRepayable)}</td>
             </tr>
           }
         />

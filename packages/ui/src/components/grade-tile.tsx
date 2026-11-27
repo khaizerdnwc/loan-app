@@ -17,7 +17,7 @@ export function GradeTile({ grade }: { grade: Grade | null }) {
       role="img"
       aria-label={grade ? `Grade ${grade}` : "No grade"}
       className={cn(
-        "inline-grid size-[30px] place-items-center rounded-tile text-sm font-extrabold",
+        "inline-grid size-8.5 place-items-center rounded-tile text-sm font-extrabold",
         grade ? cn(GRADE_FILL[grade], "text-white") : "bg-mist-100 text-mist-500",
       )}
     >

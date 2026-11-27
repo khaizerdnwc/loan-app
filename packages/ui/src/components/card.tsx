@@ -14,7 +14,7 @@ export function Card({ title, aside, className, children }: CardProps) {
     <section className={cn("rounded-card border border-line bg-white p-5 shadow-card", className)}>
       {(title || aside) && (
         <header className="mb-4 flex items-center justify-between gap-3">
-          {title && <h2 className="text-[15px] font-bold text-ink-900">{title}</h2>}
+          {title && <h2 className="text-title font-bold text-ink-900">{title}</h2>}
           {aside && <div className="text-xs text-mist-500">{aside}</div>}
         </header>
       )}

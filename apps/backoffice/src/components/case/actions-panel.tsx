@@ -13,7 +13,19 @@ import {
   type Recommendation,
   type RecommendRequest,
 } from "@loan/core";
-import { Button, Card, ConfirmDialog, Field, formatPeso, inputClass, useToast } from "@loan/ui";
+import {
+  Button,
+  Card,
+  ConfirmDialog,
+  Field,
+  FormGrid,
+  FormStack,
+  formatPeso,
+  Input,
+  Select,
+  Textarea,
+  useToast,
+} from "@loan/ui";
 import { type ReactNode, useState } from "react";
 import { useShellRefresh } from "@/components/app-shell";
 import { ApiError, api, errorMessage, fieldErrorsOf } from "@/lib/api";
@@ -282,8 +294,15 @@ function decidedDuringOutage(c: CaseDetail): boolean {
   return c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13") ?? false;
 }
 
+/**
+ * One rule for the panel's buttons: the action that moves the case forward is primary, a
+ * decline is danger, and anything that changes nothing (viewing the record) or should wait
+ * (recommending while a re-decide is offered) is secondary, as is a disabled action.
+ */
 function variantFor(a: ActionAvailability, redecideOffered: boolean): SimpleAction["variant"] {
   if (!a.enabled) return "secondary";
+  if (a.action === "DECLINE") return "danger";
+  if (a.action === "REPRODUCE_DECISION") return "secondary";
   if (a.action === "RECOMMEND" && redecideOffered) return "secondary";
   return SIMPLE[a.action]?.variant ?? "primary";
 }
@@ -405,37 +424,27 @@ function RecommendDialog({
       onConfirm={submit}
       onCancel={onCancel}
     >
-      <div className="flex flex-col gap-4">
+      <FormStack>
         <Field label="Recommendation" error={fieldError("type")}>
-          <select
-            className={inputClass}
-            value={type}
-            onChange={(e) => setType(e.target.value as Recommendation)}
-          >
+          <Select value={type} onChange={(e) => setType(e.target.value as Recommendation)}>
             <option value="APPROVE">Approve as requested</option>
             <option value="COUNTER_OFFER">Counter-offer</option>
             <option value="DECLINE">Decline</option>
-          </select>
+          </Select>
         </Field>
         {type === "COUNTER_OFFER" && (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <FormGrid>
             <Field label="Amount (pesos)" error={fieldError("amount")}>
-              <input
-                className={inputClass}
+              <Input
                 inputMode="decimal"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
               />
             </Field>
             <Field label="Tenor (months)" error={fieldError("tenorMonths")}>
-              <input
-                className={inputClass}
-                inputMode="numeric"
-                value={tenor}
-                onChange={(e) => setTenor(e.target.value)}
-              />
+              <Input inputMode="numeric" value={tenor} onChange={(e) => setTenor(e.target.value)} />
             </Field>
-          </div>
+          </FormGrid>
         )}
         <p aria-live="polite" className="text-sm font-semibold text-ink-900">
           {summary}
@@ -445,28 +454,19 @@ function RecommendDialog({
           hint="Required when the recommendation differs from the application."
           error={fieldError("overrideReason")}
         >
-          <select
-            className={inputClass}
-            value={reason}
-            onChange={(e) => setReason(e.target.value as OverrideReason | "")}
-          >
+          <Select value={reason} onChange={(e) => setReason(e.target.value as OverrideReason | "")}>
             <option value="">Choose a reason</option>
             {Object.entries(OVERRIDE_REASON_LABEL).map(([code, label]) => (
               <option key={code} value={code}>
                 {code} · {label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Rationale" error={fieldError("rationale")}>
-          <textarea
-            className={inputClass}
-            rows={3}
-            value={rationale}
-            onChange={(e) => setRationale(e.target.value)}
-          />
+          <Textarea value={rationale} onChange={(e) => setRationale(e.target.value)} />
         </Field>
-      </div>
+      </FormStack>
     </ConfirmDialog>
   );
 }
@@ -505,30 +505,21 @@ function DeclineDialog({
       }}
       onCancel={onCancel}
     >
-      <div className="flex flex-col gap-4">
+      <FormStack>
         <Field label="Reason code" error={local ?? fieldErrors.reasonCode}>
-          <select
-            className={inputClass}
-            value={reason}
-            onChange={(e) => setReason(e.target.value as DeclineReason | "")}
-          >
+          <Select value={reason} onChange={(e) => setReason(e.target.value as DeclineReason | "")}>
             <option value="">Choose a reason</option>
             {Object.entries(DECLINE_REASON_LABEL).map(([code, label]) => (
               <option key={code} value={code}>
                 {code} · {label}
               </option>
             ))}
-          </select>
+          </Select>
         </Field>
         <Field label="Note (optional)" error={fieldErrors.note}>
-          <textarea
-            className={inputClass}
-            rows={2}
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-          />
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
         </Field>
-      </div>
+      </FormStack>
     </ConfirmDialog>
   );
 }
