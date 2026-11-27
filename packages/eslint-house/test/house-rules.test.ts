@@ -10,6 +10,7 @@ import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-
 import noCommentedOutCode from "../src/rules/no-commented-out-code.js";
 import noConsoleInServer from "../src/rules/no-console-in-server.js";
 import noDatasourceOutsideRepository from "../src/rules/no-datasource-outside-repository.js";
+import noEngineVersionLiteral from "../src/rules/no-engine-version-literal.js";
 import noFloatMoney from "../src/rules/no-float-money.js";
 import noMathRandomInServer from "../src/rules/no-math-random-in-server.js";
 import noMoneyParseInController from "../src/rules/no-money-parse-in-controller.js";
@@ -783,6 +784,49 @@ ruleTester.run("money-column-numeric", asRule(moneyColumnNumeric), {
       filename: WEB,
       code: "const peso = (x) => formatPeso(x);\nconst two = (x) => peso(x);\nconst c = [{ header: 'Amount', render: (f) => two(f.a) }];",
       errors: [{ messageId: "notNumeric" }],
+    },
+  ],
+});
+
+// Screens never key on engine versions: the decision panel's band table stopped at RS-PL-2 and
+// RS-PL-3 decisions lost their score band (lesson ui-ux-20261128-no-engine-version-table).
+const DPANEL = at("apps/backoffice/src/components/case/decision-panel.tsx");
+ruleTester.run("no-engine-version-literal", asRule(noEngineVersionLiteral), {
+  valid: [
+    // Reading what the API sends.
+    { filename: DPANEL, code: `const bands = decision.scoreBand;` },
+    // Displaying the version the record carries.
+    { filename: DPANEL, code: `const V = ({ d }) => <span>{d.ruleSetVersion}</span>;` },
+    // Not a version: a reason code, a product code.
+    { filename: DPANEL, code: `const a = "R10x"; const b = "PL";` },
+    // Outside the path gate: the engine owns its versions.
+    {
+      filename: at("packages/base/src/decisioning/engine/rule-sets.ts"),
+      code: `const RS = { version: "RS-PL-3" };`,
+    },
+    // Tests may name versions.
+    { filename: at("apps/backoffice/test/decision-band.test.tsx"), code: `const v = "RS-PL-3";` },
+  ],
+  invalid: [
+    // The shape that bit us: a table keyed by version.
+    {
+      filename: DPANEL,
+      code: `const BANDS = { "RS-PL-1": { a: 1 }, "RS-PL-2": { a: 1 } };`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // A branch on the version.
+    {
+      filename: DPANEL,
+      code: `const old = d.ruleSetVersion === "RS-PL-1";`,
+      errors: [{ messageId: "literal" }],
+    },
+    // A scorecard version, in a template literal.
+    { filename: DPANEL, code: "const s = `SC-PL-2`;", errors: [{ messageId: "literal" }] },
+    // In packages/ui too.
+    {
+      filename: at("packages/ui/src/components/score-band.tsx"),
+      code: `switch (v) { case "RS-PL-3": break; }`,
+      errors: [{ messageId: "literal" }],
     },
   ],
 });

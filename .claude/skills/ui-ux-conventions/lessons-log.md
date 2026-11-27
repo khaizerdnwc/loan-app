@@ -4,6 +4,12 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## ui-ux-20261128-no-engine-version-table
+
+Gate: house/no-engine-version-literal
+
+decision-panel.tsx kept a table of score-band edges keyed by rule-set version ("RS-PL-1", "RS-PL-2"). When RS-PL-3 went live, every new decision lost its score band: the panel quietly fell back to the rule text, no unit test noticed, and only the F1/F2 browser journeys caught it at merge (2026-11-28). The fix sends `scoreBand` on DecisionRecordView from the record's own rule set. Versions are the engine's and grow with each release (ADR 0022); a screen reads what it needs about a version from the API. Sibling of ui-ux-20261128-no-reason-code-mirror. An engine version literal in web code is now a lint error.
+
 ## ui-ux-20261128-engine-figure-says-basis
 
 RS-PL-3 adds the engine's affordable amount to the decision record and the decision panel labels it "Recommended amount". On the same screen "Recommend a decision" is the loan officer's regulated step, and the approver reads "the recommendation" as the officer's. The engine returns "0.00" when nothing is affordable, which the panel shows as "Recommended amount ₱0.00", without words: it reads like an error or an offer of nothing. Why: Engineering Standard 6 (understandable states) and the rule that only an approved offer is an offer. Fix shape: name it as the engine's ("Affordable amount (engine)"), say it is indicative and not an offer, and turn the zero into a sentence ("Nothing is affordable at this grade's rate within the 50% debt-service limit"). Found reviewing lane C batch 2 on 2026-11-28. Nearest deterministic alternative: a component test rendering the panel with recommendedAmount "0.00" that asserts the sentence and no "₱0.00".

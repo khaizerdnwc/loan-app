@@ -100,6 +100,8 @@ approver who acted on it); it leaves the operations stages.
 A case outside the caller's view answers 404, not 403, so its existence is not revealed.
 An approver's `view=all` shows every APPROVAL case, including ones above their authority.
 
+Decision records carry `scoreBand` (`{ declineBelow, approveFrom }`), the band edges of the
+record's own rule set, so the score band is drawn from the API for every version.
 Decision records also carry `pd` and `recommendedAmount` (null before SC-PL-2 / RS-PL-3 or
 without a grade) and `latencyMs` (null on older records; not compared by reproduce).
 

@@ -351,6 +351,12 @@ function applicantView(a: ApplicantEntity, asOf: string): ApplicantView {
   };
 }
 
+/** The band edges of a stored record's own rule set (every stored version is kept, ADR 0022 R4). */
+function scoreBandOf(version: string): DecisionRecordView["scoreBand"] {
+  const rs = ruleSet(version);
+  return { declineBelow: rs.declineBelow, approveFrom: rs.approveFrom };
+}
+
 function decisionView(r: DecisionRecordEntity): DecisionRecordView {
   return {
     id: r.id,
@@ -377,6 +383,7 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     pd: r.pd,
     recommendedAmount: r.recommendedAmount?.toString() ?? null,
     latencyMs: r.latencyMs,
+    scoreBand: scoreBandOf(r.ruleSetVersion),
   };
 }
 

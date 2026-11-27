@@ -126,6 +126,11 @@ export interface DecisionRecordView {
   recommendedAmount: string | null;
   /** Milliseconds from gathering the inputs to writing this record; null on older records. */
   latencyMs: number | null;
+  /**
+   * The score band edges of the record's own rule set: decline below `declineBelow`, approve
+   * from `approveFrom`, refer between. Sent with every record so no screen keeps its own table.
+   */
+  scoreBand: { declineBelow: number; approveFrom: number };
 }
 
 export interface ReproduceResult {

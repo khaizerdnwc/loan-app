@@ -34,6 +34,7 @@ describe("F1 — Maria Santos, auto-approved ₱150,000 over 24 months", () => {
       // AIS-001: the grade A PD and the affordable amount (her ₱150,000 request).
       pd: "0.0080",
       recommendedAmount: "150000.00",
+      scoreBand: { declineBelow: 600, approveFrom: 700 },
       providerMode: "SIMULATED",
       outcome: "AUTO_APPROVE",
       automationMode: "LIVE",

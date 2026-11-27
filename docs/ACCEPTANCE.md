@@ -7,7 +7,7 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 
 | ID | Criterion | Test | Status |
 |---|---|---|---|
-| F1-1 | GIVEN Maria (age 31, full bureau file 748, verified income ₱78,000) WHEN the loan officer submits ₱150,000 over 24 months THEN the decision is Auto-approve, score 742, grade A, no referral trigger | `apps/api/test/journeys.e2e-spec.ts` + browser: `apps/backoffice/e2e/f1.spec.ts` | ☑ |
+| F1-1 | GIVEN Maria (age 31, full bureau file 748, verified income ₱78,000) WHEN the loan officer submits ₱150,000 over 24 months THEN the decision is Auto-approve, score 742, grade A, no referral trigger; the score is drawn on the band of the decision's own rule set, whose edges the API sends with the record | `apps/api/test/journeys.e2e-spec.ts` + component: `apps/backoffice/test/decision-band.test.tsx` + browser: `apps/backoffice/e2e/f1.spec.ts` | ☑ |
 | F1-2 | GIVEN that decision THEN a decision record stores the inputs snapshot, rule set and scorecard versions, rule results, score, outcome and provider mode, and reproducing it returns `match` | `apps/api/test/journeys.e2e-spec.ts` + browser: `apps/backoffice/e2e/f1.spec.ts` | ☑ |
 | F1-3 | GIVEN an auto-approved case WHEN loan operations simulates the borrower's e-signature THEN the case moves to Booking | `apps/api/test/journeys.e2e-spec.ts` + browser: `apps/backoffice/e2e/f1.spec.ts` | ☑ |
 | F1-4 | GIVEN a case in Booking WHEN loan operations submits it and a different supervisor approves THEN a loan account, a 24-line schedule and one disbursement exist, the case is Disbursed, and Σ instalments = principal + interest exactly | `apps/api/test/journeys.e2e-spec.ts` + browser: `apps/backoffice/e2e/f1.spec.ts` | ☑ |

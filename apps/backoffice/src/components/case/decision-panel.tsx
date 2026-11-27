@@ -17,15 +17,6 @@ import {
   SimulatedLabel,
 } from "@loan/ui";
 
-/**
- * Band edges per rule set (docs/ASSUMPTIONS.md). The contract does not carry them yet, so they
- * are listed here; an unlisted version falls back to the rule result text.
- */
-const BANDS: Record<string, { declineBelow: number; approveFrom: number }> = {
-  "RS-PL-1": { declineBelow: 600, approveFrom: 700 },
-  "RS-PL-2": { declineBelow: 600, approveFrom: 700 },
-};
-
 const RESULT: Record<
   DecisionRecordView["ruleResults"][number]["result"],
   { mark: string; label: string; tone: string }
@@ -36,7 +27,8 @@ const RESULT: Record<
 };
 
 export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
-  const bands = BANDS[decision.ruleSetVersion];
+  // The record's own rule set's band edges, from the API: no version table to fall behind.
+  const bands = decision.scoreBand;
   return (
     <Card
       title="Decision summary"

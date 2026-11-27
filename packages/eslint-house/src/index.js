@@ -37,6 +37,7 @@
  *   - no-server-env-in-client            : the backoffice's config/env only from route handlers and middleware
  *   - money-column-numeric               : a table column showing formatPeso() amounts is numeric: true
  *   - problem-code-through-constant      : the backoffice compares err.code / blockedBy with ProblemCode, never a literal
+ *   - no-engine-version-literal          : screens never key on rule-set/scorecard versions; use the decision view
  *   - no-reason-code-literal             : screens never branch on reason codes ("R10"); use the API's view
  */
 import moneyColumnNumeric from "./rules/money-column-numeric.js";
@@ -47,6 +48,7 @@ import noCommentedOutCode from "./rules/no-commented-out-code.js";
 import noConsoleInServer from "./rules/no-console-in-server.js";
 import noDangerousHtmlWithoutSanitize from "./rules/no-dangerous-html-without-sanitize.js";
 import noDatasourceOutsideRepository from "./rules/no-datasource-outside-repository.js";
+import noEngineVersionLiteral from "./rules/no-engine-version-literal.js";
 import noErrorNameBranching from "./rules/no-error-name-branching.js";
 import noFloatMoney from "./rules/no-float-money.js";
 import noMathRandomInServer from "./rules/no-math-random-in-server.js";
@@ -99,5 +101,6 @@ export default {
     "problem-code-through-constant": problemCodeThroughConstant,
     "money-column-numeric": moneyColumnNumeric,
     "no-reason-code-literal": noReasonCodeLiteral,
+    "no-engine-version-literal": noEngineVersionLiteral,
   },
 };

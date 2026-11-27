@@ -72,6 +72,7 @@ export default tseslint.config(
       "house/problem-code-through-constant": "error",
       "house/money-column-numeric": "error",
       "house/no-reason-code-literal": "error",
+      "house/no-engine-version-literal": "error",
       // eslint-plugin-security: the generic Node security checks.
       "security/detect-eval-with-expression": "error",
       "security/detect-child-process": "error",
