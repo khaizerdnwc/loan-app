@@ -21,6 +21,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
+import { ComplianceService } from "../compliance/compliance.service";
 import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
 import { authorityProblem, canView } from "./case-access";
@@ -68,6 +69,7 @@ export class CasesService {
     private readonly decisions: DecisionService,
     private readonly views: CaseViews,
     @Inject(E_SIGNATURE) private readonly eSignature: ESignature,
+    private readonly compliance: ComplianceService,
   ) {}
 
   // --- reads -------------------------------------------------------------------------------
@@ -247,6 +249,8 @@ export class CasesService {
           scorecard: record.scorecardVersion,
         },
       });
+      // A sanctions knockout goes to Compliance (PRD CMP-005, F6), in this transaction.
+      await this.compliance.escalateIfSanctioned(m, c, record, result);
     });
     return this.get(user, id);
   }
@@ -334,6 +338,7 @@ export class CasesService {
           cleared,
         },
       });
+      await this.compliance.escalateIfSanctioned(m, c, record, result);
     });
     return this.get(user, id);
   }

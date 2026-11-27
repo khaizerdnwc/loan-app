@@ -64,6 +64,19 @@ describe("simulated providers conform to their ports", () => {
     });
   });
 
+  it("KYC/AML screened again before disbursement matches a person the list added later (Dario)", async () => {
+    const kyc = h.app.get<KycAml>(KYC_AML);
+    const dario = { ...maria, applicantId: "APL-DARIO" };
+    expect(await kyc.screen(dario)).toMatchObject({ sanctionsMatch: false, matchedList: null });
+    expect(await kyc.screen(dario, "ONBOARDING")).toMatchObject({ sanctionsMatch: false });
+    expect(await kyc.screen(dario, "PRE_DISBURSEMENT")).toMatchObject({
+      mode: "SIMULATED",
+      sanctionsMatch: true,
+      matchedList: "Simulated watchlist (updated list)",
+    });
+    expect(await kyc.screen(maria, "PRE_DISBURSEMENT")).toMatchObject({ sanctionsMatch: false });
+  });
+
   it("core banking is idempotent on the key and its schedule reconciles", async () => {
     const core = h.app.get<CoreBanking>(CORE_BANKING);
     const req = {

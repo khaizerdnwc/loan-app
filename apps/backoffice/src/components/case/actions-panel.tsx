@@ -138,6 +138,8 @@ const CHANGES_ON_REFUSAL = new Set<string>([
   ProblemCode.AuthorityLimit,
   ProblemCode.ProviderUnavailable,
   ProblemCode.ScheduleMismatch,
+  // A watchlist match before disbursement holds the booking (Booking failed, PRD CMP-005).
+  ProblemCode.ScreeningMatch,
 ]);
 
 type Open =
@@ -208,6 +210,12 @@ export function ActionsPanel({
               setOpen((o) =>
                 o?.kind === "simple" ? { kind: "simple", action: "RETRY_BOOKING" } : o,
               );
+            else if (retry) {
+              // Held (e.g. for Compliance): nothing to confirm now. Close the dialog, show the
+              // refusal as a toast; the panel says why the retry is blocked and who acts next.
+              setOpen(null);
+              toast(errorMessage(e), "bad");
+            }
           },
           () =>
             setError((msg) =>
@@ -424,7 +432,9 @@ function waitingFor(c: CaseDetail): string {
     case "PENDING_CHECKER":
       return "Waiting for a loan operations supervisor — not the person who submitted it — to approve the booking.";
     case "BOOKING_FAILED":
-      return "The last booking attempt failed. A supervisor can retry it safely with the same booking key.";
+      return c.allowedActions.some((a) => !a.enabled && a.blockedBy === ProblemCode.ComplianceHold)
+        ? "Held for Compliance: screening before disbursement matched. Compliance reviews the match; once they clear it, a loan operations supervisor can retry the booking."
+        : "The last booking attempt failed. A supervisor can retry it safely with the same booking key.";
     case "DISBURSED":
       return "Booked in core banking and disbursed. Nothing left to do.";
     case "DECLINED":

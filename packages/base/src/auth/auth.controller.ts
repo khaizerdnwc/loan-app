@@ -14,6 +14,7 @@ import { JwtService } from "@nestjs/jwt";
 import { ApiTags } from "@nestjs/swagger";
 import { Throttle } from "@nestjs/throttler";
 import { IsString, Length } from "class-validator";
+import { AuditService } from "../audit/audit.service";
 import { LENDING_OPTIONS, type LendingModuleOptions } from "../lending.options";
 import { CurrentUser, Public, Roles, SIGN_IN_LIMITS, SignInRoute } from "./auth.decorators";
 import { hashPassword, verifyPassword } from "./password";
@@ -55,6 +56,7 @@ export class AuthController {
     private readonly staff: StaffRepository,
     private readonly jwt: JwtService,
     @Inject(LENDING_OPTIONS) private readonly options: LendingModuleOptions,
+    private readonly audit: AuditService,
   ) {}
 
   @Post("sign-in")
@@ -78,12 +80,26 @@ export class AuthController {
     const usable = member?.passwordHash.startsWith("scrypt$") ? member.passwordHash : null;
     const ok = await verifyPassword(body.password, usable ?? (await this.dummyHash));
     if (!member || !usable || !ok) {
+      // Audited without the password, and without the typed name when it matches no account
+      // (a password typed into the username box must not land in the log).
+      await this.audit.record({
+        actor: member
+          ? { id: member.id, fullName: member.fullName, role: member.role }
+          : { id: "UNKNOWN", fullName: "Unknown username", role: "NONE" },
+        action: "SIGN_IN_FAILED",
+        summary: member ? "Sign-in refused: wrong password." : "Sign-in refused: no such account.",
+      });
       throw new UnauthorizedException({
         code: ProblemCode.Unauthenticated,
         detail: "The username or password is not correct.",
       });
     }
     const token = await this.jwt.signAsync({ sub: member.id }, { expiresIn: SESSION_TTL_SECONDS });
+    await this.audit.record({
+      actor: { id: member.id, fullName: member.fullName, role: member.role },
+      action: "SIGN_IN_SUCCEEDED",
+      summary: "Signed in.",
+    });
     res.cookie(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: "lax",
@@ -97,8 +113,12 @@ export class AuthController {
   @Post("logout")
   @Roles(...ALL_ROLES)
   @HttpCode(204)
-  logout(@Res({ passthrough: true }) res: CookieResponse): void {
+  async logout(
+    @CurrentUser() user: SessionUser,
+    @Res({ passthrough: true }) res: CookieResponse,
+  ): Promise<void> {
     res.clearCookie(SESSION_COOKIE, { path: "/" });
+    await this.audit.record({ actor: user, action: "SIGNED_OUT", summary: "Signed out." });
   }
 
   @Get("me")

@@ -1,6 +1,9 @@
 import { Module } from "@nestjs/common";
 import { JwtModule } from "@nestjs/jwt";
 import { TypeOrmModule } from "@nestjs/typeorm";
+import { AuditController } from "./audit/audit.controller";
+import { AuditRepository } from "./audit/audit.repository";
+import { AuditService } from "./audit/audit.service";
 import { AuthController } from "./auth/auth.controller";
 import { SessionGuard } from "./auth/session.guard";
 import { StaffEntity } from "./auth/staff.entity";
@@ -15,6 +18,9 @@ import { DecisionService } from "./cases/decision.service";
 import { ApplicantEntity } from "./cases/entities/applicant.entity";
 import { LoanCaseEntity } from "./cases/entities/loan-case.entity";
 import { ExpiryService } from "./cases/expiry.service";
+import { ComplianceController } from "./compliance/compliance.controller";
+import { ComplianceRepository } from "./compliance/compliance.repository";
+import { ComplianceService } from "./compliance/compliance.service";
 import { TransactionRunner } from "./database/transaction-runner";
 import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
 import { SimulationController } from "./simulation/simulation.controller";
@@ -36,7 +42,13 @@ export class LendingModule {
         TypeOrmModule.forFeature([StaffEntity, ApplicantEntity, LoanCaseEntity]),
         JwtModule.register({ secret: options.jwtSecret, signOptions: { algorithm: "HS256" } }),
       ],
-      controllers: [AuthController, CasesController, SimulationController],
+      controllers: [
+        AuthController,
+        CasesController,
+        SimulationController,
+        AuditController,
+        ComplianceController,
+      ],
       providers: [
         { provide: LENDING_OPTIONS, useValue: options },
         TransactionRunner,
@@ -49,6 +61,10 @@ export class LendingModule {
         ExpiryService,
         BookingService,
         SessionGuard,
+        AuditRepository,
+        AuditService,
+        ComplianceRepository,
+        ComplianceService,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
       exports: [SessionGuard, JwtModule, ExpiryService],

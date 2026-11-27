@@ -1,3 +1,4 @@
+export { AuditService } from "./audit/audit.service";
 export {
   CurrentUser,
   Public,

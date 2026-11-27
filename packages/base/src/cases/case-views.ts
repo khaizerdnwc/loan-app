@@ -21,6 +21,7 @@ import { CaseStatus, Money } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
+import { ComplianceService } from "../compliance/compliance.service";
 import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions } from "./case-access";
@@ -41,6 +42,7 @@ export class CaseViews {
     private readonly repo: CasesRepository,
     private readonly staff: StaffRepository,
     @Inject(CORE_BANKING) private readonly core: CoreBanking,
+    private readonly compliance: ComplianceService,
   ) {}
 
   async summaries(cases: LoanCaseEntity[]): Promise<CaseSummary[]> {
@@ -159,6 +161,7 @@ export class CaseViews {
         DecisionService.decidedDuringOutage(decision),
         consentComplete(consent),
         checklistRefusal(checklist),
+        booking ? await this.compliance.bookingHold(c.id) : null,
       ),
     };
   }

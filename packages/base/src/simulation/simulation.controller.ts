@@ -6,6 +6,7 @@ import {
 import { ProblemCode, Role, ServiceName, type SimulationServiceView } from "@loan/core";
 import { Body, Controller, Get, Inject, Param, Put } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import { AuditService } from "../audit/audit.service";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import type { SessionUser } from "../auth/session";
 import { DomainError, validation } from "../cases/domain-error";
@@ -19,7 +20,10 @@ import { SetSimulationModeDto } from "../cases/dto";
 @ApiTags("simulation")
 @Controller("simulation/services")
 export class SimulationController {
-  constructor(@Inject(SIMULATION_CONTROL) private readonly control: SimulationControl) {}
+  constructor(
+    @Inject(SIMULATION_CONTROL) private readonly control: SimulationControl,
+    private readonly audit: AuditService,
+  ) {}
 
   @Get()
   @Roles(...Object.values(Role))
@@ -43,6 +47,16 @@ export class SimulationController {
       ]);
     }
     const change = { service, mode: body.mode } as ServiceModeChange;
-    return (await this.control.set(change, user.fullName)) as SimulationServiceView;
+    const previous = (await this.control.list()).find((s) => s.service === service)?.mode ?? null;
+    const state = await this.control.set(change, user.fullName);
+    // The switch lives in the simulators' own schema and commits on its own; the audit entry
+    // follows it (PRD PLT-004), so the log never records a change that did not happen.
+    await this.audit.record({
+      actor: user,
+      action: "SIMULATION_MODE_CHANGED",
+      summary: `Set ${state.label} from ${previous ?? "OK"} to ${state.mode}.`,
+      details: { service, from: previous, to: state.mode, resetsAt: state.resetsAt },
+    });
+    return state as SimulationServiceView;
   }
 }

@@ -19,6 +19,7 @@ import noServerEnvInClient from "../src/rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "../src/rules/no-status-only-assertion.js";
 import noTodoComment from "../src/rules/no-todo-comment.js";
 import noTypeormSynchronize from "../src/rules/no-typeorm-synchronize.js";
+import problemCodeThroughConstant from "../src/rules/problem-code-through-constant.js";
 import requireOrderWithTake from "../src/rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "../src/rules/require-roles-on-controller-handler.js";
 import requireShapeWithValidateNested from "../src/rules/require-shape-with-validate-nested.js";
@@ -637,6 +638,53 @@ ruleTester.run("no-money-parse-in-controller", asRule(noMoneyParseInController),
       filename: at("apps/api/src/simulation/simulation.controller.ts"),
       code: "const a = Money.of(`${x}`);",
       errors: [{ messageId: "moneyOfInController" }],
+    },
+  ],
+});
+
+ruleTester.run("problem-code-through-constant", asRule(problemCodeThroughConstant), {
+  valid: [
+    { filename: WEB, code: "if (err.code === ProblemCode.InvalidTransition) run();" },
+    { filename: WEB, code: "const r = c.reasonCodes.some((r) => r.code === 'R10');" },
+    { filename: WEB, code: "if (a.status === 'BOOKING_FAILED') run();" },
+    {
+      filename: at("packages/base/src/cases/cases.service.ts"),
+      code: "if (err.code === 'INVALID_STATE_TRANSITION') run();",
+    },
+    {
+      filename: at("apps/backoffice/test/escalation-actions.test.tsx"),
+      code: "if (err.code === 'INVALID_STATE_TRANSITION') run();",
+    },
+    {
+      filename: WEB,
+      code: "// eslint-disable-next-line rule-to-test/problem-code-through-constant -- not a problem code\nif (x.code === 'SOME_CODE') run();",
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: "if (err instanceof ApiError && err.code === 'INVALID_STATE_TRANSITION') run();",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "const held = a.blockedBy !== `COMPLIANCE_HOLD`;",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "const x = 'AUTHORITY_LIMIT' == (e as ApiError).code;",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "switch (err?.code) { case 'SCREENING_MATCH': break; case ProblemCode.AuthorityLimit: break; }",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: at("packages/ui/src/components/thing.tsx"),
+      code: "const y = e['code'] === 'COMPLIANCE_HOLD';",
+      errors: [{ messageId: "literal" }],
     },
   ],
 });
