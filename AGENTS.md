@@ -68,6 +68,7 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 ```bash
 pnpm install && pnpm db:up && pnpm db:migrate && pnpm db:seed && pnpm dev
 #   backoffice http://localhost:3100  ·  API http://localhost:3101 (Swagger at /docs)
+#   sign in: docs/TEST-ACCOUNTS.md (usernames; password Password123! — synthetic test data)
 pnpm typecheck · pnpm lint · pnpm test · pnpm test:integration · pnpm test:e2e
 pnpm house:check · pnpm deps:check · pnpm lessons for <files>
 pnpm review:preflight [--cached] · pnpm review:roles · pnpm review:ack [--stamp]

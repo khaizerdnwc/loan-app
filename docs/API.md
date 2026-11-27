@@ -13,7 +13,6 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | Method | Path | Roles | Body → Response |
 |---|---|---|---|
 | GET | /health | public | `{ status: "ok" }` |
-| GET | /auth/personas | public | `StaffView[]` |
 | POST | /auth/sign-in | public (throttled 20/min) | `{ username, password }` → `StaffView` + cookie; 401 for an unknown user or a wrong password alike |
 | POST | /auth/logout | any signed-in | 204, clears the cookie |
 | GET | /auth/me | any signed-in | `StaffView` |

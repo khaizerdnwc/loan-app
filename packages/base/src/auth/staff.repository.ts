@@ -7,10 +7,6 @@ import { StaffEntity } from "./staff.entity";
 export class StaffRepository {
   constructor(@InjectRepository(StaffEntity) private readonly repo: Repository<StaffEntity>) {}
 
-  list(): Promise<StaffEntity[]> {
-    return this.repo.find({ order: { role: "ASC", fullName: "ASC" } });
-  }
-
   /** The member with this username, including the password hash (selected only here). */
   findForSignIn(username: string): Promise<StaffEntity | null> {
     return this.repo

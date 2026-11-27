@@ -146,7 +146,7 @@ describe("test sign-in (Program Mechanics 1a)", () => {
     request(h.app.getHttpServer()).post("/auth/sign-in").send({ username, password });
 
   it("signs in with a seeded username and its test password, case-insensitively", async () => {
-    const res = await signIn("Rina", SEED_TEST_PASSWORD("rina")).expect(200);
+    const res = await signIn("Rina", SEED_TEST_PASSWORD).expect(200);
     expect(res.body).toMatchObject({ id: STAFF.rina, username: "rina", role: "APPROVER" });
     expect(JSON.stringify(res.body)).not.toMatch(/scrypt|password/i);
   });
@@ -166,7 +166,7 @@ describe("test sign-in (Program Mechanics 1a)", () => {
     for (let i = 0; i < 20; i++) await signIn("mallory", `guess-${i}`).expect(401);
     const limited = await signIn("mallory", "guess-21").expect(429);
     expect(limited.body.code).toBe("RATE_LIMITED");
-    const other = await signIn("diane", SEED_TEST_PASSWORD("diane")).expect(200);
+    const other = await signIn("diane", SEED_TEST_PASSWORD).expect(200);
     expect(other.body.username).toBe("diane");
   });
 
@@ -177,10 +177,14 @@ describe("test sign-in (Program Mechanics 1a)", () => {
       .expect(404);
   });
 
-  it("the persona list carries usernames but never a password or hash", async () => {
-    const res = await request(h.app.getHttpServer()).get("/auth/personas").expect(200);
-    expect(res.body.map((p: { username: string }) => p.username)).toContain("ella");
-    expect(JSON.stringify(res.body)).not.toMatch(/scrypt|passwordHash|test-2026/);
+  it("no public endpoint lists the staff accounts", async () => {
+    await request(h.app.getHttpServer()).get("/auth/personas").expect(404);
+  });
+
+  it("the signed-in user's own view never carries a password or hash", async () => {
+    const res = await h.as("ella").get("/auth/me").expect(200);
+    expect(res.body).toMatchObject({ username: "ella", role: "LOAN_OPERATIONS_SUPERVISOR" });
+    expect(JSON.stringify(res.body)).not.toMatch(/scrypt|passwordHash|Password123/);
   });
 
   it("stores each test password only as a scrypt hash", async () => {
@@ -189,6 +193,8 @@ describe("test sign-in (Program Mechanics 1a)", () => {
     }[];
     expect(rows.length).toBe(8);
     for (const r of rows) expect(r.password_hash).toMatch(/^scrypt\$16384\$8\$1\$/);
+    // One shared test password, but every row has its own salt, so no two hashes match.
+    expect(new Set(rows.map((r) => r.password_hash)).size).toBe(rows.length);
   });
 });
 
@@ -196,7 +202,7 @@ describe("the session cookie", () => {
   it("is httpOnly and SameSite=Lax, and carries only the staff id", async () => {
     const res = await request(h.app.getHttpServer())
       .post("/auth/sign-in")
-      .send({ username: "paolo", password: SEED_TEST_PASSWORD("paolo") })
+      .send({ username: "paolo", password: SEED_TEST_PASSWORD })
       .expect(200);
     const cookie = ([] as string[])
       .concat(res.headers["set-cookie"] ?? [])

@@ -43,16 +43,21 @@ JWT_SECRET=$(openssl rand -hex 32) docker compose up --build
 ```
 
 Rehearsed by hand on 27 Nov 2026 (not a gate stage): migrations applied (3), the seed ran,
-`/health` returned ok, and `/sign-in` and `/api/auth/personas` were served through the
-backoffice proxy. The gate's e2e stage covers the same path from built sources.
+`/health` returned ok, and `/sign-in` was served through the backoffice proxy. The gate's e2e stage covers the same path from built sources.
 
 ## Checks after deploying
 
 1. `GET <api>/health` → `{"status":"ok"}`.
-2. Sign in with each test account (username and `<username>-test-2026`, docs/ASSUMPTIONS.md)
-   and run F1 (Maria) and F2 (Joel) as in `docs/ACCEPTANCE.md`.
+2. Sign in with each test account (docs/TEST-ACCOUNTS.md: the usernames and the shared test
+   password) and run F1 (Maria) and F2 (Joel) as in `docs/ACCEPTANCE.md`.
 3. As Leo, switch a simulator to OUTAGE and back. A non-OK mode resets itself after 15
    minutes, so a reviewer cannot leave the demo broken.
+
+## Test credentials on a shared environment
+
+The seed sets the published test password (`Password123!`, docs/TEST-ACCOUNTS.md) on every
+staff account. The repository is public, so a deployed environment seeded this way is open to
+anyone who reads it. That is acceptable for this synthetic-data demo and for nothing else.
 
 ## Rollback
 

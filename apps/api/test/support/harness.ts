@@ -54,7 +54,7 @@ export async function startHarness(): Promise<Harness> {
   for (const persona of Object.keys(STAFF) as Persona[]) {
     const res = await request(app.getHttpServer())
       .post("/auth/sign-in")
-      .send({ username: persona, password: SEED_TEST_PASSWORD(persona) })
+      .send({ username: persona, password: SEED_TEST_PASSWORD })
       .expect(200);
     const setCookie = ([] as string[]).concat(res.headers["set-cookie"] ?? []);
     const session = setCookie.find((c) => c.startsWith("session="))?.split(";")[0];

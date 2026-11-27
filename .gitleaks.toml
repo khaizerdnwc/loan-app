@@ -23,12 +23,12 @@ paths = [
 
 # Known dev-only / documentation values that look secret-ish but aren't.
 regexes = [
-  # Published test passwords of the seeded demo staff (docs/ASSUMPTIONS.md, Sign-in).
-  '''\b(paolo|rina|ben|marco|ella|lito|diane|leo)-test-2026\b''',
+  # The one published test password of the seeded demo staff (docs/TEST-ACCOUNTS.md).
+  '''^Password123!$''',
   # Local and verify-only Postgres credentials (docker-compose.dev.yml, scripts/verify/env.sh).
   '''postgres://loan:loan_(dev_password|verify)@''',
   # Dummy JWT secrets used only by the gates and tests.
   '''(verify|test|dev)-dummy-secret[a-z0-9-]*''',
   # Examples often reference a literal placeholder secret.
-  '''(your-secret-here|changeme|example|placeholder|dummy)''',
+  '''^(your-secret-here|changeme|example|placeholder|dummy)$''',
 ]

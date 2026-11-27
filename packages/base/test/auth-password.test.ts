@@ -2,10 +2,10 @@ import { hashPassword, verifyPassword } from "../src/auth/password";
 
 describe("password hashing (scrypt)", () => {
   it("verifies the right password and refuses a wrong one", async () => {
-    const stored = await hashPassword("paolo-test-2026");
+    const stored = await hashPassword("Password123!");
     expect(stored).toMatch(/^scrypt\$16384\$8\$1\$[A-Za-z0-9+/=]+\$[A-Za-z0-9+/=]+$/);
-    await expect(verifyPassword("paolo-test-2026", stored)).resolves.toBe(true);
-    await expect(verifyPassword("paolo-test-2027", stored)).resolves.toBe(false);
+    await expect(verifyPassword("Password123!", stored)).resolves.toBe(true);
+    await expect(verifyPassword("Password124!", stored)).resolves.toBe(false);
   });
 
   it("salts every hash, so the same password never hashes the same way twice", async () => {

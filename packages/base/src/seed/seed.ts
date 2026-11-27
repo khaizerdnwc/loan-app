@@ -11,7 +11,7 @@ import { ApplicantEntity } from "../cases/entities/applicant.entity";
  */
 interface StaffSeed {
   id: string;
-  /** Test sign-in name; the test password is `<username>-test-2026` (SEED_TEST_PASSWORD). */
+  /** Test sign-in name; every account's test password is SEED_TEST_PASSWORD. */
   username: string;
   fullName: string;
   role: StaffEntity["role"];
@@ -21,10 +21,11 @@ interface StaffSeed {
 }
 
 /**
- * Every seeded staff member's TEST password: synthetic demo accounts only, published in
- * docs/ASSUMPTIONS.md, never a real credential. Stored only as a scrypt hash.
+ * The one TEST password every seeded staff member signs in with: synthetic demo accounts
+ * only, published in docs/TEST-ACCOUNTS.md, never a real credential. Stored only as a scrypt
+ * hash.
  */
-export const SEED_TEST_PASSWORD = (username: string): string => `${username}-test-2026`;
+export const SEED_TEST_PASSWORD = "Password123!";
 
 export const SEED_STAFF: StaffSeed[] = [
   {
@@ -327,7 +328,7 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
     for (const s of SEED_STAFF) {
       staff.push({
         ...s,
-        passwordHash: await hashPassword(SEED_TEST_PASSWORD(s.username)),
+        passwordHash: await hashPassword(SEED_TEST_PASSWORD),
         approvalLimit: s.approvalLimit ? Money.of(s.approvalLimit) : null,
       });
     }

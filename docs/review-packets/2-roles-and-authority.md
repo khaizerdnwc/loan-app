@@ -33,7 +33,7 @@ the roles refused on them), R-9 role re-read from the staff table on every reque
    its reason clear enough for a branch user?
 2. Should a refused approval escalate automatically (current), or should Ben have to press
    "Escalate"? The PRD says "blocked or escalated".
-3. Sign-in is now a test account per staff member (`<username>-test-2026`, scrypt-hashed;
-   your call on 27 Nov replaced the password-less picker). Are published test passwords
-   acceptable for the shared dev environment, or should the deployed seed take passwords
-   from an environment variable instead?
+3. Sign-in is a test account per staff member, all with the published password
+   `Password123!` (docs/TEST-ACCOUNTS.md; your calls on 27 Nov). The repo is public, so the
+   deployed dev environment is open to anyone who reads it. Fine for synthetic data — or
+   should the deployed seed take the password from an environment variable?

@@ -57,13 +57,6 @@ export class AuthController {
     @Inject(LENDING_OPTIONS) private readonly options: LendingModuleOptions,
   ) {}
 
-  /** The test accounts, for the sign-in page's shortcut list (no passwords, no hashes). */
-  @Get("personas")
-  @Public()
-  async personas(): Promise<StaffView[]> {
-    return (await this.staff.list()).map(toStaffView);
-  }
-
   @Post("sign-in")
   @Public()
   @SignInRoute()
