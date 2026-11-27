@@ -1,4 +1,4 @@
-import type { ProviderMode } from "@loan/core";
+import type { ProviderMode, ScreeningStage } from "@loan/core";
 import type { ApplicantIdentity } from "./applicant-identity";
 
 export interface ScreeningResult {
@@ -16,8 +16,12 @@ export interface ScreeningResult {
 
 export interface KycAml {
   readonly mode: ProviderMode;
-  /** Throws ProviderUnavailableError when screening cannot complete. */
-  screen(subject: ApplicantIdentity): Promise<ScreeningResult>;
+  /**
+   * Throws ProviderUnavailableError when screening cannot complete. `stage` says why the
+   * screening runs: at application (the default) or again before disbursement (PRD CMP-005),
+   * when the lists may have changed since onboarding.
+   */
+  screen(subject: ApplicantIdentity, stage?: ScreeningStage): Promise<ScreeningResult>;
 }
 
 export const KYC_AML = "KYC_AML_PORT";

@@ -16,6 +16,10 @@ Indicative repayment (INT-004): `CaseDetail.indicativeRepayment` is the `Indicat
 
 Consent: `POST /cases` and `PATCH /cases/:id` accept `consent: { creditBureauCheck, dataProcessing, termsVersion }` (current version `CONSENT_TERMS_VERSION`, 1.0). `POST /cases/:id/submit` (and `POST /cases` with `submit: true`) answers 400 on the `consent` field until both consents for the current version are recorded; `CaseDetail.consent` shows the latest record.
 
+Screening before disbursement (PRD CMP-005): `POST /cases/:id/booking/approve` screens the applicant again before booking. A watchlist match answers 409 `SCREENING_MATCH` without naming the list (this attempt booked nothing; after an earlier failed attempt it says that attempt may have reached core; the booking is failed and held; an AML escalation opens); while that escalation is open, or after Compliance confirms the match, the call answers 409 `COMPLIANCE_HOLD` and writes nothing; screening unavailable answers 503 and holds the booking for a retry.
+
+Audit: sign-ins (success, failure, sign-out), simulation mode changes and every case activity event are written to the hash-chained audit log (`audit_event`, insert-only) in the transaction of the change.
+
 Authentication: `POST /auth/sign-in` checks a username and test password and sets an httpOnly
 `session` cookie (a signed JWT carrying only the staff id). There is no password-less route.
 The backoffice never calls the API from the browser directly: its `/api/*` route forwards
@@ -50,7 +54,14 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | POST | /cases/:id/booking/approve | supervisor, not the maker (PENDING_CHECKER or BOOKING_FAILED) | → `CaseDetail` (books and disburses). Both APPROVE_BOOKING and RETRY_BOOKING use this endpoint, with the same idempotency key (ADR 0020 R5); the maker stays excluded on retry. |
 | GET | /cases/:id/loan-account | roles that can see the case | `LoanAccountView` |
 | GET | /simulation/services | any signed-in | `SimulationServiceView[]` |
-| PUT | /simulation/services/:service | admin | `SetSimulationModeRequest` → `SimulationServiceView` |
+| PUT | /simulation/services/:service | admin | `SetSimulationModeRequest` → `SimulationServiceView` (the change is written to the audit log) |
+| GET | /compliance/escalations?view=open\|all | compliance | `AmlEscalationView[]` (default open: not closed), newest first |
+| GET | /compliance/escalations/:id | compliance | `AmlEscalationView` |
+| POST | /compliance/escalations/:id/acknowledge | compliance (Open) | → `AmlEscalationView`; 409 if already acknowledged or closed |
+| POST | /compliance/escalations/:id/close | compliance (Open or Acknowledged) | `CloseEscalationRequest` (`outcome`: FALSE_POSITIVE \| CONFIRMED_MATCH, `notes`) → `AmlEscalationView`; 400 without notes, 409 if closed |
+| GET | /audit/events?actor=&action=&from=&to=&case=&before=&limit= | compliance, admin | `AuditLogPage` (newest first; `from`/`to` are business dates, inclusive; `before` pages by seq; limit 1–200, default 50). `case` is Compliance only (403 for admin). On a case entry the admin gets `caseHidden: true` and `caseId`, `caseReference`, `summary` and `details` null |
+| GET | /audit/actions | compliance, admin | `string[]`: the action codes in the log |
+| GET | /audit/verify | compliance, admin | `AuditChainVerification`: recomputes every hash from entry 1 |
 
 Who sees what (`GET /cases`, `GET /cases/:id`):
 
@@ -82,6 +93,7 @@ refuses it now:
 | SUBMIT_BOOKING / APPROVE_BOOKING / RETRY_BOOKING | an item of the pre-booking checklist fails (the first failing item is the detail) | BOOKING_CHECKLIST_INCOMPLETE |
 | EDIT_DRAFT / SUBMIT | the draft is unchanged for 30 days (expired; the sweep closes it) | INVALID_STATE_TRANSITION |
 | SIGN | the offer was made more than 5 days ago (expired; the sweep closes it) | INVALID_STATE_TRANSITION |
+| APPROVE_BOOKING / RETRY_BOOKING | an AML escalation from screening before disbursement is open, or Compliance confirmed the match | COMPLIANCE_HOLD |
 
 A disabled APPROVE can still be posted: the API refuses it with that code and, for the
 authority case, flags the case as escalated (ACCEPTANCE R-6).

@@ -21,8 +21,21 @@ describe("where each role lands and what its sidebar offers", () => {
   });
 
   it("admin has no case screens and compliance has no queue", () => {
-    expect(hrefs("ADMIN")).toEqual(["/simulation"]);
-    expect(hrefs("COMPLIANCE")).toEqual(["/cases", "/simulation"]);
+    expect(hrefs("ADMIN")).toEqual(["/audit", "/simulation"]);
+    expect(hrefs("COMPLIANCE")).toEqual([
+      "/cases",
+      "/compliance/escalations",
+      "/audit",
+      "/simulation",
+    ]);
+  });
+
+  it("only compliance works AML escalations; compliance and admin read the audit log", () => {
+    for (const role of ["LOAN_OFFICER", "APPROVER", "LOAN_OPERATIONS_SUPERVISOR"] as Role[]) {
+      expect(hrefs(role)).not.toContain("/audit");
+      expect(hrefs(role)).not.toContain("/compliance/escalations");
+    }
+    expect(hrefs("ADMIN")).not.toContain("/compliance/escalations");
   });
 });
 
@@ -34,6 +47,9 @@ describe("breadcrumb and page icons", () => {
     ["APPROVER", "/queue", "My work", "Approvals", "check"],
     ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],
     ["ADMIN", "/simulation", "System", "Simulated services", "sliders"],
+    ["ADMIN", "/audit", "Compliance", "Audit log", "list"],
+    ["COMPLIANCE", "/compliance/escalations", "Compliance", "AML escalations", "shieldAlert"],
+    ["COMPLIANCE", "/compliance/escalations/0b6d", "Compliance", "AML escalations", "shieldAlert"],
   ] as [Role, string, string, string, string][])(
     "%s on %s reads %s / %s with the %s icon",
     (role, path, section, page, icon) => {

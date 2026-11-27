@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 14 built, 39 partly built, 86 not built (139 IDs). Of the 8 flows, 3 are partly built
+Summary: 20 built, 36 partly built, 83 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -39,7 +39,7 @@ Summary: 14 built, 39 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 | F3 | Branch-assisted application with income mismatch | not built | — | No branch officer role, consent capture, OCR, or income-mismatch trigger. The capture form only offers seeded applicants. |
 | F4 | Email or file intake | not built | — | No upload, OCR or batch drafts. |
 | F5 | Home loan through committee | not built | — | No secured product, collateral, LTV, committee or minutes. |
-| F6 | Auto-decline and compliance escalation (Ramon Cruz) | partly built | `packages/base/test/decisioning/decide.test.ts` (D-2) | The sanctions knockout declines with no score, and reason codes have borrower-safe wording (`reason-codes.ts`). Missing: escalation to Compliance (no AML escalation record or queue) and any borrower-facing decline view. |
+| F6 | Auto-decline and compliance escalation (Ramon Cruz) | partly built | `packages/base/test/decisioning/decide.test.ts` (D-2), CMP-1..CMP-3, `apps/backoffice/e2e/compliance.spec.ts` | The sanctions knockout declines with no score, opens an AML escalation in the same transaction, and Compliance acknowledges and closes it with notes (AML escalations list and detail). Reason codes have borrower-safe wording (`reason-codes.ts`). Missing: the borrower-facing decline view (borrower app, **OOR**) and export to the bank's AML system. |
 | F7 | Delinquent loan through restructuring | not built | — | No collections module. |
 | F8 | Configuration and model change | not built | — | Rule sets are versioned in code (`rule-sets.ts`). There is no editor, test harness, maker-checker publish, shadow mode or kill switch. |
 
@@ -177,7 +177,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | PLT-001 | Reuse WhiteBank identity, SSO, MFA | partly built (**OOR** for SSO) | R-9, R-10, `session.guard.ts` | Own staff table, scrypt test passwords and signed cookie. Roles are re-read each request. Reusing WhiteBank identity needs the real platform. |
 | PLT-002 | Multi-tenant isolation (P2) | not built | — | Phase 2. |
 | PLT-003 | Branding and localisation from WhiteBank theming | partly built | `apps/backoffice/src/app/globals.css`, `packages/ui` | The prototype's tokens are used. No per-tenant theming or localisation. |
-| PLT-004 | Immutable, searchable audit log | partly built | insert-only `activity_event`, `decision_record` | Per-case only. Sign-ins, simulation mode changes (`sim.service_mode.set_by` is overwritten) and other non-case actions are not logged. No search screen. |
+| PLT-004 | Immutable, searchable audit log | built | AUD-1..AUD-8, `audit_event`, `/audit` screen | Sign-ins (success, failure, sign-out), simulation mode changes and every case activity event (consent, decisions, approvals, booking, AML work) in one insert-only log, searchable by actor, action, business-date range and case, for Compliance and the administrator. Configuration changes are not logged because there is no configuration to change yet. |
 | PLT-005 | Holiday calendars, business days | not built | ASSUMPTIONS "Business date" | Only a UTC+8 business date. No holidays, so due dates are not shifted. |
 | PLT-006 | Feature flags | not built | — | |
 
@@ -243,12 +243,12 @@ These are PRD sections, not requirement IDs.
 | CMP-002 | Disclosure statement before signing | not built | — | Deferred as a stretch item (ACCEPTANCE). |
 | CMP-003 | Bureau submission files | not built | — | A file in a documented format can be generated from synthetic data. Submitting it needs a real bureau. |
 | CMP-004 | Data privacy | partly built | `applicant.entity.ts` (only the last 4 digits of the government ID), masked IDs in views | Data minimisation and no applicant data in logs. No access, correction, retention or deletion workflow. |
-| CMP-005 | AML at onboarding and pre-disbursement, escalation, export | partly built | `kyc-aml.port.ts`, D-2, R13 | Screened at submission. Not screened again before disbursement. No escalation and no export. |
+| CMP-005 | AML at onboarding and pre-disbursement, escalation, export | partly built | `kyc-aml.port.ts`, D-2, R13, CMP-1..CMP-10 | Screened at submission and again before disbursement (a match holds the booking; an outage holds it for a retry, never declines). Matches escalate to Compliance, who acknowledge and close them; a false positive releases the held booking, a confirmed match keeps it blocked. Missing: export to the bank's AML system, and real list screening (simulated only, **OOR**). |
 | CMP-006 | Related-party controls | not built | — | |
 | CMP-007 | Fair lending | partly built | DEC-007 codes | Decline codes only. |
 | CMP-008 | Model risk governance | not built | — | |
 | CMP-009 | Fair collection | not built | — | Depends on CLX. |
-| CMP-010 | Tamper-evident audit trail | partly built | `1764300000002-InsertOnlyRecords.ts` | UPDATE and DELETE are refused by triggers. No hash chain, so the trail is not tamper-evident, and TRUNCATE is not blocked (BUILD-STATUS). |
+| CMP-010 | Tamper-evident audit trail | built | AUD-4, AUD-5, AUD-8, `1764300002000-AuditLogAndAmlEscalations.ts`, `audit/audit-chain.ts` | The audit log is hash-chained (sha256 of the previous hash and the canonical entry) and `GET /audit/verify` recomputes it, naming the first changed or missing entry; triggers refuse UPDATE, DELETE and TRUNCATE on it. The older per-case tables (`activity_event`, `decision_record`) still allow TRUNCATE; their events are covered by the chain. No external anchor of the head hash. |
 | CMP-011 | Segregation of duties | built | R-1..R-9, ADR 0020 | |
 | CMP-012 | Data residency | not built (**OOR**) | — | A hosting decision. |
 
@@ -291,9 +291,9 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 3 | ✅ Done (A-7). Duplicate application detection by applicant and product (409 with the open case reference; partial unique index on open statuses) | INT-007 | S | P1 intake control the prototype already shows. Cheap DB-backed guard. |
 | 4 | ✅ Done (W-1, W-2). Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
 | 5 | Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |
-| 6 | Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
+| 6 | ✅ Done (CMP-1..CMP-10; export not built). Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
 | 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
-| 8 | Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
+| 8 | ✅ Done (AUD-1..AUD-8). Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
 | 9 | ✅ Done (BK-1). Pre-booking checklist shown to loan operations and enforced by the API (approval, signature, conditions) | BKG-001 | S | Makes an existing guard visible and extends it to conditions. |
 | 10 | Per-product automation mode (off, shadow, live) and a kill switch routing every new case to referral, recorded in the decision record | §7.5, AIS-007 (mode only), F8 | M | Part of the PRD rollout model. The engine change is small; the record must carry the mode for replay. |
 | 11 | Missing referral triggers: income mismatch (declared vs verified), related-party flag, fraud flag (new simulated fraud port with failure modes) | DEC-006, CMP-006, F3 | M | F3 needs the income mismatch and CMP-006 needs mandatory referral. A new rule-set version keeps old decisions replayable. |
@@ -359,9 +359,9 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Collateral register, collateral detail, Deposit holds | Secured lending | COL-001..006, PC-009 | Not built (#29). |
 | Delinquency overview, Collector queue, Restructuring, Write-off and recovery, Agency assignment (P2) | Collections | CLX-001..008 | Not built (#31). |
 | Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Not built (#14, #15, #32). |
-| Compliance: Audit log (searchable, tamper-evident) | Audit | PLT-004, CMP-010 | Per-case history only (#8). |
+| Compliance: Audit log (searchable, tamper-evident) | Audit | PLT-004, CMP-010 | Built (AUD-1..AUD-8): `/audit` with filters and chain verification, for compliance and admin. |
 | Compliance: Consent records | Consent register | CMP-001 | Not built (#2). |
-| Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Not built (#6). |
+| Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Built without export (CMP-1..CMP-5): list and detail, acknowledge, close with outcome and notes. |
 | Compliance: Related-party lending, Segregation of duties, Data subject requests, Model governance, Fair collection oversight | Compliance views | CMP-006, CMP-011, CMP-004, CMP-008, CMP-009 | SoD enforced (R-1..R-9) but there is no screen. Others not built. |
 | Configuration: Products, Workflows, Approval matrix (L1/L2/L3 and override threshold), Documents and templates, Notifications, Collection strategies | Config | PC-*, WF-001, WF-003, WF-004, DOC-004, NTF-*, CLX-002 | Not built (#19, #20, #21, #23). |
 | Configuration: Decisioning (rules, bands, triggers, draft, submit for review, approve and publish by a different user, pipeline) | Rules | DEC-001..006, PC-005, F8 | Engine built in code. No editor or maker-checker publish (#20). |

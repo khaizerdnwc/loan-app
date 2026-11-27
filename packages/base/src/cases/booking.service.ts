@@ -7,10 +7,11 @@ import {
   type Disbursement,
   isProviderUnavailable,
 } from "@loan/contracts";
-import { type CaseDetail, CaseStatus, Money, ProblemCode, Role } from "@loan/core";
+import { type CaseDetail, CaseStatus, Money, ProblemCode, Role, ServiceName } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
 import type { SessionUser } from "../auth/session";
+import { ComplianceService, ScreeningMatchError } from "../compliance/compliance.service";
 import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
@@ -43,6 +44,7 @@ export class BookingService {
     private readonly cases: CasesService,
     @Inject(CORE_BANKING) private readonly core: CoreBanking,
     @Inject(DISBURSEMENT) private readonly disbursement: Disbursement,
+    private readonly compliance: ComplianceService,
   ) {}
 
   /** Maker step. A second submit returns the existing request (B-1). */
@@ -86,11 +88,38 @@ export class BookingService {
     try {
       await this.tx.run((m) => this.book(m, user, id));
     } catch (err) {
+      if (err instanceof ScreeningMatchError) {
+        // This attempt booked nothing (the screening runs first). Hold the booking and tell
+        // Compliance, in one transaction (PRD CMP-005). The checker is not told which list
+        // matched (no tipping-off); after a lost reply an earlier attempt may already have
+        // reached core banking under the same key (ADR 0020), so that is said, not denied.
+        const held = await this.tx.run(async (m) => {
+          const locked = await this.lock(m, user, id);
+          const prior = (await this.repo.findBooking(locked.id, m))?.attempts ?? 0;
+          const outcome = {
+            code: ProblemCode.ScreeningMatch,
+            detail:
+              prior > 0
+                ? "Screening before disbursement matched; the booking is held for Compliance. This attempt booked nothing; an earlier attempt may already have reached core banking, which a retry with the same key would find."
+                : "Screening before disbursement matched; the booking is held for Compliance. Nothing was booked or paid out.",
+          };
+          const c = await this.markFailed(m, user, id, outcome);
+          if (c) {
+            await this.compliance.escalateBeforeDisbursement(m, user, c, err.result, prior);
+            return outcome;
+          }
+          // Another supervisor booked it meanwhile: nothing to hold, but the match is logged.
+          await this.compliance.recordLateMatch(m, user, id, err.result);
+          return null;
+        });
+        if (!held) throw invalidState("This loan is already booked and disbursed.");
+        throw new DomainError(409, held.code, held.detail);
+      }
       if (!isProviderUnavailable(err) && !(err instanceof ReconciliationError)) throw err;
       failure = isProviderUnavailable(err)
         ? {
             code: ProblemCode.ProviderUnavailable,
-            detail: `${serviceLabel(err.service)} ${err.failure === "TIMEOUT" ? "did not answer in time" : err.failure === "MALFORMED" ? "sent a reply that could not be read" : "is unavailable"}. Nothing was booked twice: retry with the same key.`,
+            detail: `${serviceLabel(err.service)} ${err.failure === "TIMEOUT" ? "did not answer in time" : err.failure === "MALFORMED" ? "sent a reply that could not be read" : "is unavailable"}. ${err.service === ServiceName.KycAml ? "Nothing was booked: the booking is held until screening answers, then retry." : "Nothing was booked twice: retry with the same key."}`,
           }
         : { code: ProblemCode.ScheduleMismatch, detail: err.message };
       await this.tx.run((m) =>
@@ -122,6 +151,9 @@ export class BookingService {
     if (!c.approvedAmount || !c.approvedTenorMonths || !c.approvedMonthlyRate) {
       throw invalidState("This case has no approved terms.");
     }
+    // Screen again before anything is booked or paid (PRD CMP-005): a hold refuses (409), a
+    // match throws ScreeningMatchError, an outage holds the booking for a retry.
+    const screening = await this.compliance.screenBeforeDisbursement(m, c);
 
     const account = await this.core.bookLoan({
       idempotencyKey: booking.idempotencyKey,
@@ -191,19 +223,21 @@ export class BookingService {
         accountNumber: account.accountNumber,
         disbursementReference: receipt.reference,
         attempt: booking.attempts,
+        preDisbursementScreening: screening,
       },
     });
   }
 
+  /** Mark the booking failed (held); returns the locked case, or null when nothing changed. */
   private async markFailed(
     m: EntityManager,
     user: SessionUser,
     id: string,
     failure: { code: ProblemCode; detail: string },
-  ): Promise<void> {
+  ): Promise<LoanCaseEntity | null> {
     const c = await this.lock(m, user, id);
     const booking = await this.repo.findBooking(c.id, m);
-    if (!booking || c.status === CaseStatus.Disbursed) return;
+    if (!booking || c.status === CaseStatus.Disbursed) return null;
     const fromStatus = c.status;
     booking.status = "FAILED";
     booking.attempts += 1;
@@ -221,6 +255,7 @@ export class BookingService {
       toStatus: CaseStatus.BookingFailed,
       details: { idempotencyKey: booking.idempotencyKey, code: failure.code },
     });
+    return c;
   }
 
   /**
@@ -295,5 +330,6 @@ export function assertReconciles(account: CoreLoanAccount, approved: Money, teno
 }
 
 function serviceLabel(service: string): string {
+  if (service === ServiceName.KycAml) return "KYC/AML screening";
   return service === "DISBURSEMENT" ? "The disbursement service" : "Core banking";
 }

@@ -62,6 +62,14 @@ describe("the /api/* proxy", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ["compliance", "escalations"],
+    ["audit", "events"],
+  ])("forwards the compliance screens' routes (/%s/%s)", async (root, rest) => {
+    await call(GET, [root, rest], { url: `http://office.test/api/${root}/${rest}?view=all` });
+    expect(sent().url).toBe(`${API}/${root}/${rest}?view=all`);
+  });
+
   it("keeps an encoded slash inside one segment and passes the query string through", async () => {
     await call(GET, ["cases", "a/b"], { url: "http://office.test/api/cases/a%2Fb?view=all" });
     expect(sent().url).toBe(`${API}/cases/a%2Fb?view=all`);
