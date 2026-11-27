@@ -73,6 +73,7 @@ pnpm typecheck · pnpm lint · pnpm test · pnpm test:integration · pnpm test:e
 pnpm house:check · pnpm deps:check · pnpm lessons for <files>
 pnpm review:preflight [--cached] · pnpm review:roles · pnpm review:ack [--stamp]
 pnpm verify [--only security,static,unit,db,integration,build,e2e]
+#   parallel worktrees: VERIFY_PG_PORT=… VERIFY_API_PORT=… VERIFY_WEB_PORT=… pnpm verify …
 ```
 
 ## 6. Commits and PRs

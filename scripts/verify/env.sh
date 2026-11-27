@@ -30,10 +30,11 @@ export VERIFY_HADOLINT_IMAGE="hadolint/hadolint:v2.12.0-alpine@sha256:3c206a451c
 
 # --- Throwaway services (scripts/verify/services.sh) ---------------------------------
 # Ports chosen never to collide with the dev stack (postgres 5436, API 3101, web 3100),
-# so a verify can run while `pnpm dev` is up.
-export VERIFY_PG_PORT=55432
-export VERIFY_API_PORT=53101
-export VERIFY_WEB_PORT=53100
+# so a verify can run while `pnpm dev` is up. Overridable so several worktrees can run verify
+# at once: set all three ports; the container is named after VERIFY_PG_PORT (services.sh).
+export VERIFY_PG_PORT="${VERIFY_PG_PORT:-55432}"
+export VERIFY_API_PORT="${VERIFY_API_PORT:-53101}"
+export VERIFY_WEB_PORT="${VERIFY_WEB_PORT:-53100}"
 # Both names end in _test: the integration-test helper refuses to truncate anything else.
 export VERIFY_DB=loan_verify_test
 export VERIFY_E2E_DB=loan_e2e_test
