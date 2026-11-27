@@ -73,6 +73,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   // Under 860px the sidebar is a drawer: hidden from keyboard and screen readers while
   // closed, focus moves into it when it opens, and Escape closes it.
   useEffect(() => {
+    // Without matchMedia (test environments; every supported browser has it) the screen
+    // counts as wide, so the sidebar is never made inert.
+    if (typeof window.matchMedia !== "function") return;
     const query = window.matchMedia("(max-width: 859.98px)");
     const update = () => setNarrow(query.matches);
     update();

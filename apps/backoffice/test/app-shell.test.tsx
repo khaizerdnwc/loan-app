@@ -1,6 +1,7 @@
 import { ToastProvider } from "@loan/ui";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { Component, type ReactNode } from "react";
 import { afterEach, beforeEach, vi } from "vitest";
 import { AppShell, useShellRefresh } from "@/components/app-shell";
 import { SessionProvider } from "@/lib/session";
@@ -42,6 +43,17 @@ function RefreshButton() {
   );
 }
 
+/** Turns a render-time or effect error into visible text, so a test fails instead of erroring. */
+class Boundary extends Component<{ children: ReactNode }, { error: string | null }> {
+  override state = { error: null as string | null };
+  static getDerivedStateFromError(e: unknown) {
+    return { error: e instanceof Error ? e.message : String(e) };
+  }
+  override render() {
+    return this.state.error ? <p>Crashed: {this.state.error}</p> : this.props.children;
+  }
+}
+
 const renderShell = () =>
   render(
     <ToastProvider>
@@ -72,6 +84,32 @@ describe("AppShell", () => {
     expect(crumb).toHaveTextContent("My work/Work queue");
     expect(screen.getAllByText("Loan officer").length).toBeGreaterThan(0);
     expect(screen.queryByRole("link", { name: /Run simulation/ })).not.toBeInTheDocument();
+  });
+
+  it("renders where matchMedia is unavailable, treating the screen as wide (sidebar not inert)", async () => {
+    vi.stubGlobal("matchMedia", undefined);
+    const quiet = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      render(
+        <Boundary>
+          <ToastProvider>
+            <SessionProvider fallback={<p>Checking…</p>}>
+              <AppShell>
+                <RefreshButton />
+              </AppShell>
+            </SessionProvider>
+          </ToastProvider>
+        </Boundary>,
+      );
+      expect(await screen.findByText("Paolo Tan")).toBeInTheDocument();
+      expect(screen.queryByText(/Crashed/)).not.toBeInTheDocument();
+      expect(screen.getByRole("navigation", { name: "Main" }).closest("aside")).not.toHaveAttribute(
+        "inert",
+      );
+    } finally {
+      quiet.mockRestore();
+    }
+    expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
   });
 
   it("gives the admin a Run simulation link to the simulation screen", async () => {
