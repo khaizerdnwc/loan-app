@@ -44,6 +44,7 @@ export default tseslint.config(
       // security
       "house/no-console-in-server": "error",
       "house/no-math-random-in-server": "error",
+      "house/no-money-parse-in-controller": "error",
       "house/no-process-env-outside-config": "error",
       "house/require-roles-on-controller-handler": "error",
       "house/no-server-env-in-client": "error",

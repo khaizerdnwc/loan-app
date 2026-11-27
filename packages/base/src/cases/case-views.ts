@@ -1,4 +1,10 @@
-import { CORE_BANKING, type CoreBanking } from "@loan/contracts";
+import {
+  CORE_BANKING,
+  type CoreBanking,
+  isProviderUnavailable,
+  type LoanTerms,
+  type Quote,
+} from "@loan/contracts";
 import type {
   ActivityView,
   ApplicantView,
@@ -7,6 +13,7 @@ import type {
   CaseSummary,
   DecisionRecordView,
   DeclineReason,
+  IndicativeRepaymentView,
   LoanAccountView,
   ProblemCode,
 } from "@loan/core";
@@ -14,6 +21,8 @@ import { CaseStatus, Money } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
+import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
+import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions } from "./case-access";
 import { CasesRepository } from "./cases.repository";
 import { consentComplete } from "./consent";
@@ -23,7 +32,7 @@ import type { ApplicantEntity } from "./entities/applicant.entity";
 import type { BookingRequestEntity } from "./entities/booking.entities";
 import type { DecisionRecordEntity } from "./entities/decision-record.entity";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
-import { expiryOf } from "./product";
+import { expiryOf, INDICATIVE_GRADE } from "./product";
 
 /** Entities → the HTTP contract (packages/core/src/api.ts). Money always leaves as strings. */
 @Injectable()
@@ -63,13 +72,15 @@ export class CaseViews {
 
     let regularInstalment: string | null = null;
     if (c.approvedAmount && c.approvedTenorMonths && c.approvedMonthlyRate) {
-      const q = await this.core.quote({
+      // Core banking quotes the instalment; when it cannot answer the case still shows (null).
+      const q = await this.quoteOrNull({
         principal: c.approvedAmount,
         monthlyRate: c.approvedMonthlyRate,
         tenorMonths: c.approvedTenorMonths,
       });
-      regularInstalment = q.regularInstalment.toString();
+      regularInstalment = q?.regularInstalment.toString() ?? null;
     }
+    const checklist = bookingChecklist(c, decision, new Date());
 
     return {
       ...summary(c, decision),
@@ -136,6 +147,10 @@ export class CaseViews {
         : null,
       booking: booking ? bookingView(booking, names.get(booking.makerId) ?? booking.makerId) : null,
       loanAccountId: account?.id ?? null,
+      bookingChecklist: checklist,
+      indicativeRepayment: decision
+        ? null
+        : await this.indicativeRepayment(c.requestedAmount, c.requestedTenorMonths),
       allowedActions: allowedActions(
         user,
         c,
@@ -143,8 +158,40 @@ export class CaseViews {
         booking,
         DecisionService.decidedDuringOutage(decision),
         consentComplete(consent),
+        checklistRefusal(checklist),
       ),
     };
+  }
+
+  /**
+   * The indicative monthly repayment for terms before any decision (PRD INT-004): core
+   * banking's quote at INDICATIVE_GRADE pricing (prototype: "at grade C pricing · calculated by
+   * core"). When core cannot answer, UNAVAILABLE with no amounts: a page never breaks on it.
+   */
+  async indicativeRepayment(amount: Money, tenorMonths: number): Promise<IndicativeRepaymentView> {
+    const monthlyRate = ruleSet(CURRENT_RULE_SET).monthlyRate[INDICATIVE_GRADE];
+    const q = await this.quoteOrNull({ principal: amount, monthlyRate, tenorMonths });
+    return {
+      status: q ? "QUOTED" : "UNAVAILABLE",
+      amount: amount.toString(),
+      tenorMonths,
+      grade: INDICATIVE_GRADE,
+      monthlyRate,
+      regularInstalment: q?.regularInstalment.toString() ?? null,
+      finalInstalment: q?.finalInstalment.toString() ?? null,
+      totalRepayable: q?.totalRepayable.toString() ?? null,
+      providerMode: q?.mode ?? null,
+    };
+  }
+
+  /** Core banking's quote, or null when it is unavailable (outage, timeout, malformed reply). */
+  private async quoteOrNull(terms: LoanTerms): Promise<Quote | null> {
+    try {
+      return await this.core.quote(terms);
+    } catch (err) {
+      if (isProviderUnavailable(err)) return null;
+      throw err;
+    }
   }
 
   decision(record: DecisionRecordEntity): DecisionRecordView {

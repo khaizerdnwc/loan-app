@@ -157,6 +157,20 @@ export class WithdrawDto {
   note?: string;
 }
 
+/** `GET /products/PL/quote`: the requested terms to quote an indicative repayment for. */
+export class IndicativeQuoteQueryDto {
+  @ApiProperty({ example: "150000.00" })
+  @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })
+  amount!: string;
+
+  @ApiProperty({ example: 24 })
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(600)
+  tenorMonths!: number;
+}
+
 export class SetSimulationModeDto {
   @ApiProperty({ enum: Object.values(CoreBankingSimulationMode) })
   @IsIn(Object.values(CoreBankingSimulationMode))

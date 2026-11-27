@@ -48,8 +48,27 @@ export class SimulatedCoreBanking implements CoreBanking {
     @Inject(SIMULATION_OPTIONS) private readonly options: SimulationOptions,
   ) {}
 
+  /**
+   * A quote opens nothing, so it has no state to keep: it follows the failure mode like any
+   * call (OUTAGE, TIMEOUT, MALFORMED), and LOST_REPLY loses the reply as a timeout would.
+   */
   async quote(terms: LoanTerms): Promise<Quote> {
-    return quote(terms);
+    const mode = await applyFailureMode(ServiceName.CoreBanking, this.modes, this.options);
+    if (mode === "LOST_REPLY") {
+      throw new ProviderUnavailableError(
+        ServiceName.CoreBanking,
+        "TIMEOUT",
+        "Core banking did not answer in time (simulated: the quote reply was lost)",
+      );
+    }
+    const reply: Quote = { mode: ProviderMode.Simulated, ...quote(terms) };
+    if (mode === "MALFORMED") (reply as Partial<Quote>).regularInstalment = undefined;
+    return requireFields<Quote>(ServiceName.CoreBanking, reply, [
+      "mode",
+      "regularInstalment",
+      "finalInstalment",
+      "totalRepayable",
+    ]);
   }
 
   async bookLoan(request: BookingRequest): Promise<CoreLoanAccount> {

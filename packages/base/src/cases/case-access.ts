@@ -93,6 +93,11 @@ export function allowedActions(
   decidedDuringOutage = false,
   /** The latest consent is complete (INT-006); submitting is refused until it is. */
   consentComplete = true,
+  /**
+   * Why the pre-booking checklist refuses SUBMIT_BOOKING, APPROVE_BOOKING and RETRY_BOOKING
+   * now (checklistRefusal), or null.
+   */
+  bookingRefusal: string | null = null,
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -187,6 +192,20 @@ export function allowedActions(
         enabled: false,
         blockedBy: ProblemCode.MakerChecker,
         detail: "You submitted this booking; a different supervisor must approve it.",
+      });
+      continue;
+    }
+    // The pre-booking checklist (BKG-001), checked at the maker step and again by the checker
+    // (and on a retry): the same wording as the API's 409.
+    if (
+      (action === "SUBMIT_BOOKING" || action === "APPROVE_BOOKING" || action === "RETRY_BOOKING") &&
+      bookingRefusal
+    ) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.BookingChecklistIncomplete,
+        detail: bookingRefusal,
       });
       continue;
     }

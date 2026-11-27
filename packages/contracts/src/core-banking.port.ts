@@ -13,6 +13,8 @@ export interface LoanTerms {
 }
 
 export interface Quote {
+  /** Where the quote came from: a simulated core labels it SIMULATED. */
+  mode: ProviderMode;
   principal: Money;
   interest: Money;
   totalRepayable: Money;
@@ -52,6 +54,10 @@ export interface CoreLoanAccount {
 }
 
 export interface CoreBanking {
+  /**
+   * Quote the repayment for the terms without opening anything. Throws
+   * ProviderUnavailableError on outage, timeout or a malformed reply.
+   */
   quote(terms: LoanTerms): Promise<Quote>;
   /**
    * Create the loan account. Idempotent on `idempotencyKey`. Throws

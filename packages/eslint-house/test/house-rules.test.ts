@@ -11,6 +11,7 @@ import noConsoleInServer from "../src/rules/no-console-in-server.js";
 import noDatasourceOutsideRepository from "../src/rules/no-datasource-outside-repository.js";
 import noFloatMoney from "../src/rules/no-float-money.js";
 import noMathRandomInServer from "../src/rules/no-math-random-in-server.js";
+import noMoneyParseInController from "../src/rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "../src/rules/no-process-env-outside-config.js";
 import noProviderImportOutsideAdapters from "../src/rules/no-provider-import-outside-adapters.js";
 import noRawColour from "../src/rules/no-raw-colour.js";
@@ -593,6 +594,49 @@ ruleTester.run("no-server-env-in-client", asRule(noServerEnvInClient), {
       filename: at("apps/backoffice/src/lib/route.ts"),
       code: `import { env } from "@/config/env";`,
       errors: [{ messageId: "clientImport" }],
+    },
+  ],
+});
+
+const CONTROLLER = at("packages/base/src/cases/cases.controller.ts");
+
+ruleTester.run("no-money-parse-in-controller", asRule(noMoneyParseInController), {
+  valid: [
+    // The guarded parse in a service (cases.service.ts parseAmount).
+    {
+      filename: at("packages/base/src/cases/cases.service.ts"),
+      code: "function parseAmount(raw) { try { return Money.of(raw); } catch { return null; } }",
+    },
+    // A constant literal cannot be attacker-shaped.
+    { filename: CONTROLLER, code: `const floor = Money.of("0.00");` },
+    // Outside server code.
+    {
+      filename: at("apps/backoffice/src/app/quote.controller.ts"),
+      code: "const a = Money.of(query.amount);",
+    },
+    // Another class's `of`.
+    { filename: CONTROLLER, code: "const a = Decimal.of(query.amount);" },
+    {
+      filename: CONTROLLER,
+      code: "// eslint-disable-next-line rule-to-test/no-money-parse-in-controller -- proven\nconst a = Money.of(q.amount);",
+    },
+  ],
+  invalid: [
+    // GET /products/PL/quote as staged: `amount=.` passes @IsDecimal, Money.of throws, 500.
+    {
+      filename: CONTROLLER,
+      code: "class C { quote(query) { const amount = Money.of(query.amount); return amount; } }",
+      errors: [{ messageId: "moneyOfInController" }],
+    },
+    {
+      filename: CONTROLLER,
+      code: `const a = Money["of"](raw);`,
+      errors: [{ messageId: "moneyOfInController" }],
+    },
+    {
+      filename: at("apps/api/src/simulation/simulation.controller.ts"),
+      code: "const a = Money.of(`${x}`);",
+      errors: [{ messageId: "moneyOfInController" }],
     },
   ],
 });

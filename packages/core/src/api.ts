@@ -227,8 +227,52 @@ export interface CaseDetail extends CaseSummary {
   consent: ConsentView | null;
   booking: BookingView | null;
   loanAccountId: string | null;
+  /**
+   * The pre-booking checklist (PRD BKG-001) from BOOKING on (BOOKING, PENDING_CHECKER,
+   * BOOKING_FAILED); null in every other status. SUBMIT_BOOKING is refused until every item passes.
+   */
+  bookingChecklist: BookingCheckView[] | null;
+  /**
+   * Before a decision (no decision record yet), the indicative monthly repayment for the
+   * requested terms at grade C pricing (`INDICATIVE_GRADE` in packages/base), quoted by core banking (PRD INT-004); else null.
+   */
+  indicativeRepayment: IndicativeRepaymentView | null;
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
   allowedActions: ActionAvailability[];
+}
+
+/** The items of the pre-booking checklist (PRD BKG-001; prototype booking screen). */
+export type BookingCheck =
+  | "APPROVALS_COMPLETE"
+  | "DOCUMENTS_SIGNED"
+  | "KYC_VALID"
+  | "DISBURSEMENT_ACCOUNT_VERIFIED";
+
+export interface BookingCheckView {
+  check: BookingCheck;
+  label: string;
+  passed: boolean;
+  /** What was checked, or why it fails, in staff words. */
+  detail: string;
+}
+
+/**
+ * An indicative repayment: what the borrower would pay a month for the requested terms at
+ * one fixed grade's pricing (C), before any decision. Core banking quotes it; when core cannot
+ * answer, `status` is UNAVAILABLE and the amounts are null. Never an offer.
+ */
+export interface IndicativeRepaymentView {
+  status: "QUOTED" | "UNAVAILABLE";
+  amount: string;
+  tenorMonths: number;
+  grade: Grade;
+  /** The add-on monthly rate at that grade, e.g. "0.0160". */
+  monthlyRate: string;
+  regularInstalment: string | null;
+  finalInstalment: string | null;
+  totalRepayable: string | null;
+  /** Where the quote came from (always SIMULATED in this release); null when unavailable. */
+  providerMode: ProviderMode | null;
 }
 
 export type CaseAction =

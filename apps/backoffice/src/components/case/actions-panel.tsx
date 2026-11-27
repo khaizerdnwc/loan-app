@@ -182,6 +182,17 @@ export function ActionsPanel({
       onChanged(next);
       refreshShell();
     } catch (e) {
+      // The pre-booking checklist failed since the case was loaded: nothing was written. Show
+      // the refreshed checklist and the disabled action with its reason, and close the dialog
+      // so it never offers an action the refreshed case blocks.
+      if (e instanceof ApiError && e.code === ProblemCode.BookingChecklistIncomplete) {
+        toast(errorMessage(e), "warn");
+        setOpen(null);
+        api<CaseDetail>(`/cases/${detail.id}`).then(onChanged, () =>
+          toast("Reload the page to see the case's current checklist.", "warn"),
+        );
+        return;
+      }
       setError(errorMessage(e));
       setFieldErrors(fieldErrorsOf(e));
       // Some refusals still change the case on the server: an approval above authority

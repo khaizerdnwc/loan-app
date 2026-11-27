@@ -27,9 +27,12 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionsPanel } from "@/components/case/actions-panel";
 import { ActivityTimeline } from "@/components/case/activity-timeline";
+import { ApprovedTermsNote } from "@/components/case/approved-terms-note";
+import { BookingChecklistPanel } from "@/components/case/booking-checklist-panel";
 import { ConsentPanel } from "@/components/case/consent-panel";
 import { DecisionPanel } from "@/components/case/decision-panel";
 import { DecisionRecordDialog } from "@/components/case/decision-record-dialog";
+import { IndicativeRepayment } from "@/components/case/indicative-repayment";
 import { LoanAccountPanel } from "@/components/case/loan-account-panel";
 import { OutcomeBanner } from "@/components/case/outcome-banner";
 import { LoadState } from "@/components/load-state";
@@ -104,10 +107,16 @@ export default function CasePage() {
               <p className="text-sm">
                 Not decided yet. The decision runs when the application is submitted.
               </p>
+              {c.indicativeRepayment && (
+                <div className="mt-4">
+                  <IndicativeRepayment quote={c.indicativeRepayment} />
+                </div>
+              )}
             </Card>
           )}
           {c.withdrawal && <WithdrawalPanel withdrawal={c.withdrawal} />}
           {(c.recommendation || c.approved || c.decline) && <TermsPanel detail={c} />}
+          {c.bookingChecklist && <BookingChecklistPanel items={c.bookingChecklist} />}
           {c.booking && <BookingPanel detail={c} />}
           {c.loanAccountId && <LoanAccountPanel caseId={c.id} />}
         </div>
@@ -203,13 +212,18 @@ function TermsPanel({ detail: c }: { detail: CaseDetail }) {
               { label: "Approved amount", value: formatPeso(c.approved.amount) },
               { label: "Tenor", value: `${c.approved.tenorMonths} months` },
               { label: "Rate", value: formatMonthlyRate(c.approved.monthlyRate) },
-              { label: "Monthly instalment", value: formatPeso(c.approved.regularInstalment) },
+              {
+                label: "Monthly instalment",
+                value:
+                  c.approved.regularInstalment === null
+                    ? "Unavailable"
+                    : formatPeso(c.approved.regularInstalment),
+              },
             ]}
           />
-          <p className="mt-3 text-xs text-mist-500">
-            {c.approved.by ? "Approved by an approver" : "Approved automatically"} · instalment
-            quoted by core banking (simulated)
-          </p>
+          <div className="mt-3">
+            <ApprovedTermsNote approved={c.approved} />
+          </div>
         </div>
       )}
       {c.decline && (

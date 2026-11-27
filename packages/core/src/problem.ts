@@ -28,6 +28,7 @@ export const ProblemCode = {
   MakerChecker: "MAKER_CHECKER_VIOLATION",
   AuthorityLimit: "AUTHORITY_LIMIT_EXCEEDED",
   InvalidTransition: "INVALID_STATE_TRANSITION",
+  BookingChecklistIncomplete: "BOOKING_CHECKLIST_INCOMPLETE",
   OverrideReasonRequired: "OVERRIDE_REASON_REQUIRED",
   NotFound: "NOT_FOUND",
   Conflict: "CONFLICT",

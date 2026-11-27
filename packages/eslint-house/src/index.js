@@ -14,6 +14,7 @@
  *   - no-todo-comment                    : TODO/FIXME/HACK/XXX markers are untracked work
  *   - no-console-in-server               : server code logs through Nest's Logger
  *   - no-math-random-in-server           : ids, keys and tokens come from a CSPRNG
+ *   - no-money-parse-in-controller       : controllers never Money.of() request input (a 500 on bad input)
  *   - no-process-env-outside-config      : process.env only in apps/<app>/src/config/env.ts
  *   - require-roles-on-controller-handler: every handler declares @Roles(...) or @Public()
  *   - require-shape-with-validate-nested : @ValidateNested() comes with @Type() and @IsObject()/@IsArray()
@@ -45,6 +46,7 @@ import noDatasourceOutsideRepository from "./rules/no-datasource-outside-reposit
 import noErrorNameBranching from "./rules/no-error-name-branching.js";
 import noFloatMoney from "./rules/no-float-money.js";
 import noMathRandomInServer from "./rules/no-math-random-in-server.js";
+import noMoneyParseInController from "./rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "./rules/no-process-env-outside-config.js";
 import noProviderImportOutsideAdapters from "./rules/no-provider-import-outside-adapters.js";
 import noRawColour from "./rules/no-raw-colour.js";
@@ -67,6 +69,7 @@ export default {
     "no-todo-comment": noTodoComment,
     "no-console-in-server": noConsoleInServer,
     "no-math-random-in-server": noMathRandomInServer,
+    "no-money-parse-in-controller": noMoneyParseInController,
     "no-process-env-outside-config": noProcessEnvOutsideConfig,
     "require-roles-on-controller-handler": requireRolesOnControllerHandler,
     "require-shape-with-validate-nested": requireShapeWithValidateNested,

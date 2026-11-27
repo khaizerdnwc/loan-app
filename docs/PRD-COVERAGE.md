@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 are partly built
+Summary: 14 built, 39 partly built, 86 not built (139 IDs). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -64,7 +64,7 @@ Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 | INT-001 | Embeddable journey for WhiteBank apps | not built (**OOR**) | — | The journey is borrower-facing (SDK, app). The staff API exists but is not a borrower API. |
 | INT-002 | Pre-fill from core and KYC | partly built | `applicant.entity.ts`, `GET /applicants` | Data comes from seeded applicant rows, not from a simulated core customer lookup. |
 | INT-003 | Save and resume for 30 days | partly built | A-4, A-5, W-2, `PATCH /cases/:id` | Drafts save and edit, and expire after 30 days unchanged (submit refused, then the sweep closes them as Expired). No cross-channel resume. |
-| INT-004 | Loan calculator, indicative offer | partly built | `case-views.ts` (`core.quote`), `CaseDetail.approved.regularInstalment` | The instalment is quoted from simulated core only after approval. No calculator before submission. |
+| INT-004 | Loan calculator, indicative offer | partly built | IR-1, `GET /products/PL/quote`, `CaseDetail.indicativeRepayment` | Indicative monthly repayment on New application and on an undecided draft, quoted by simulated core at grade C pricing; "unavailable" when core is down. Missing: a borrower-facing calculator and a personalised indicative offer (it uses one fixed grade, not a pre-score). |
 | INT-005 | Staff-assisted intake, including walk-ins | partly built | `apps/backoffice/src/app/(staff)/cases/new/page.tsx` | A loan officer captures for a seeded applicant. You cannot capture a new or walk-in customer (name, age, employer, income). There is no branch officer role. |
 | INT-006 | Consent with timestamp, terms version, channel | built | C-1 | Insert-only consent records (bureau check, data processing, terms version, channel, who, when); submit and so the bureau pull refused without them. |
 | INT-007 | Duplicate application detection | built | A-7 | One open application per applicant and product (service 409 + partial unique index). Booking idempotency (B-1..B-3, B-6) is separate. |
@@ -115,7 +115,7 @@ Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
-| BKG-001 | Pre-booking checklist | partly built | `lifecycle.ts` (SIGN before SUBMIT_BOOKING), `case-access.ts` | The state machine enforces approval and signature. There is no visible checklist of conditions or documents. |
+| BKG-001 | Pre-booking checklist | built | BK-1, `booking-checklist.ts` | Approvals complete, documents signed, KYC valid and disbursement account verified, shown on the booking step and enforced by the API (409, nothing written). Conditions from a credit committee or collateral (LTV, lien, insurance) are not items yet (no committee or collateral). |
 | BKG-002 | Create core account, store reference | built | `booking.service.ts`, `GET /cases/:id/loan-account`, F1-4 | Simulated core. |
 | BKG-003 | Disburse to borrower or third party, split | partly built | `disbursement.port.ts`, F1-4, F2-6 | One tranche to the applicant's simulated deposit account. No third-party or split payments. |
 | BKG-004 | Idempotent booking | built | ADR 0020, B-1..B-3, B-6 | Key, unique constraints, row lock, idempotent providers. |
@@ -294,11 +294,11 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 6 | Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
 | 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
 | 8 | Searchable, tamper-evident audit log covering every action (hash-chained events, sign-ins and simulation mode changes, a Compliance search screen; TRUNCATE blocked) | PLT-004, CMP-010 | M | The "100% auditable" success metric. It builds on the insert-only tables. |
-| 9 | Pre-booking checklist shown to loan operations and enforced by the API (approval, signature, conditions) | BKG-001 | S | Makes an existing guard visible and extends it to conditions. |
+| 9 | ✅ Done (BK-1). Pre-booking checklist shown to loan operations and enforced by the API (approval, signature, conditions) | BKG-001 | S | Makes an existing guard visible and extends it to conditions. |
 | 10 | Per-product automation mode (off, shadow, live) and a kill switch routing every new case to referral, recorded in the decision record | §7.5, AIS-007 (mode only), F8 | M | Part of the PRD rollout model. The engine change is small; the record must carry the mode for replay. |
 | 11 | Missing referral triggers: income mismatch (declared vs verified), related-party flag, fraud flag (new simulated fraud port with failure modes) | DEC-006, CMP-006, F3 | M | F3 needs the income mismatch and CMP-006 needs mandatory referral. A new rule-set version keeps old decisions replayable. |
 | 12 | Walk-in and new-customer capture (name, birth date, employer, income, obligations) with pre-fill from a simulated core customer lookup; branch officer role | INT-005, INT-002, F3 | M | F3's entry point. Today only seeded applicants can be chosen. |
-| 13 | Indicative repayment before submission, from the core quote | INT-004 | S | The quote port already exists. It is shown after approval today. |
+| 13 | ✅ Done (IR-1). Indicative repayment before submission, from the core quote | INT-004 | S | The quote port already exists. It is shown after approval today. |
 | 14 | Decision-mix and origination-funnel reports (outcome, override and reason-code counts; stage drop-off) | RPT-003, RPT-001 | S | Measures the PRD's straight-through-processing metric. The data is already stored. |
 | 15 | SLA timers per stage with breach flags in the queues and a turnaround report | WF-003, RPT-002 | M | Measures the PRD's "referred decision within 1 business day" metric. Needs holiday-aware business time (PLT-005). |
 | 16 | Queue routing: pick, reassign, priority, round robin | WF-002 | M | Team operations. Less critical with one officer. |
@@ -340,7 +340,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Prototype screen or feature | What it shows | PRD items | Repo |
 |---|---|---|---|
 | New assisted application, card 1 Customer | Existing customer picker "from core" that pre-fills name, age, employer, income and obligations; free entry for a new customer; relationship facts | INT-005, INT-002 | Partly built: you can only pick a seeded applicant (backlog #12). |
-| New assisted application, card 2 Loan request | Product, purpose, amount and tenor with range hints and field errors; declared income and obligations; "indicative monthly repayment … calculated by core" | PC-002, INT-004, A-1..A-3 | Validation built (A-1..A-3). No indicative repayment before submission (#13). |
+| New assisted application, card 2 Loan request | Product, purpose, amount and tenor with range hints and field errors; declared income and obligations; "indicative monthly repayment … calculated by core" | PC-002, INT-004, A-1..A-3 | Validation built (A-1..A-3). Indicative repayment at grade C pricing, calculated by simulated core (IR-1). |
 | New assisted application, card 3 Documents | Government ID and payslip checklist; simulated scan or upload (type and size checks, virus-scan text); OCR income mismatch over 15% with "use verified" or "keep declared, flag for review" | DOC-001, DOC-002, DOC-003, DEC-006 (income mismatch), F3 | Not built (#5, #11, #30). |
 | New assisted application, Consent card | Three consents (credit bureau check, data processing under the Data Privacy Act, terms and conditions v3.2); submit refused unless all three are ticked | INT-006, CMP-001 | Not built (#2). |
 | New assisted application, submit guard | Refuses when the same name already has an open application for the same product ("already has an open … application") | INT-007 | Not built (#3). |
@@ -354,7 +354,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | All applications (in progress, closed, all; channel column) | Case list | WF-001, RPT-001 | List built. No channels. |
 | Email and file intake | Bundle or spreadsheet upload, OCR drafts | INT-010, F4 | Not built (#30). |
 | Documents and signing | Templates and e-signature with certificate | DOC-004, DOC-005, CMP-002 | Simulated signature only (#18). |
-| Booking (maker, then supervisor check with "different user" guard, idempotency key), Disbursements | Booking | BKG-001..004, WF-005 | Built (F1-4, B-1..B-6, R-5). Split and third-party disbursement not built. |
+| Booking (maker, then supervisor check with "different user" guard, idempotency key), Disbursements | Booking | BKG-001..004, WF-005 | Built (F1-4, B-1..B-6, R-5, pre-booking checklist BK-1). Split and third-party disbursement not built. |
 | Booking exceptions with retry and a "Reconciliation · today" panel | Exceptions | BKG-005 | Retry built (B-5). No exception screen or reconciliation report (#7). |
 | Collateral register, collateral detail, Deposit holds | Secured lending | COL-001..006, PC-009 | Not built (#29). |
 | Delinquency overview, Collector queue, Restructuring, Write-off and recovery, Agency assignment (P2) | Collections | CLX-001..008 | Not built (#31). |
