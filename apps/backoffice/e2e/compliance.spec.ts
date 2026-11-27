@@ -11,10 +11,13 @@ test("CMP-1/CMP-2 a sanctions knockout is escalated; Compliance acknowledges and
 }) => {
   const path = await submitApplication(page, "APL-ERNESTO", "50000", "12");
   await expect(caseHeader(page)).toContainText("Declined");
-  const reference = (await page.locator("header p.font-mono").first().textContent())
-    ?.split("/")
-    .pop()
-    ?.trim();
+  // The top bar's breadcrumb ends in the case reference (the current page). It says "Case"
+  // until the case has loaded, so wait for the reference before reading it.
+  const current = page
+    .getByRole("navigation", { name: "Breadcrumb" })
+    .locator('[aria-current="page"]');
+  await expect(current).toHaveText(/^APP-\d+$/);
+  const reference = (await current.textContent())?.trim();
   expect(reference).toMatch(/^APP-\d+$/);
 
   await signIn(page, "diane");
