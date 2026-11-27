@@ -9,6 +9,7 @@ import {
   type DeclineRequest,
   OVERRIDE_REASON_LABEL,
   type OverrideReason,
+  ProblemCode,
   type Recommendation,
   type RecommendRequest,
 } from "@loan/core";
@@ -98,6 +99,13 @@ const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
   },
 };
 
+/** Problem codes the API returns after committing a change to the case (escalation, failure). */
+const CHANGES_ON_REFUSAL = new Set<string>([
+  ProblemCode.AuthorityLimit,
+  ProblemCode.ProviderUnavailable,
+  ProblemCode.ScheduleMismatch,
+]);
+
 type Open =
   | { kind: "simple"; action: CaseAction }
   | { kind: "recommend" }
@@ -139,9 +147,25 @@ export function ActionsPanel({
     } catch (e) {
       setError(errorMessage(e));
       setFieldErrors(fieldErrorsOf(e));
-      // A refused approval above authority still escalates the case (R-6): show that.
-      if (e instanceof ApiError && e.code === "AUTHORITY_LIMIT_EXCEEDED") {
-        api<CaseDetail>(`/cases/${detail.id}`).then(onChanged, () => {});
+      // Some refusals still change the case on the server: an approval above authority
+      // escalates it (R-6), and a failed booking marks it Booking failed (B-5). Show that.
+      if (e instanceof ApiError && CHANGES_ON_REFUSAL.has(e.code)) {
+        api<CaseDetail>(`/cases/${detail.id}`).then(
+          (next) => {
+            onChanged(next);
+            // Keep the dialog truthful: a failed booking is now retried, so the open
+            // confirmation becomes the retry the refreshed case offers.
+            const retry = next.allowedActions.find((x) => x.action === "RETRY_BOOKING");
+            if (retry?.enabled)
+              setOpen((o) =>
+                o?.kind === "simple" ? { kind: "simple", action: "RETRY_BOOKING" } : o,
+              );
+          },
+          () =>
+            setError((msg) =>
+              `${msg ?? ""} Reload the page to see the case's current state.`.trim(),
+            ),
+        );
         refreshShell();
       }
     } finally {
@@ -233,7 +257,7 @@ export function ActionsPanel({
  * happen. Every other disabled action cannot be attempted.
  */
 function canAttempt(a: ActionAvailability): boolean {
-  return !a.enabled && a.action === "APPROVE" && a.blockedBy === "AUTHORITY_LIMIT_EXCEEDED";
+  return !a.enabled && a.action === "APPROVE" && a.blockedBy === ProblemCode.AuthorityLimit;
 }
 
 function labelOf(action: CaseAction): string {

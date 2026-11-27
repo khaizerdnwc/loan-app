@@ -8,6 +8,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3100";
 
 export default defineConfig({
   testDir: "./e2e",
+  // Serial on purpose: simulator modes are global state, and the failure journeys change them
+  // (reset in afterEach). Parallel workers would leak an outage into other journeys.
   fullyParallel: false,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,

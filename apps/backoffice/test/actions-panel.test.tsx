@@ -132,6 +132,70 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(fetchMock).toHaveBeenLastCalledWith("/api/cases/case-1", expect.anything());
   });
 
+  it.each([
+    ["PROVIDER_UNAVAILABLE", 503, "Core banking did not answer in time."],
+    ["SCHEDULE_DOES_NOT_RECONCILE", 502, "Core banking's schedule was refused."],
+  ])(
+    "after a booking refused with %s, reloads the case and turns the dialog into the retry (B-5)",
+    async (code, status, message) => {
+      const failed = detail({
+        status: "BOOKING_FAILED",
+        allowedActions: [{ action: "RETRY_BOOKING", enabled: true }],
+      });
+      const fetchMock = vi
+        .fn()
+        .mockResolvedValueOnce(
+          new Response(JSON.stringify({ status, code, detail: message }), { status }),
+        )
+        .mockResolvedValueOnce(new Response(JSON.stringify(failed), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+      const onChanged = vi.fn();
+      renderPanel(
+        detail({
+          status: "PENDING_CHECKER",
+          allowedActions: [{ action: "APPROVE_BOOKING", enabled: true }],
+        }),
+        onChanged,
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Approve booking" }));
+      const buttons = screen.getAllByRole("button", { name: "Approve booking" });
+      await userEvent.click(buttons[buttons.length - 1] as HTMLElement);
+      expect(await screen.findByRole("alert")).toHaveTextContent(message);
+      await vi.waitFor(() => expect(onChanged).toHaveBeenCalledWith(failed));
+      expect(await screen.findByRole("button", { name: "Retry booking" })).toBeInTheDocument();
+      expect(screen.getByRole("alert")).toHaveTextContent(message);
+    },
+  );
+
+  it("says to reload when the case cannot be re-read after a refusal that changed it", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(
+        new Response(
+          JSON.stringify({
+            status: 503,
+            code: "PROVIDER_UNAVAILABLE",
+            detail: "Core banking is unavailable.",
+          }),
+          { status: 503 },
+        ),
+      )
+      .mockRejectedValueOnce(new TypeError("offline"));
+    vi.stubGlobal("fetch", fetchMock);
+    renderPanel(
+      detail({
+        status: "PENDING_CHECKER",
+        allowedActions: [{ action: "APPROVE_BOOKING", enabled: true }],
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Approve booking" }));
+    const buttons = screen.getAllByRole("button", { name: "Approve booking" });
+    await userEvent.click(buttons[buttons.length - 1] as HTMLElement);
+    expect(
+      await screen.findByText(/Reload the page to see the case's current state/),
+    ).toBeInTheDocument();
+  });
+
   it("offers no action the API did not list", () => {
     renderPanel(detail({ allowedActions: [] }));
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
