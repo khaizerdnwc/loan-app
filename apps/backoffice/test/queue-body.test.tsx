@@ -14,6 +14,8 @@ function summary(id: string, status: CaseStatus, patch: Partial<CaseSummary> = {
     requestedTenorMonths: 24,
     status,
     outcome: status === "DRAFT" ? null : "REFER",
+    reason: status === "DRAFT" ? null : "Thin bureau file",
+    reasonCount: status === "DRAFT" ? 0 : 1,
     grade: status === "DRAFT" ? null : "C",
     escalated: false,
     createdAt: "2026-11-27T02:00:00.000Z",

@@ -69,6 +69,13 @@ export interface CaseSummary {
   requestedTenorMonths: number;
   status: CaseStatus;
   outcome: DecisionOutcome | null;
+  /**
+   * Why the decision went the way it did, in one line (the prototype queue's Reason column):
+   * the first referral trigger, or the first reason of an automatic decline; null otherwise.
+   */
+  reason: string | null;
+  /** How many such reasons the decision gave (0 when `reason` is null). */
+  reasonCount: number;
   grade: Grade | null;
   escalated: boolean;
   createdAt: string;
@@ -258,6 +265,12 @@ export interface CaseDetail extends CaseSummary {
   infoRequest: InfoRequestView | null;
   /** The case's document checklist (PRD DOC-003): every document requested so far. */
   documents: CaseDocumentView[];
+  /**
+   * While awaiting approval (APPROVAL), the monthly repayment for the recommended terms at the
+   * case's grade and rate, quoted by core banking, so the approver sees what they approve
+   * (prototype approve dialog); UNAVAILABLE when core cannot answer; else null.
+   */
+  proposedRepayment: IndicativeRepaymentView | null;
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
   allowedActions: ActionAvailability[];
   /** The current decision was made while a provider could not answer (bureau, screening, fraud). */

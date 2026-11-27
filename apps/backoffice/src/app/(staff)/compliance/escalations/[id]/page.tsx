@@ -1,10 +1,19 @@
 "use client";
 
 import { type AmlEscalationView, PROVIDER_MODE_LABEL, SCREENING_STAGE_LABEL } from "@loan/core";
-import { Callout, Card, formatDateTime, Icon, KeyValues, SimulatedLabel } from "@loan/ui";
+import {
+  buttonClass,
+  Callout,
+  Card,
+  formatDateTime,
+  Icon,
+  KeyValues,
+  SimulatedLabel,
+} from "@loan/ui";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { useShellCrumb } from "@/components/app-shell";
 import { EscalationActions } from "@/components/compliance/escalation-actions";
 import { EscalationStatusPill } from "@/components/compliance/escalation-pills";
 import { LoadState } from "@/components/load-state";
@@ -15,6 +24,7 @@ export default function EscalationPage() {
   const { id } = useParams<{ id: string }>();
   const loaded = useApi<AmlEscalationView>(`/compliance/escalations/${id}`);
   const [e, setE] = useState<AmlEscalationView | null>(null);
+  useShellCrumb(e?.caseReference ?? null);
 
   useEffect(() => {
     if (loaded.data) setE(loaded.data);
@@ -29,11 +39,12 @@ export default function EscalationPage() {
           reference is monospace. */}
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 items-start gap-4">
-          <span className="mt-6 grid size-12 shrink-0 place-items-center rounded-btn border border-line bg-mist-100 text-ink-700">
+          <span className="mt-6 grid size-12 shrink-0 place-items-center min-[860px]:mt-1 rounded-btn border border-line bg-mist-100 text-ink-700">
             <Icon name="shieldAlert" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm text-mist-500">
+            {/* From 860px the top bar carries this crumb; below that its crumb is hidden. */}
+            <p data-crumb="detail-header" className="text-sm text-mist-500 min-[860px]:hidden">
               <Link href="/compliance/escalations" className="hover:text-ink-900">
                 AML escalations
               </Link>{" "}
@@ -47,10 +58,7 @@ export default function EscalationPage() {
             </p>
           </div>
         </div>
-        <Link
-          href={`/cases/${e.caseId}`}
-          className="text-sm font-semibold text-ink-900 underline underline-offset-2"
-        >
+        <Link href={`/cases/${e.caseId}`} className={buttonClass("secondary")}>
           Open case {e.caseReference}
         </Link>
       </header>

@@ -30,6 +30,7 @@ import {
   formatAmountsInText,
   formatDate,
   formatDateTime,
+  formatMonthlyRate,
   formatPeso,
   Input,
   Select,
@@ -75,7 +76,7 @@ const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
     variant: "primary",
     title: (c) => `Approve ${formatPeso(amountOf(c))} over ${tenorOf(c)} months?`,
     describe: (c) =>
-      `${c.applicant.fullName} receives an offer on these terms. Your authority is checked by the system when you confirm.`,
+      `${repaymentSentence(c)}${c.applicant.fullName} receives an offer on these terms. Your authority is checked by the system when you confirm.`,
     done: "Approved — the offer is ready for signature",
   },
   RETURN: {
@@ -137,6 +138,19 @@ const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
     done: "Booking retried",
   },
 };
+
+/**
+ * The monthly repayment being approved, as the prototype's approve dialog states it ("Monthly
+ * repayment ₱6,920.00 at grade C (calculated by core)"), from core banking's quote for the
+ * recommended terms. When core cannot quote it the dialog says so; approving does not need it.
+ */
+function repaymentSentence(c: CaseDetail): string {
+  const q = c.proposedRepayment;
+  if (!q) return "";
+  return q.status === "QUOTED"
+    ? `Monthly repayment ${formatPeso(q.regularInstalment)} at grade ${q.grade} (${formatMonthlyRate(q.monthlyRate)}), calculated by core banking (simulated). `
+    : "Core banking (simulated) could not quote the monthly repayment just now; approving does not depend on it. ";
+}
 
 /** Problem codes the API returns after committing a change to the case (escalation, failure). */
 const CHANGES_ON_REFUSAL = new Set<string>([

@@ -118,9 +118,26 @@ export function AppShell({ children }: { children: ReactNode }) {
   }
 
   const crumb = breadcrumbFor(me.role, pathname);
-  // A case page: "<group> / <All applications, a link> / <reference>", like the prototype.
-  const casesGroup = navFor(me.role).find((g) => g.items.some((i) => i.href === "/cases"));
-  const onCase = /^\/cases\/(?!new$)[^/]+$/.test(pathname) && casesGroup !== undefined;
+  // A detail page under a list: "<group> / <the list, a link> / <the record>", like the
+  // prototype's "Applications / All applications / APP-1042". A case sits under All
+  // applications; any other detail (an AML escalation) under the nav item whose path it extends.
+  const groups = navFor(me.role);
+  const casesGroup = groups.find((g) => g.items.some((i) => i.href === "/cases"));
+  const parentOf = (): { heading: string; label: string; href: string } | null => {
+    if (/^\/cases\/(?!new$)[^/]+$/.test(pathname)) {
+      return casesGroup
+        ? { heading: casesGroup.heading, label: crumb.section, href: "/cases" }
+        : null;
+    }
+    // A page with its own nav item (New application) is not a detail.
+    if (groups.some((g) => g.items.some((i) => i.href === pathname))) return null;
+    for (const g of groups) {
+      const item = g.items.find((i) => pathname.startsWith(`${i.href}/`));
+      if (item) return { heading: g.heading, label: item.label, href: item.href };
+    }
+    return null;
+  };
+  const detailParent = parentOf();
 
   const nav = (
     <nav aria-label="Main" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
@@ -223,20 +240,20 @@ export function AppShell({ children }: { children: ReactNode }) {
           aria-label="Breadcrumb"
           className="hidden items-center gap-2 text-sm whitespace-nowrap text-mist-500 min-[860px]:flex"
         >
-          {onCase && casesGroup ? (
+          {detailParent ? (
             <>
-              <span>{casesGroup.heading}</span>
+              <span>{detailParent.heading}</span>
               <span aria-hidden="true" className="text-mist-300">
                 /
               </span>
-              <Link href="/cases" className="hover:text-ink-900">
-                {crumb.section}
+              <Link href={detailParent.href} className="hover:text-ink-900">
+                {detailParent.label}
               </Link>
               <span aria-hidden="true" className="text-mist-300">
                 /
               </span>
               <span aria-current="page" className="font-bold text-ink-900">
-                {detailCrumb ?? crumb.page}
+                {detailCrumb ?? (detailParent.href === "/cases" ? crumb.page : "Details")}
               </span>
             </>
           ) : (

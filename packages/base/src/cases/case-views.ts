@@ -14,6 +14,7 @@ import type {
   CaseSummary,
   DecisionRecordView,
   DeclineReason,
+  Grade,
   IndicativeRepaymentView,
   LoanAccountView,
   ProblemCode,
@@ -186,6 +187,19 @@ export class CaseViews {
             }
           : null,
       documents: documents.map((d) => documentView(d, user, c.status, names)),
+      proposedRepayment:
+        c.status === CaseStatus.Approval &&
+        c.recommendedAmount &&
+        c.recommendedTenorMonths &&
+        c.grade &&
+        decision?.monthlyRate
+          ? await this.indicativeRepayment(
+              c.recommendedAmount,
+              c.recommendedTenorMonths,
+              c.grade,
+              decision.monthlyRate,
+            )
+          : null,
       allowedActions: actions,
       decidedDuringOutage: outage,
       recommendationTypes: actions.some((a) => a.action === "RECOMMEND" && a.enabled)
@@ -198,15 +212,20 @@ export class CaseViews {
    * The indicative monthly repayment for terms before any decision (PRD INT-004): core
    * banking's quote at INDICATIVE_GRADE pricing (prototype: "at grade C pricing · calculated by
    * core"). When core cannot answer, UNAVAILABLE with no amounts: a page never breaks on it.
+   * With a grade and rate, the same quote for terms awaiting approval (`proposedRepayment`).
    */
-  async indicativeRepayment(amount: Money, tenorMonths: number): Promise<IndicativeRepaymentView> {
-    const monthlyRate = ruleSet(CURRENT_RULE_SET).monthlyRate[INDICATIVE_GRADE];
+  async indicativeRepayment(
+    amount: Money,
+    tenorMonths: number,
+    grade: Grade = INDICATIVE_GRADE,
+    monthlyRate: string = ruleSet(CURRENT_RULE_SET).monthlyRate[INDICATIVE_GRADE],
+  ): Promise<IndicativeRepaymentView> {
     const q = await this.quoteOrNull({ principal: amount, monthlyRate, tenorMonths });
     return {
       status: q ? "QUOTED" : "UNAVAILABLE",
       amount: amount.toString(),
       tenorMonths,
-      grade: INDICATIVE_GRADE,
+      grade,
       monthlyRate,
       regularInstalment: q?.regularInstalment.toString() ?? null,
       finalInstalment: q?.finalInstalment.toString() ?? null,
@@ -285,6 +304,18 @@ function today(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/**
+ * The one line a queue shows for why a case is where it is (the prototype's Reason column):
+ * the referral triggers of a referred case, or the reasons of an automatic decline. The
+ * summary carries the first and how many there are, so a table can say "+N more".
+ */
+function decisionReasons(decision: DecisionRecordEntity | null): string[] {
+  if (!decision) return [];
+  return decision.referralTriggers.length > 0
+    ? decision.referralTriggers
+    : decision.reasonCodes.map((r) => r.staff);
+}
+
 function summary(c: LoanCaseEntity, decision: DecisionRecordEntity | null): CaseSummary {
   return {
     id: c.id,
@@ -295,6 +326,8 @@ function summary(c: LoanCaseEntity, decision: DecisionRecordEntity | null): Case
     requestedTenorMonths: c.requestedTenorMonths,
     status: c.status,
     outcome: decision?.outcome ?? null,
+    reason: decisionReasons(decision)[0] ?? null,
+    reasonCount: decisionReasons(decision).length,
     grade: c.grade,
     escalated: c.escalated,
     createdAt: c.createdAt.toISOString(),

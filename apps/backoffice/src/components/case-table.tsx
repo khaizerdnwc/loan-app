@@ -55,6 +55,27 @@ const COLUMNS: Column<CaseSummary>[] = [
   },
   { key: "stage", header: "Stage", render: (c) => <StagePill status={c.status} /> },
   {
+    key: "reason",
+    header: "Reason",
+    // The prototype's Reason column: why the decision went the way it did, in one short line.
+    render: (c) =>
+      c.reason ? (
+        <span className="text-xs">
+          {c.reason}
+          {c.reasonCount > 1 && (
+            <span className="ml-1.5 whitespace-nowrap text-mist-500">
+              +{c.reasonCount - 1} more
+            </span>
+          )}
+        </span>
+      ) : (
+        <span className="text-mist-500">
+          <span aria-hidden="true">—</span>
+          <span className="sr-only">None</span>
+        </span>
+      ),
+  },
+  {
     key: "outcome",
     header: "Decision",
     render: (c) => (

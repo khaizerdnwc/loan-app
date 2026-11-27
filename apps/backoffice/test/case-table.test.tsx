@@ -11,6 +11,8 @@ const base: CaseSummary = {
   requestedTenorMonths: 36,
   status: "REVIEW",
   outcome: "REFER",
+  reason: "Thin bureau file: too little credit history",
+  reasonCount: 1,
   grade: "C",
   escalated: false,
   createdAt: "2026-11-27T02:00:00.000Z",
@@ -31,10 +33,43 @@ describe("the case table", () => {
       "Product",
       "Amount",
       "Stage",
+      "Reason",
       "Decision",
       "Grade",
       "Updated",
     ]);
+  });
+
+  it("shows why the decision went that way in the Reason column, and a dash when there is none", () => {
+    render(
+      <CaseTable
+        cases={[base, { ...base, id: "c2", reason: null, reasonCount: 0, outcome: null }]}
+        empty="None."
+      />,
+    );
+    expect(cell(0, "Reason")).toHaveTextContent(/^Thin bureau file: too little credit history$/);
+    expect(cell(1, "Reason")).toHaveTextContent("None");
+  });
+
+  it("says how many more reasons there are when the decision gave several", () => {
+    render(
+      <CaseTable
+        cases={[
+          base,
+          {
+            ...base,
+            id: "c2",
+            reason: "Debt-to-income above the policy cap",
+            reasonCount: 3,
+            outcome: "AUTO_DECLINE",
+            status: "DECLINED",
+          },
+        ]}
+        empty="None."
+      />,
+    );
+    expect(cell(0, "Reason")).not.toHaveTextContent(/more/);
+    expect(cell(1, "Reason")).toHaveTextContent("Debt-to-income above the policy cap+2 more");
   });
 
   it("names the product, and shows an unknown product's code as given", () => {
