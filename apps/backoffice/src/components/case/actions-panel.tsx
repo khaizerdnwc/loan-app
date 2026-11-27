@@ -7,11 +7,16 @@ import {
   DECLINE_REASON_LABEL,
   type DeclineReason,
   type DeclineRequest,
+  DRAFT_EXPIRY_DAYS,
+  OFFER_EXPIRY_DAYS,
   OVERRIDE_REASON_LABEL,
   type OverrideReason,
   ProblemCode,
   type Recommendation,
   type RecommendRequest,
+  WITHDRAW_REASON_LABEL,
+  type WithdrawReason,
+  type WithdrawRequest,
 } from "@loan/core";
 import {
   Button,
@@ -20,6 +25,7 @@ import {
   Field,
   FormGrid,
   FormStack,
+  formatDateTime,
   formatPeso,
   Input,
   Select,
@@ -137,6 +143,7 @@ type Open =
   | { kind: "simple"; action: CaseAction }
   | { kind: "recommend" }
   | { kind: "decline" }
+  | { kind: "withdraw" }
   | null;
 
 /**
@@ -208,6 +215,7 @@ export function ActionsPanel({
     if (a.action === "REPRODUCE_DECISION") onShowDecision();
     else if (a.action === "RECOMMEND") setOpen({ kind: "recommend" });
     else if (a.action === "DECLINE") setOpen({ kind: "decline" });
+    else if (a.action === "WITHDRAW") setOpen({ kind: "withdraw" });
     else setOpen({ kind: "simple", action: a.action });
   }
 
@@ -276,6 +284,18 @@ export function ActionsPanel({
           }
         />
       )}
+      {open?.kind === "withdraw" && (
+        <WithdrawDialog
+          detail={detail}
+          busy={busy}
+          error={error}
+          fieldErrors={fieldErrors}
+          onCancel={() => setOpen(null)}
+          onSubmit={(body) =>
+            run(`/cases/${detail.id}/withdraw`, body, "Withdrawn — the application is closed")
+          }
+        />
+      )}
     </Card>
   );
 }
@@ -296,13 +316,15 @@ function decidedDuringOutage(c: CaseDetail): boolean {
 
 /**
  * One rule for the panel's buttons: the action that moves the case forward is primary, a
- * decline is danger, and anything that changes nothing (viewing the record) or should wait
- * (recommending while a re-decide is offered) is secondary, as is a disabled action.
+ * decline is danger, and anything that changes nothing (viewing the record), should wait
+ * (recommending while a re-decide is offered) or steps off the path (withdrawing; its dialog
+ * confirms in danger) is secondary, as is a disabled action.
  */
 function variantFor(a: ActionAvailability, redecideOffered: boolean): SimpleAction["variant"] {
   if (!a.enabled) return "secondary";
   if (a.action === "DECLINE") return "danger";
   if (a.action === "REPRODUCE_DECISION") return "secondary";
+  if (a.action === "WITHDRAW") return "secondary";
   if (a.action === "RECOMMEND" && redecideOffered) return "secondary";
   return SIMPLE[a.action]?.variant ?? "primary";
 }
@@ -311,14 +333,20 @@ function labelOf(action: CaseAction): string {
   if (action === "RECOMMEND") return "Recommend a decision";
   if (action === "DECLINE") return "Decline";
   if (action === "REPRODUCE_DECISION") return "View decision record";
+  if (action === "WITHDRAW") return "Withdraw application";
   return SIMPLE[action]?.label ?? action;
+}
+
+/** The case's next deadline (a draft or an offer expires), as a sentence to append. */
+function expiresNote(c: CaseDetail): string {
+  return c.expiresAt ? ` Expires on ${formatDateTime(c.expiresAt)}.` : "";
 }
 
 /** What the case is waiting for and who acts next, in words. */
 function waitingFor(c: CaseDetail): string {
   switch (c.status) {
     case "DRAFT":
-      return "Draft: nothing has been checked yet. The loan officer submits it for decision.";
+      return `Draft: nothing has been checked yet. The loan officer submits it for decision.${expiresNote(c)}`;
     case "REVIEW":
       return decidedDuringOutage(c)
         ? "Referred because a provider could not answer: the loan officer decides it again once the provider is back."
@@ -328,7 +356,7 @@ function waitingFor(c: CaseDetail): string {
         ? "Waiting for an approver whose authority covers this amount and grade."
         : "Waiting for an approver to decide on the recommendation.";
     case "OFFER":
-      return "Approved. Waiting for the borrower's e-signature (simulated), recorded by loan operations.";
+      return `Approved. Waiting for the borrower's e-signature (simulated), recorded by loan operations.${expiresNote(c)}`;
     case "BOOKING":
       return "Signed. Loan operations submits the booking; a supervisor checks it.";
     case "PENDING_CHECKER":
@@ -339,6 +367,14 @@ function waitingFor(c: CaseDetail): string {
       return "Booked in core banking and disbursed. Nothing left to do.";
     case "DECLINED":
       return "Declined. The borrower is told why, without internal scores.";
+    case "WITHDRAWN":
+      return c.withdrawal
+        ? `Withdrawn: closed by ${c.withdrawal.byName} (${WITHDRAW_REASON_LABEL[c.withdrawal.reasonCode]}). Nothing left to do; a new application can be captured.`
+        : "Withdrawn: closed by the loan officer. Nothing left to do; a new application can be captured.";
+    case "EXPIRED":
+      return c.closedFrom === "OFFER"
+        ? `Expired: the offer was not signed within ${OFFER_EXPIRY_DAYS} days of approval, so the system closed it. A new application can be captured.`
+        : `Expired: the draft was unchanged for ${DRAFT_EXPIRY_DAYS} days, so the system closed it. A new application can be captured.`;
     default:
       return "";
   }
@@ -512,6 +548,65 @@ function DeclineDialog({
             {Object.entries(DECLINE_REASON_LABEL).map(([code, label]) => (
               <option key={code} value={code}>
                 {code} · {label}
+              </option>
+            ))}
+          </Select>
+        </Field>
+        <Field label="Note (optional)" error={fieldErrors.note}>
+          <Textarea value={note} onChange={(e) => setNote(e.target.value)} />
+        </Field>
+      </FormStack>
+    </ConfirmDialog>
+  );
+}
+
+function WithdrawDialog({
+  detail,
+  busy,
+  error,
+  fieldErrors,
+  onCancel,
+  onSubmit,
+}: {
+  detail: CaseDetail;
+  busy: boolean;
+  error: string | null;
+  fieldErrors: Record<string, string>;
+  onCancel: () => void;
+  onSubmit: (body: WithdrawRequest) => void;
+}) {
+  const [reason, setReason] = useState<WithdrawReason | "">("");
+  const [note, setNote] = useState("");
+  const [local, setLocal] = useState<string | null>(null);
+  return (
+    <ConfirmDialog
+      open
+      title="Withdraw this application?"
+      description={`${detail.reference} for ${detail.applicant.fullName} (${formatPeso(amountOf(detail))} over ${tenorOf(detail)} months) is closed and goes no further. This cannot be undone; a new application can be captured afterwards.`}
+      confirmLabel="Withdraw"
+      variant="danger"
+      busy={busy}
+      error={error}
+      onConfirm={() => {
+        if (!reason) return setLocal("Choose a reason.");
+        setLocal(null);
+        onSubmit({ reasonCode: reason, note: note.trim() || undefined });
+      }}
+      onCancel={onCancel}
+    >
+      <FormStack>
+        <Field label="Reason" error={local ?? fieldErrors.reasonCode}>
+          <Select
+            value={reason}
+            onChange={(e) => {
+              setReason(e.target.value as WithdrawReason | "");
+              if (e.target.value) setLocal(null);
+            }}
+          >
+            <option value="">Choose a reason</option>
+            {Object.entries(WITHDRAW_REASON_LABEL).map(([code, label]) => (
+              <option key={code} value={code}>
+                {label}
               </option>
             ))}
           </Select>

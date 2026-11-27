@@ -1,11 +1,27 @@
-import { CaseStatus } from "@loan/core";
+import { CaseStatus, CLOSED_CASE_STATUSES } from "@loan/core";
 import {
   assertTransition,
+  type CaseEvent,
   canHappen,
   InvalidTransitionError,
   moveTo,
   startDraft,
 } from "../../src/cases/lifecycle";
+
+const EVENTS: CaseEvent[] = [
+  "SUBMIT",
+  "REDECIDE",
+  "RECOMMEND",
+  "APPROVE",
+  "DECLINE",
+  "RETURN",
+  "SIGN",
+  "SUBMIT_BOOKING",
+  "BOOKING_SUCCEEDED",
+  "BOOKING_FAILED",
+  "WITHDRAW",
+  "EXPIRE",
+];
 
 describe("the case transition table", () => {
   it("a new case starts as a draft", () => {
@@ -31,6 +47,12 @@ describe("the case transition table", () => {
     ["BOOKING_SUCCEEDED", CaseStatus.BookingFailed, CaseStatus.Disbursed],
     ["BOOKING_FAILED", CaseStatus.PendingChecker, CaseStatus.BookingFailed],
     ["BOOKING_FAILED", CaseStatus.BookingFailed, CaseStatus.BookingFailed],
+    ["WITHDRAW", CaseStatus.Draft, CaseStatus.Withdrawn],
+    ["WITHDRAW", CaseStatus.Review, CaseStatus.Withdrawn],
+    ["WITHDRAW", CaseStatus.Approval, CaseStatus.Withdrawn],
+    ["WITHDRAW", CaseStatus.Offer, CaseStatus.Withdrawn],
+    ["EXPIRE", CaseStatus.Draft, CaseStatus.Expired],
+    ["EXPIRE", CaseStatus.Offer, CaseStatus.Expired],
   ] as const)("%s moves a case from %s to %s", (event, from, to) => {
     const c = { status: from as CaseStatus };
     moveTo(c, event, to);
@@ -64,6 +86,46 @@ describe("the case transition table", () => {
     expect(() => assertTransition("REDECIDE", CaseStatus.Review, CaseStatus.Approval)).toThrow(
       InvalidTransitionError,
     );
+  });
+
+  const WITHDRAWABLE: CaseStatus[] = [
+    CaseStatus.Draft,
+    CaseStatus.Review,
+    CaseStatus.Approval,
+    CaseStatus.Offer,
+  ];
+  it.each(Object.values(CaseStatus).filter((s) => !WITHDRAWABLE.includes(s)))(
+    "WITHDRAW is refused from %s",
+    (from) => {
+      expect(canHappen("WITHDRAW", from)).toBe(false);
+      const c = { status: from as CaseStatus };
+      expect(() => moveTo(c, "WITHDRAW", CaseStatus.Withdrawn)).toThrow(InvalidTransitionError);
+      expect(c.status).toBe(from);
+    },
+  );
+
+  const EXPIRABLE: CaseStatus[] = [CaseStatus.Draft, CaseStatus.Offer];
+  it.each(Object.values(CaseStatus).filter((s) => !EXPIRABLE.includes(s)))(
+    "EXPIRE is refused from %s",
+    (from) => {
+      expect(canHappen("EXPIRE", from)).toBe(false);
+      const c = { status: from as CaseStatus };
+      expect(() => moveTo(c, "EXPIRE", CaseStatus.Expired)).toThrow(InvalidTransitionError);
+      expect(c.status).toBe(from);
+    },
+  );
+
+  it("WITHDRAW and EXPIRE lead only to their own closed status", () => {
+    expect(() => assertTransition("WITHDRAW", CaseStatus.Offer, CaseStatus.Expired)).toThrow(
+      InvalidTransitionError,
+    );
+    expect(() => assertTransition("EXPIRE", CaseStatus.Draft, CaseStatus.Withdrawn)).toThrow(
+      InvalidTransitionError,
+    );
+  });
+
+  it.each(CLOSED_CASE_STATUSES)("no event leaves the closed status %s", (closed) => {
+    for (const event of EVENTS) expect(canHappen(event, closed)).toBe(false);
   });
 
   it("a disbursed case cannot be booked again", () => {

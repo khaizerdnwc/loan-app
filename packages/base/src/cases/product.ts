@@ -1,4 +1,11 @@
-import { type FieldError, Money, type ProductView } from "@loan/core";
+import {
+  CaseStatus,
+  DRAFT_EXPIRY_DAYS,
+  type FieldError,
+  Money,
+  OFFER_EXPIRY_DAYS,
+  type ProductView,
+} from "@loan/core";
 import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
 
 /**
@@ -13,6 +20,50 @@ export const PERSONAL_LOAN = {
   minTenorMonths: 6,
   maxTenorMonths: 36,
 } as const;
+
+const DAY_MS = 86_400_000;
+
+/** The moment something that started at `since` expires after `days` days. */
+export function expiresAt(since: Date, days: number): Date {
+  return new Date(since.getTime() + days * DAY_MS);
+}
+
+/**
+ * When a case's draft or offer expires (DRAFT_EXPIRY_DAYS from the draft's `updatedAt`,
+ * OFFER_EXPIRY_DAYS from `offeredAt`, both from core); null when it is neither, or an offer
+ * has no date. Writes on an expired case are refused; the expiry sweep closes it.
+ */
+export function expiryOf(c: {
+  status: CaseStatus;
+  updatedAt: Date;
+  offeredAt: Date | null;
+}): Date | null {
+  if (c.status === CaseStatus.Draft) return expiresAt(c.updatedAt, DRAFT_EXPIRY_DAYS);
+  if (c.status === CaseStatus.Offer && c.offeredAt) {
+    return expiresAt(c.offeredAt, OFFER_EXPIRY_DAYS);
+  }
+  return null;
+}
+
+/**
+ * Why a write on the case is refused because its draft or offer expired at `now`, in the one
+ * wording the API's 409 and the disabled action both use; null while it has not expired.
+ */
+export function expiryRefusal(
+  c: { status: CaseStatus; updatedAt: Date; offeredAt: Date | null },
+  now: Date,
+): string | null {
+  const until = expiryOf(c);
+  if (!until || until.getTime() > now.getTime()) return null;
+  return c.status === CaseStatus.Draft
+    ? `This draft expired on ${businessDate(until)}: it was unchanged for ${DRAFT_EXPIRY_DAYS} days. Capture a new application.`
+    : `This offer expired on ${businessDate(until)}: it was not signed within ${OFFER_EXPIRY_DAYS} days of approval.`;
+}
+
+/** The date as YYYY-MM-DD in the Philippines (UTC+8), the bank's business date. */
+export function businessDate(now = new Date()): string {
+  return new Date(now.getTime() + 8 * 3_600_000).toISOString().slice(0, 10);
+}
 
 export function productView(): ProductView {
   const rs = ruleSet(CURRENT_RULE_SET);

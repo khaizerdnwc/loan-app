@@ -1,7 +1,7 @@
 import { CaseStatus, CLOSED_CASE_STATUSES, Role } from "@loan/core";
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
-import { type EntityManager, In, Not, type Repository } from "typeorm";
+import { type EntityManager, In, LessThanOrEqual, Not, type Repository } from "typeorm";
 import type { SessionUser } from "../auth/session";
 import { ActivityEventEntity } from "./entities/activity-event.entity";
 import { ApplicantEntity } from "./entities/applicant.entity";
@@ -113,6 +113,31 @@ export class CasesRepository {
     }
   }
 
+  /**
+   * Ids of drafts last changed by `draftsBefore` and offers made by `offersBefore`:
+   * the expiry sweep's candidates. Each is locked and checked again before it is expired.
+   */
+  async findStale(
+    draftsBefore: Date,
+    offersBefore: Date,
+  ): Promise<{ drafts: string[]; offers: string[] }> {
+    const order = { updatedAt: "ASC" as const, id: "ASC" as const };
+    const select = { id: true } as const;
+    const [drafts, offers] = await Promise.all([
+      this.cases.find({
+        select,
+        where: { status: CaseStatus.Draft, updatedAt: LessThanOrEqual(draftsBefore) },
+        order,
+      }),
+      this.cases.find({
+        select,
+        where: { status: CaseStatus.Offer, offeredAt: LessThanOrEqual(offersBefore) },
+        order,
+      }),
+    ]);
+    return { drafts: drafts.map((c) => c.id), offers: offers.map((c) => c.id) };
+  }
+
   saveCase(manager: EntityManager, c: LoanCaseEntity): Promise<LoanCaseEntity> {
     return manager.getRepository(LoanCaseEntity).save(c);
   }
@@ -135,7 +160,7 @@ export class CasesRepository {
 
   // --- history -----------------------------------------------------------------------------
 
-  /** The applicant's open application for the product (not declined or disbursed), if any. */
+  /** The applicant's open application for the product (not in a closed status), if any. */
   findOpenCase(
     applicantId: string,
     productCode: string,
@@ -166,6 +191,13 @@ export class CasesRepository {
     return (manager ?? this.cases.manager)
       .getRepository(ConsentRecordEntity)
       .findOne({ where: { caseId }, order: { capturedAt: "DESC", id: "DESC" } });
+  }
+
+  /** The case's latest event of one kind (e.g. WITHDRAWN: who withdrew it, and when). */
+  lastEvent(caseId: string, action: string): Promise<ActivityEventEntity | null> {
+    return this.cases.manager
+      .getRepository(ActivityEventEntity)
+      .findOne({ where: { caseId, action }, order: { createdAt: "DESC", id: "DESC" } });
   }
 
   activity(caseId: string): Promise<ActivityEventEntity[]> {

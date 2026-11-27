@@ -14,6 +14,7 @@ import { CasesService } from "./cases/cases.service";
 import { DecisionService } from "./cases/decision.service";
 import { ApplicantEntity } from "./cases/entities/applicant.entity";
 import { LoanCaseEntity } from "./cases/entities/loan-case.entity";
+import { ExpiryService } from "./cases/expiry.service";
 import { TransactionRunner } from "./database/transaction-runner";
 import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
 import { SimulationController } from "./simulation/simulation.controller";
@@ -45,10 +46,12 @@ export class LendingModule {
         DecisionService,
         CaseViews,
         CasesService,
+        ExpiryService,
         BookingService,
         SessionGuard,
       ],
-      exports: [SessionGuard, JwtModule],
+      // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
+      exports: [SessionGuard, JwtModule, ExpiryService],
     };
   }
 }

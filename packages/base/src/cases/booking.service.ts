@@ -15,11 +15,12 @@ import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
 import { canView } from "./case-access";
 import { CasesRepository } from "./cases.repository";
-import { businessDate, CasesService } from "./cases.service";
+import { CasesService } from "./cases.service";
 import { DomainError, forbiddenRole, invalidState, makerChecker, notFound } from "./domain-error";
 import { BookingRequestEntity } from "./entities/booking.entities";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
 import { assertTransition, type CaseEvent, InvalidTransitionError, moveTo } from "./lifecycle";
+import { businessDate } from "./product";
 
 /**
  * Booking and disbursement (ADR 0020).

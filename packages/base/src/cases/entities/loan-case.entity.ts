@@ -5,6 +5,7 @@ import {
   type Money,
   type OverrideReason,
   type Recommendation,
+  type WithdrawReason,
 } from "@loan/core";
 import {
   Column,
@@ -28,7 +29,7 @@ import { ApplicantEntity } from "./applicant.entity";
 @Entity({ name: "loan_case" })
 /**
  * One open application per applicant and product (PRD INT-007): closed cases (declined,
- * disbursed) do not count. The service answers 409 first; this index makes it hold under a race.
+ * disbursed, withdrawn, expired) do not count. The service answers 409 first; this index makes it hold under a race.
  */
 @Index("UQ_loan_case_open_per_applicant_product", ["applicantId", "productCode"], {
   unique: true,
@@ -120,6 +121,17 @@ export class LoanCaseEntity {
 
   @Column({ name: "decline_note", type: "text", nullable: true })
   declineNote!: string | null;
+
+  /** When the case last entered OFFER (auto-approval, approval or re-decision); the offer expires from here. */
+  @Column({ name: "offered_at", type: "timestamptz", nullable: true })
+  offeredAt!: Date | null;
+
+  // --- withdrawal (loan officer, PRD WF-012); who and when are in the WITHDRAWN event -----
+  @Column({ name: "withdraw_reason", type: "varchar", length: 30, nullable: true })
+  withdrawReason!: WithdrawReason | null;
+
+  @Column({ name: "withdraw_note", type: "text", nullable: true })
+  withdrawNote!: string | null;
 
   // --- signing ----------------------------------------------------------------------------
   @Column({ name: "signature_envelope_id", type: "varchar", length: 60, nullable: true })

@@ -21,6 +21,11 @@ const schema = z
      * every request reaches the API through that many proxies that append the real address.
      */
     TRUST_PROXY_HOPS: z.coerce.number().int().min(0).max(5).default(0),
+    /**
+     * Seconds between expiry sweeps (stale drafts and unsigned offers → EXPIRED, PRD INT-003).
+     * 0 turns the sweep off (tests and the gate run it by hand).
+     */
+    EXPIRY_SWEEP_SECONDS: z.coerce.number().int().min(0).max(86_400).default(300),
     /** Run pending migrations when the API starts (deployments); off by default. */
     MIGRATE_ON_BOOT: z
       .enum(["true", "false"])

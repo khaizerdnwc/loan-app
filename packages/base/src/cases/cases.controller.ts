@@ -29,7 +29,7 @@ import { CasesRepository } from "./cases.repository";
 import { CasesService } from "./cases.service";
 import { ageOn, DecisionService } from "./decision.service";
 import { notFound } from "./domain-error";
-import { CreateCaseDto, DeclineDto, RecommendDto, UpdateDraftDto } from "./dto";
+import { CreateCaseDto, DeclineDto, RecommendDto, UpdateDraftDto, WithdrawDto } from "./dto";
 import { productView } from "./product";
 
 const CASE_READERS = [
@@ -208,6 +208,17 @@ export class CasesController {
     @Param("id", ParseUUIDPipe) id: string,
   ): Promise<CaseDetail> {
     return this.cases.returnToReview(user, id);
+  }
+
+  @Post("cases/:id/withdraw")
+  @Roles(Role.LoanOfficer)
+  @HttpCode(200)
+  withdraw(
+    @CurrentUser() user: SessionUser,
+    @Param("id", ParseUUIDPipe) id: string,
+    @Body() body: WithdrawDto,
+  ): Promise<CaseDetail> {
+    return this.cases.withdraw(user, id, body);
   }
 
   @Post("cases/:id/sign")

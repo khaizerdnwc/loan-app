@@ -50,6 +50,9 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     },
     approved: null,
     decline: null,
+    withdrawal: null,
+    closedFrom: null,
+    expiresAt: null,
     signatureEnvelopeId: null,
     consent: null,
     booking: null,
@@ -318,6 +321,155 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "another supervisor must approve it",
     );
+  });
+
+  describe("withdrawal (W-1, PRD WF-012)", () => {
+    const draft = () =>
+      detail({
+        status: "DRAFT",
+        outcome: null,
+        grade: null,
+        recommendation: null,
+        requestedAmount: "60000.00",
+        requestedTenorMonths: 12,
+        allowedActions: [
+          { action: "SUBMIT", enabled: true },
+          { action: "WITHDRAW", enabled: true },
+        ],
+      });
+    const withdrawn = detail({
+      status: "WITHDRAWN",
+      outcome: null,
+      recommendation: null,
+      allowedActions: [],
+      closedFrom: "DRAFT",
+      withdrawal: {
+        reasonCode: "APPLICANT_REQUEST",
+        note: "Found a cheaper loan.",
+        by: "STF-PAOLO",
+        byName: "Paolo Tan",
+        at: "2026-11-28T02:00:00.000Z",
+      },
+    });
+    const confirm = () => {
+      const buttons = screen.getAllByRole("button", { name: "Withdraw" });
+      return userEvent.click(buttons[buttons.length - 1] as HTMLElement);
+    };
+
+    it("offers Withdraw as a secondary action, and its dialog confirms in danger", async () => {
+      renderPanel(draft());
+      const button = screen.getByRole("button", { name: "Withdraw application" });
+      expect(button).toHaveAttribute("data-variant", "secondary");
+      await userEvent.click(button);
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("Withdraw this application?");
+      expect(dialog).toHaveTextContent("₱60,000.00 over 12 months");
+      expect(dialog).toHaveTextContent(/cannot be undone/);
+      expect(screen.getByRole("button", { name: "Withdraw" })).toHaveAttribute(
+        "data-variant",
+        "danger",
+      );
+    });
+
+    it("requires a reason before posting anything, and clears the error once one is picked", async () => {
+      const fetchMock = vi.fn();
+      vi.stubGlobal("fetch", fetchMock);
+      renderPanel(draft());
+      await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
+      await confirm();
+      expect(screen.getByLabelText("Reason")).toHaveAccessibleDescription(/Choose a reason/);
+      expect(fetchMock).not.toHaveBeenCalled();
+      await userEvent.selectOptions(screen.getByLabelText("Reason"), "NOT_PROCEEDING");
+      expect(screen.queryByText("Choose a reason.")).not.toBeInTheDocument();
+    });
+
+    it("names the approved terms when withdrawing an offer, not the requested ones", async () => {
+      renderPanel(
+        detail({
+          status: "OFFER",
+          approved: {
+            by: "STF-RINA",
+            amount: "120000.00",
+            tenorMonths: 36,
+            monthlyRate: "0.016",
+            regularInstalment: null,
+          },
+          allowedActions: [{ action: "WITHDRAW", enabled: true }],
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
+      const dialog = screen.getByRole("dialog");
+      expect(dialog).toHaveTextContent("₱120,000.00 over 36 months");
+      expect(dialog).not.toHaveTextContent("₱200,000.00");
+    });
+
+    it.each([
+      ["DRAFT", /Draft: nothing has been checked yet.*Expires on/],
+      ["OFFER", /Waiting for the borrower's e-signature.*Expires on/],
+    ] as const)("tells the officer when a case in %s expires", (status, text) => {
+      renderPanel(detail({ status, expiresAt: "2026-12-28T01:00:00.000Z", allowedActions: [] }));
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
+
+    it("posts the reason and the trimmed note to /withdraw, then shows the closed case", async () => {
+      const fetchMock = vi.fn(async () => new Response(JSON.stringify(withdrawn), { status: 200 }));
+      vi.stubGlobal("fetch", fetchMock);
+      const onChanged = vi.fn();
+      renderPanel(draft(), onChanged);
+      await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
+      await userEvent.selectOptions(screen.getByLabelText("Reason"), "APPLICANT_REQUEST");
+      expect(screen.getByRole("option", { name: "Applicant withdrew" })).toBeInTheDocument();
+      await userEvent.type(screen.getByLabelText("Note (optional)"), "  Found a cheaper loan.  ");
+      await confirm();
+      expect(fetchMock).toHaveBeenCalledWith(
+        "/api/cases/case-1/withdraw",
+        expect.objectContaining({ method: "POST" }),
+      );
+      const sent = JSON.parse(
+        (fetchMock.mock.calls[0] as unknown as [string, { body: string }])[1].body,
+      );
+      expect(sent).toEqual({ reasonCode: "APPLICANT_REQUEST", note: "Found a cheaper loan." });
+      expect(onChanged).toHaveBeenCalledWith(withdrawn);
+      expect(await screen.findByText("Withdrawn — the application is closed")).toBeInTheDocument();
+    });
+
+    it("shows the API's refusal inline (e.g. the case moved to booking meanwhile)", async () => {
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(
+          async () =>
+            new Response(
+              JSON.stringify({
+                status: 409,
+                code: "INVALID_STATE_TRANSITION",
+                detail: "Cannot withdraw while the case is BOOKING.",
+              }),
+              { status: 409 },
+            ),
+        ),
+      );
+      renderPanel(draft());
+      await userEvent.click(screen.getByRole("button", { name: "Withdraw application" }));
+      await userEvent.selectOptions(screen.getByLabelText("Reason"), "NOT_PROCEEDING");
+      await confirm();
+      expect(await screen.findByRole("alert")).toHaveTextContent(/Cannot withdraw/);
+    });
+
+    it("says who closed a withdrawn case, and why", () => {
+      renderPanel(withdrawn);
+      expect(
+        screen.getByText(/Withdrawn: closed by Paolo Tan \(Applicant withdrew\)/),
+      ).toBeInTheDocument();
+      expect(screen.queryByRole("button")).not.toBeInTheDocument();
+    });
+
+    it.each([
+      ["DRAFT", /Expired: the draft was unchanged for 30 days/],
+      ["OFFER", /Expired: the offer was not signed within 5 days/],
+    ] as const)("explains an expired case closed from %s", (from, text) => {
+      renderPanel(detail({ status: "EXPIRED", closedFrom: from, allowedActions: [] }));
+      expect(screen.getByText(text)).toBeInTheDocument();
+    });
   });
 
   describe("recommendation", () => {

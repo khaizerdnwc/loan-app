@@ -29,6 +29,7 @@ effect on behaviour. Pruning is the next image change.
 | api | `CORS_ORIGIN` | the backoffice's public URL |
 | api | `NODE_ENV` | `production` (the image sets it): the session cookie is then `Secure`, so serve over HTTPS |
 | api | `TRUST_PROXY_HOPS` | `0` unless an appending load balancer sits in front of the API |
+| api | `EXPIRY_SWEEP_SECONDS` | `300` (default): seconds between expiry sweeps (drafts after 30 days, offers after 5). `0` turns the sweep off; run one API instance with it on, or accept that two instances sweep (each case is still expired once, under a row lock) |
 | web | `API_URL` | the API's internal URL, e.g. `http://api:3101` (required in production) |
 
 Only the backoffice needs to be public. The browser talks only to the backoffice's `/api`

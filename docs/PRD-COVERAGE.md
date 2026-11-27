@@ -63,7 +63,7 @@ Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 |---|---|---|---|---|
 | INT-001 | Embeddable journey for WhiteBank apps | not built (**OOR**) | — | The journey is borrower-facing (SDK, app). The staff API exists but is not a borrower API. |
 | INT-002 | Pre-fill from core and KYC | partly built | `applicant.entity.ts`, `GET /applicants` | Data comes from seeded applicant rows, not from a simulated core customer lookup. |
-| INT-003 | Save and resume for 30 days | partly built | A-4, A-5, `PATCH /cases/:id` | Drafts save and edit. No expiry and no cross-channel resume. |
+| INT-003 | Save and resume for 30 days | partly built | A-4, A-5, W-2, `PATCH /cases/:id` | Drafts save and edit, and expire after 30 days unchanged (submit refused, then the sweep closes them as Expired). No cross-channel resume. |
 | INT-004 | Loan calculator, indicative offer | partly built | `case-views.ts` (`core.quote`), `CaseDetail.approved.regularInstalment` | The instalment is quoted from simulated core only after approval. No calculator before submission. |
 | INT-005 | Staff-assisted intake, including walk-ins | partly built | `apps/backoffice/src/app/(staff)/cases/new/page.tsx` | A loan officer captures for a seeded applicant. You cannot capture a new or walk-in customer (name, age, employer, income). There is no branch officer role. |
 | INT-006 | Consent with timestamp, terms version, channel | built | C-1 | Insert-only consent records (bureau check, data processing, terms version, channel, who, when); submit and so the bureau pull refused without them. |
@@ -86,7 +86,7 @@ Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 | WF-009 | Counter-offer on amount, tenor, pricing | partly built | F2-3..F2-5, `RecommendRequest` | Amount and tenor only (no pricing). The borrower accepts or rejects inside the simulated e-signature step. |
 | WF-010 | Credit committee | not built | — | Above-authority cases are flagged escalated instead (ASSUMPTIONS). |
 | WF-011 | Activity history with before/after | built | `activity-event.entity.ts` (from/to status, details), insert-only trigger (migration ...0002), F1-5 | Written in the same transaction as the change. |
-| WF-012 | Withdrawal, expiry, cancellation | not built | — | The transition table has no WITHDRAW, EXPIRE or CANCEL edges. |
+| WF-012 | Withdrawal, expiry, cancellation | built | W-1, W-2, `lifecycle.ts` WITHDRAW/EXPIRE | The loan officer withdraws (cancels) a case before signing, with a reason code; drafts expire after 30 days and unsigned offers after 5 (a scheduled sweep). WITHDRAWN and EXPIRED are closed statuses. Expiry periods are constants, not configuration screens. |
 
 ### 6.4 Documents and e-signature (DOC)
 
@@ -289,7 +289,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 1 | ✅ Done (B-10). Re-decide a referred case when the provider recovers: a new decision record, the old one kept, and a REVIEW → REVIEW edge | NFR-005, IH-003, NFR-011 | S | Today an outage referral cannot end in an approval, which breaks the PRD's "degrade to referral" promise. Small and contained. |
 | 2 | ✅ Done (C-1). Consent capture on the application (bureau check, data processing, terms version, timestamp, channel); submit refused without it, and the bureau pull gated on it | INT-006, CMP-001 (part), AIS-002 | M | F1 and F3 both start with consent. The bureau is pulled today with no recorded consent. Migration + DTO + form + tests. |
 | 3 | ✅ Done (A-7). Duplicate application detection by applicant and product (409 with the open case reference; partial unique index on open statuses) | INT-007 | S | P1 intake control the prototype already shows. Cheap DB-backed guard. |
-| 4 | Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
+| 4 | ✅ Done (W-1, W-2). Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
 | 5 | Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |
 | 6 | Compliance escalation on an AML knockout (an escalation record, a Compliance queue, mark reviewed, export file) plus re-screening before disbursement | CMP-005, F6 | M | Finishes F6. It is read-mostly and fits the existing Compliance role. |
 | 7 | Booking exception screen and a reconciliation report or job comparing simulated core accounts with lending records | BKG-005 | M | The PRD names it, and BUILD-STATUS lists it as a known gap (crash between core commit and lending commit). |
@@ -344,10 +344,10 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | New assisted application, card 3 Documents | Government ID and payslip checklist; simulated scan or upload (type and size checks, virus-scan text); OCR income mismatch over 15% with "use verified" or "keep declared, flag for review" | DOC-001, DOC-002, DOC-003, DEC-006 (income mismatch), F3 | Not built (#5, #11, #30). |
 | New assisted application, Consent card | Three consents (credit bureau check, data processing under the Data Privacy Act, terms and conditions v3.2); submit refused unless all three are ticked | INT-006, CMP-001 | Not built (#2). |
 | New assisted application, submit guard | Refuses when the same name already has an open application for the same product ("already has an open … application") | INT-007 | Not built (#3). |
-| New assisted application, Save draft | Draft "resumable for 30 days from any channel"; resume from the case | INT-003 | Draft save and edit built (A-4). No 30-day expiry (#4). |
+| New assisted application, Save draft | Draft "resumable for 30 days from any channel"; resume from the case | INT-003 | Draft save and edit built (A-4); 30-day expiry built (W-2). |
 | Case view: stage bar, decision summary, policy rule results, bureau card, relationship card, checks table, bank statement analysis, documents with versions, activity history, masked Gov ID with Reveal, config version | The unified case | WF-006, WF-011, DOC-006, DOC-007, CMP-004 | Decision summary, rule results, history and masked ID built. No bureau, relationship or checks cards, statement analysis, documents or Reveal. |
 | Case view, Decision record button | Stored inputs and versions | NFR-011, AIS-001 | Built, with reproduce (F1-2). |
-| Case actions: Request information, Recommend decision, Credit memo, Reassign, Withdraw (reasons include "Duplicate application"), Resume draft | Review tools | WF-007, WF-008, WF-002, WF-012, INT-003 | Recommend built (F2-3..F2-5). Others not built (#5, #17, #16, #4). |
+| Case actions: Request information, Recommend decision, Credit memo, Reassign, Withdraw (reasons include "Duplicate application"), Resume draft | Review tools | WF-007, WF-008, WF-002, WF-012, INT-003 | Recommend built (F2-3..F2-5). Withdraw built (W-1). Others not built (#5, #17, #16). |
 | Approval panel: recommendation, override above or below threshold, authority line, Approve, Return, Decline | Approver | §7.4, WF-004, WF-005 | Built (F2-5, R-6, R-8). |
 | Work queues (Mine, Team, Unassigned with Pick), SLA watch, KPIs | Queues | WF-002, WF-003 | Role queue built. Team, pick and SLA not built (#15, #16). |
 | Approvals, Credit committee | Approver and committee lists | WF-004, WF-010 | Approvals queue built. Committee not built (#22). |

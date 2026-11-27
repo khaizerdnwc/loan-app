@@ -12,6 +12,7 @@ import { ThrottlerGuard, ThrottlerModule } from "@nestjs/throttler";
 import { TypeOrmModule } from "@nestjs/typeorm";
 import { SimulatedProvidersModule } from "./adapters/simulated/simulated-providers.module";
 import { env } from "./config/env";
+import { ExpirySweep } from "./expiry-sweep";
 
 @Controller("health")
 class HealthController {
@@ -25,7 +26,8 @@ class HealthController {
 /**
  * The composition root: the database, the simulated providers bound to the ports, the
  * lending domain, and the two global guards — throttling, then the session-and-roles guard
- * that fails closed on every route that does not declare @Roles or @Public.
+ * that fails closed on every route that does not declare @Roles or @Public. The expiry
+ * sweep's timer lives here too, so the domain has no scheduler of its own.
  */
 @Module({
   imports: [
@@ -60,6 +62,7 @@ class HealthController {
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
+    ExpirySweep,
   ],
 })
 export class AppModule {}

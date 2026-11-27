@@ -13,6 +13,10 @@ import { CaseStatus } from "@loan/core";
  *   BOOKING ──submit booking──▶ PENDING_CHECKER
  *   PENDING_CHECKER ──approve booking──▶ DISBURSED | BOOKING_FAILED
  *   BOOKING_FAILED ──retry──▶ DISBURSED | BOOKING_FAILED
+ *   DRAFT | REVIEW | APPROVAL | OFFER ──withdraw (loan officer)──▶ WITHDRAWN
+ *   DRAFT | OFFER ──expire (system sweep)──▶ EXPIRED
+ *
+ * DECLINED, DISBURSED, WITHDRAWN and EXPIRED are closed (CLOSED_CASE_STATUSES): no edge leaves them.
  */
 export type CaseEvent =
   | "SUBMIT"
@@ -24,7 +28,9 @@ export type CaseEvent =
   | "SIGN"
   | "SUBMIT_BOOKING"
   | "BOOKING_SUCCEEDED"
-  | "BOOKING_FAILED";
+  | "BOOKING_FAILED"
+  | "WITHDRAW"
+  | "EXPIRE";
 
 const TRANSITIONS: Readonly<Record<CaseEvent, { from: CaseStatus[]; to: CaseStatus[] }>> = {
   SUBMIT: {
@@ -49,6 +55,11 @@ const TRANSITIONS: Readonly<Record<CaseEvent, { from: CaseStatus[]; to: CaseStat
     from: [CaseStatus.PendingChecker, CaseStatus.BookingFailed],
     to: [CaseStatus.BookingFailed],
   },
+  WITHDRAW: {
+    from: [CaseStatus.Draft, CaseStatus.Review, CaseStatus.Approval, CaseStatus.Offer],
+    to: [CaseStatus.Withdrawn],
+  },
+  EXPIRE: { from: [CaseStatus.Draft, CaseStatus.Offer], to: [CaseStatus.Expired] },
 };
 
 export class InvalidTransitionError extends Error {

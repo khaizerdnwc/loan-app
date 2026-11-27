@@ -118,6 +118,7 @@ describe("roles and segregation of duties (backend-enforced)", () => {
       ["post", `/cases/${id}/approve`],
       ["post", `/cases/${id}/decline`],
       ["post", `/cases/${id}/return`],
+      ["post", `/cases/${id}/withdraw`],
       ["post", `/cases/${id}/sign`],
       ["post", `/cases/${id}/booking`],
       ["post", `/cases/${id}/booking/approve`],
