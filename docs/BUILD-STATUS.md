@@ -27,3 +27,10 @@ commit passed the review loop. Blocked items carry the evidence.
 ## Gaps and limitations found during the build
 
 (Recorded here instead of TODO comments; carried into the design notes.)
+
+- `pnpm.overrides` pins glob ≥14.0.2 and minimatch ≥11.0.1 (two moderate advisories reached
+  through Jest's tooling). They force major versions on transitive consumers; all tests pass
+  with them. Drop them once Jest's dependencies move past the vulnerable ranges.
+- Reviewer agents run as general-purpose agents that load `.claude/agents/<role>.md` in the
+  session that created them (agents register at session start); later sessions use the
+  native agents with the write-scope hook.

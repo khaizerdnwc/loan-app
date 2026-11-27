@@ -29,6 +29,7 @@ describe("reviewRoles — the /review path table as code", () => {
     ["packages/base/src/database/migrations/1764000000000-init.ts", "data"],
     ["packages/base/src/booking/booking.repository.ts", "data"],
     ["packages/core/src/money/money.ts", "data"],
+    ["packages/base/src/decisioning/engine/decide.ts", "data"],
     ["packages/contracts/src/core-banking.port.ts", "architecture"],
     ["packages/base/src/booking/booking.module.ts", "architecture"],
     ["apps/api/src/adapters/simulated/core-banking.ts", "architecture"],

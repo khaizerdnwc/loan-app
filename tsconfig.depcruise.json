@@ -1,0 +1,13 @@
+{
+  "//": "Used only by dependency-cruiser: resolves workspace packages to their source, so every cross-package edge is checked (dist is excluded from the graph).",
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@loan/core": ["packages/core/src/index.ts"],
+      "@loan/contracts": ["packages/contracts/src/index.ts"],
+      "@loan/base": ["packages/base/src/index.ts"],
+      "@loan/ui": ["packages/ui/src/index.ts"]
+    }
+  }
+}

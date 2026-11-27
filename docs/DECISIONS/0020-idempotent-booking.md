@@ -33,8 +33,11 @@ cannot tell whether it worked).
 - **R5. Failure is safe.** A core timeout or outage moves the case to `BOOKING_FAILED` with
   the error recorded and the key kept. Retry (by a supervisor) reuses the same key: if core
   had created the account before the reply was lost, the retry receives that account.
-- **R6. Disbursement** is part of the same step in this MVP (unsecured personal loan, single
-  tranche), keyed by the same booking key.
+- **R6. Disbursement** is its own port and simulated service (`Disbursement`,
+  `ServiceName.Disbursement`), so it can fail and be switched like the others, and a real
+  payments provider can replace it alone. In this MVP it runs in the same checker step as
+  booking (unsecured personal loan, single tranche), keyed by the same booking key, and the
+  disbursement record commits in the same lending transaction.
 
 ## Concurrency limitations (documented)
 - Correctness rests on Postgres row locks and unique constraints; a multi-region active-active

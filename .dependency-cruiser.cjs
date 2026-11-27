@@ -40,6 +40,21 @@ module.exports = {
       to: { path: "^(apps|packages/ui|tools)/" },
     },
     {
+      name: "decision-engine-is-pure",
+      severity: "error",
+      comment:
+        "The decision engine is a pure function (ADR 0022 R1): only @loan/core, node:crypto and its own files. No Nest, TypeORM, ports or database.",
+      from: { path: "^packages/base/src/decisioning/engine/" },
+      to: {
+        pathNot: [
+          "^packages/base/src/decisioning/engine/",
+          "^packages/core/",
+          "^crypto$",
+          "^node:crypto$",
+        ],
+      },
+    },
+    {
       name: "backoffice-never-imports-server-code",
       severity: "error",
       comment: "The browser app talks to the API over HTTP; it may share types from core only.",
@@ -61,18 +76,13 @@ module.exports = {
   ],
   options: {
     doNotFollow: { path: ["node_modules", "dist", ".next"] },
+    // Not "node_modules": that would drop every edge to a workspace package (they resolve
+    // through node_modules symlinks), and with it every cross-package rule here.
     exclude: {
-      path: [
-        "node_modules",
-        "dist",
-        "\\.next",
-        "coverage",
-        "\\.turbo",
-        "test-results",
-        "playwright-report",
-      ],
+      path: ["dist", "\\.next", "coverage", "\\.turbo", "test-results", "playwright-report"],
     },
     tsPreCompilationDeps: true,
+    tsConfig: { fileName: "tsconfig.depcruise.json" },
     combinedDependencies: true,
     preserveSymlinks: false,
     enhancedResolveOptions: {

@@ -131,6 +131,7 @@ export const ServiceName = {
   CreditBureau: "CREDIT_BUREAU",
   KycAml: "KYC_AML",
   CoreBanking: "CORE_BANKING",
+  Disbursement: "DISBURSEMENT",
   ESignature: "E_SIGNATURE",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

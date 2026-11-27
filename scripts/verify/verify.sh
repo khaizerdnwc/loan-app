@@ -35,7 +35,7 @@ LOG_DIR="$ROOT/verify-logs"
 API=(pnpm --filter @loan/api run)
 
 # --- arguments -----------------------------------------------------------------------
-STAGES=("${ALL_STAGES[@]}")
+STAGES=(${ALL_STAGES[@]+"${ALL_STAGES[@]}"})
 AFFECTED_BASE=""
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -57,7 +57,7 @@ while [ $# -gt 0 ]; do
       ;;
   esac
 done
-for s in "${STAGES[@]}"; do
+for s in ${STAGES[@]+"${STAGES[@]}"}; do
   case " ${ALL_STAGES[*]} " in
     *" $s "*) ;;
     *)
@@ -101,14 +101,14 @@ cleanup() {
   if [ -n "$CURRENT" ] && [ "$code" = 0 ]; then code=1; fi
   # And a run that never reached its last line did not pass, even outside a stage.
   if [ "${VERIFY_DONE:-}" != 1 ] && [ "$code" = 0 ]; then code=1; fi
-  for pid in "${PIDS[@]:-}"; do
+  for pid in ${PIDS[@]+"${PIDS[@]}"}; do
     [ -n "$pid" ] && kill "$pid" >/dev/null 2>&1 || true
   done
   if [ "$SERVICES_UP" = 1 ] && [ "${VERIFY_KEEP_SERVICES:-}" != 1 ]; then
     bash "$ROOT/scripts/verify/services.sh" down
   fi
   printf '\n\033[1m━━ verify summary ━━\033[0m\n'
-  for line in "${SUMMARY[@]:-}"; do [ -n "$line" ] && echo "$line"; done
+  for line in ${SUMMARY[@]+"${SUMMARY[@]}"}; do [ -n "$line" ] && echo "$line"; done
   if [ -n "$CURRENT" ]; then
     echo "✖ $(printf '%-12s' "$CURRENT") failed after $((SECONDS - STAGE_START))s"
     [ -d "$LOG_DIR" ] && echo "  logs: $LOG_DIR"
@@ -157,7 +157,7 @@ docker_scan() { # <image> <args...>
   common="$(cd "$(git rev-parse --git-common-dir)" && pwd)"
   local mounts=(-v "$ROOT:$ROOT")
   case "$common" in "$ROOT"/*) ;; *) mounts+=(-v "$common:$common") ;; esac
-  docker run --rm "${mounts[@]}" -w "$ROOT" \
+  docker run --rm ${mounts[@]+"${mounts[@]}"} -w "$ROOT" \
     -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0='*' \
     "$image" "$@"
 }
@@ -184,7 +184,18 @@ stage_security() {
   # The BLOCKING SAST gate. --error: any finding fails. Fix it, or annotate the line
   #   // nosemgrep: <rule-id> -- <why>
   # A bare nosemgrep is an unreviewed exception.
-  step "semgrep" semgrep_scan apps packages tools scripts
+  # Only folders with tracked files: semgrep_scan streams tracked files into the container,
+  # and semgrep refuses a scanning root that is not there. An empty set is a failure, never
+  # a silent "scanned nothing".
+  local roots=()
+  for d in apps packages tools scripts; do
+    if [ -n "$(git ls-files -- "$d" | head -n1)" ]; then roots+=("$d"); fi
+  done
+  if [ "${#roots[@]}" -eq 0 ]; then
+    echo "✖ semgrep: no tracked files to scan" >&2
+    return 1
+  fi
+  step "semgrep" semgrep_scan ${roots[@]+"${roots[@]}"}
   step "pnpm audit (moderate+)" pnpm audit --audit-level=moderate
   step "audit-ci (allowlist)" pnpm exec audit-ci --config audit-ci.json
   step "licence allowlist" pnpm exec tsx scripts/check-licenses.ts
@@ -217,14 +228,14 @@ ensure_services() {
   SERVICES_UP=1
   step "throwaway postgres" bash "$ROOT/scripts/verify/services.sh" up
   step "build the packages the API needs" pnpm exec turbo run build --filter=@loan/api^...
-  step "migrations from empty" "${API[@]}" db:migrate
+  step "migrations from empty" ${API[@]+"${API[@]}"} db:migrate
 }
 
 stage_db() {
   stage_begin db
   ensure_services
   # Entities and migrations must agree: a schema change with no migration fails here.
-  step "entity/migration drift" "${API[@]}" db:migration:check
+  step "entity/migration drift" ${API[@]+"${API[@]}"} db:migration:check
   step "seed (idempotent: twice)" bash -c 'pnpm --filter @loan/api run db:seed && pnpm --filter @loan/api run db:seed'
   stage_end
 }
@@ -232,7 +243,7 @@ stage_db() {
 stage_integration() {
   stage_begin integration
   ensure_services
-  step "API integration tests (Jest + supertest, real Postgres)" "${API[@]}" test:integration
+  step "API integration tests (Jest + supertest, real Postgres)" ${API[@]+"${API[@]}"} test:integration
   stage_end
 }
 
@@ -260,8 +271,8 @@ stage_e2e() {
   # Its own database: the integration stage truncates the first one.
   (
     export DATABASE_URL="$VERIFY_E2E_URL"
-    step "migrate (e2e db)" "${API[@]}" db:migrate
-    step "seed (e2e db)" "${API[@]}" db:seed
+    step "migrate (e2e db)" ${API[@]+"${API[@]}"} db:migrate
+    step "seed (e2e db)" ${API[@]+"${API[@]}"} db:seed
   )
 
   if [ "${GITHUB_ACTIONS:-}" = true ]; then
@@ -313,11 +324,13 @@ if wants e2e && [ "${SKIP_E2E:-}" = 1 ]; then
     exit 1
   fi
   printf '\n\033[1;33m⚠ SKIP_E2E=1 — the e2e stage will NOT run. The PR still runs it.\033[0m\n'
-  STAGES=("${STAGES[@]/e2e/}")
+  _kept=()
+  for s in ${STAGES[@]+"${STAGES[@]}"}; do [ "$s" = e2e ] || _kept+=("$s"); done
+  STAGES=(${_kept[@]+"${_kept[@]}"})
   SUMMARY+=("⚠ e2e          skipped (SKIP_E2E=1)")
 fi
 
-for s in "${ALL_STAGES[@]}"; do
+for s in ${ALL_STAGES[@]+"${ALL_STAGES[@]}"}; do
   if wants "$s"; then "stage_$s"; fi
 done
 

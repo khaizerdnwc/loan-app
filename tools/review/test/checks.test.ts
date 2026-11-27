@@ -9,9 +9,13 @@ import {
   loadChecks,
   runChecks,
 } from "../src/checks/_registry";
+import depcruisePathsCoverPackages from "../src/checks/depcruise-paths-cover-packages";
 import dockerfileWorkspaceManifests from "../src/checks/dockerfile-workspace-manifests";
 import envExampleParity from "../src/checks/env-example-parity";
 import rootManifestNoCatalog from "../src/checks/root-manifest-no-catalog";
+import shellNoBareArrayExpansion, {
+  bareExpansions,
+} from "../src/checks/shell-no-bare-array-expansion";
 
 let root: string;
 const write = (rel: string, content: string) => {
@@ -26,10 +30,12 @@ const ctx = (): CheckContext => ({
 
 /** Every check in tools/review/src/checks, in file order. A new check adds itself here. */
 const EXPECTED_CHECKS = [
+  "depcruise-paths-cover-packages",
   "dockerfile-workspace-manifests",
   "env-example-parity",
   "house-rule-parity",
   "root-manifest-no-catalog",
+  "shell-no-bare-array-expansion",
 ];
 
 beforeEach(() => {
@@ -181,5 +187,76 @@ describe("env-example-parity", () => {
     write("apps/api/src/config/env.ts", "const s = z.object({\n  A: z.string(),\n});\n");
     const findings = (await envExampleParity.run(ctx())) as { message: string }[];
     expect(findings[0]?.message).toBe(".env.example is missing");
+  });
+});
+
+describe("shell-no-bare-array-expansion", () => {
+  it("flags a bare expansion with its line, and accepts the safe form and comments", () => {
+    const text = [
+      "set -euo pipefail",
+      'for s in "${STAGES[@]}"; do :; done',
+      'turbo run x ${FILTER[@]+"${FILTER[@]}"}',
+      '# the old way was "${FILTER[@]}"',
+      'echo "${#ROOTS[@]}" "${ROOTS[0]}"',
+      'for p in "${PIDS[@]:-}"; do :; done',
+      'STAGES=("${STAGES[@]/e2e/}")',
+      "run ${ARGS[@]}",
+    ].join("\n");
+    expect(bareExpansions(text)).toEqual([
+      { line: 2, name: "STAGES" },
+      { line: 6, name: "PIDS" },
+      { line: 7, name: "STAGES" },
+      { line: 8, name: "ARGS" },
+    ]);
+  });
+
+  it("scans scripts/ and .claude/hooks/ recursively", async () => {
+    write("scripts/verify/a.sh", 'x "${A[@]}"\n');
+    write(".claude/hooks/b.sh", 'y ${B[@]+"${B[@]}"}\n');
+    write("scripts/readme.md", '"${C[@]}"\n');
+    const findings = (await shellNoBareArrayExpansion.run(ctx())) as {
+      file: string;
+      line?: number;
+    }[];
+    expect(findings.map((f) => [f.file, f.line])).toEqual([["scripts/verify/a.sh", 1]]);
+  });
+
+  it("passes the repo's own scripts", async () => {
+    const real = { ...ctx(), repoRoot: join(process.cwd(), "..", "..") };
+    expect(await shellNoBareArrayExpansion.run(real)).toEqual([]);
+  });
+});
+
+describe("depcruise-paths-cover-packages", () => {
+  const pkg = (dir: string, name: string) => {
+    write(`packages/${dir}/package.json`, JSON.stringify({ name }));
+    write(`packages/${dir}/src/index.ts`, "export {};\n");
+  };
+
+  it("reports a package whose source is not mapped", async () => {
+    pkg("core", "@loan/core");
+    pkg("ui", "@loan/ui");
+    write(
+      "tsconfig.depcruise.json",
+      JSON.stringify({
+        "//": "x",
+        compilerOptions: { paths: { "@loan/core": ["packages/core/src/index.ts"] } },
+      }),
+    );
+    const findings = (await depcruisePathsCoverPackages.run(ctx())) as { message: string }[];
+    expect(findings).toHaveLength(1);
+    expect(findings[0]?.message).toMatch(/^@loan\/ui is not mapped/);
+  });
+
+  it("ignores packages without src/index.ts, and reports a missing config", async () => {
+    write("packages/eslint-house/package.json", JSON.stringify({ name: "@loan/eslint-house" }));
+    expect(await depcruisePathsCoverPackages.run(ctx())).toEqual([
+      { file: "tsconfig.depcruise.json", message: expect.stringMatching(/missing/) },
+    ]);
+  });
+
+  it("passes the repo's own config", async () => {
+    const real = { ...ctx(), repoRoot: join(process.cwd(), "..", "..") };
+    expect(await depcruisePathsCoverPackages.run(real)).toEqual([]);
   });
 });

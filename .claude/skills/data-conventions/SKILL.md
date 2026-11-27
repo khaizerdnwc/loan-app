@@ -9,6 +9,7 @@ paths:
   - packages/base/src/database/**
   - packages/base/src/seed/**
   - packages/core/src/money/**
+  - packages/base/src/decisioning/**
 ---
 
 # Data conventions

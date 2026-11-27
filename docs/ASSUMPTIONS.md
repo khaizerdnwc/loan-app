@@ -20,13 +20,27 @@ project team's prototype; values marked *ours* are our own.
 
 | Item | Value | Source |
 |---|---|---|
-| Knockouts (run first, no score) | Age outside 21–65 · sanctions/watchlist match · existing default | prototype |
+| Knockouts (run first, no score) | Age outside 21–65 · sanctions/watchlist match · existing default · identity not verified (R14) | prototype + ours (KYC) |
 | Score range | 450 – 820 | prototype |
 | Grades | A ≥ 740, B ≥ 700, C ≥ 600, D ≥ 560, E < 560 | prototype |
 | Bands | Decline < 600 · Refer 600–699 · Approve ≥ 700 | prototype |
-| Referral triggers (refer regardless of score) | Thin bureau file · DTI above 40% · amount above auto limit · bureau unavailable | prototype + PRD NFR-005 |
-| DTI | Existing monthly obligations ÷ verified (else declared) monthly income. The new instalment is left out because pricing depends on the grade, which depends on DTI; same as the prototype | ours |
+| Trigger vs low score | RS-PL-1 `lowScoreWithTrigger: REFER`: a referral trigger refers the case even in the decline band ("regardless of score", PRD glossary); the low score is added as a reason for the reviewer. The prototype declined first; the PRD is the brief. Knockouts still decline first. | PRD |
+| Referral triggers (refer regardless of score) | Thin file or no bureau hit · DTI above 40% (or no income) · amount above auto limit · bureau unavailable (R10) · KYC/AML screening unavailable (R13) | prototype + PRD NFR-005 |
+| DTI | Existing monthly obligations ÷ verified (else declared) monthly income, compared exactly (obligations > income × 0.40), never as a rounded ratio. The new instalment is left out because pricing depends on the grade, which depends on DTI; same as the prototype | ours |
 | Scorecard | Additive points (bureau score band, file depth, DTI, employment tenure, relationship, delinquencies); weights tuned so the PRD personas land where the PRD says (Maria 742 A, Joel 612 C) | ours |
+
+## Seeded applicants (synthetic) and their expected outcomes
+
+| Persona | Key inputs | Expected (engine) |
+|---|---|---|
+| Maria Santos (F1) | 31 · income ₱78,000 · obligations ₱9,000 · bureau 748 full · util 35% · 30 months employed · customer 18 months | Auto-approve, 742 A |
+| Joel Reyes (F2) | 27 · income ₱56,000 · obligations ₱11,000 · bureau 640 thin · util 42% · 40 months employed · new to bank | Refer, 612 C (thin file, score band) |
+| Ramon Cruz (F6) | 52 · sanctions match | Auto-decline, no score (R11) |
+| Nico Villareal | income ₱70,000 · obligations ₱30,100 (DTI 43%) · bureau 671 full · util 45% | Refer, 602 C (DTI, score band) |
+| Rafael Gomez | ₱500,000 · income ₱180,000 · bureau 711 full | Refer, grade A (amount above auto limit) |
+| Carmen Diaz | bureau 540 · util 85% · 2 missed payments · 8 months employed | Auto-decline, 450 E (score, missed payments) |
+| Nina Cruz | no bureau record · income ₱42,000 · 14 months employed · customer 10 months | Refer, 537 E (no bureau hit; low score shown to the reviewer) |
+| Kevin Lim | age 20 | Auto-decline, no score (age) |
 
 ## Roles and authority
 

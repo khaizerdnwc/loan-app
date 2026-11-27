@@ -1,0 +1,30 @@
+{
+  "name": "@loan/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ports for every external service (bureau, KYC/AML, core banking, disbursement, e-signature) and the simulation-control surface (Engineering Standard 9).",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "lint": "eslint --cache --no-error-on-unmatched-pattern src test",
+    "test": "jest --passWithNoTests"
+  },
+  "dependencies": {
+    "@loan/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@swc/core": "^1.16.22",
+    "@swc/jest": "^0.2.39",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^22.19.0",
+    "eslint": "^9.39.5",
+    "jest": "^30.5.2",
+    "typescript": "~5.9.3"
+  }
+}

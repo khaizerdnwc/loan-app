@@ -37,6 +37,8 @@ export const ROLE_PATHS: Record<Role, readonly string[]> = {
     "packages/base/src/seed/**",
     // Money and the schedule are data correctness: a centavo out of place is a data bug.
     "packages/core/src/money/**",
+    // The decision engine and its records must be reproducible (ADR 0022).
+    "packages/base/src/decisioning/**",
   ],
   architecture: [
     "packages/contracts/**",

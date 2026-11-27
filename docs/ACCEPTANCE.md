@@ -49,14 +49,15 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 
 | ID | Criterion | Test | Status |
 |---|---|---|---|
-| D-1 | Age 20 or 66 → Auto-decline with the age knockout reason, and no score | — | ☐ |
-| D-2 | Sanctions match → Auto-decline (Ramon Cruz), no score | — | ☐ |
-| D-3 | Existing default → Auto-decline | — | ☐ |
-| D-4 | Score below 600 with no knockout → Auto-decline with reason codes | — | ☐ |
-| D-5 | DTI above 40% → Refer with the DTI reason (Nico Villareal) | — | ☐ |
-| D-6 | Amount above ₱300,000 with a good score → Refer with the auto-limit reason (Rafael Gomez) | — | ☐ |
-| D-7 | Every decline and referral carries at least one readable reason code | — | ☐ |
-| D-8 | The same inputs and versions always give the same result | — | ☐ |
+| D-1 | Age 20 or 66 → Auto-decline with the age knockout reason, and no score | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-2 | Sanctions match → Auto-decline (Ramon Cruz), no score | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-3 | Existing default → Auto-decline | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-4 | Score below 600 with no knockout and no referral trigger → Auto-decline with reason codes | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-5 | DTI above 40% → Refer with the DTI reason (Nico Villareal) | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-6 | Amount above ₱300,000 with a good score → Refer with the auto-limit reason (Rafael Gomez) | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-7 | Every decline and referral carries at least one readable reason code | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-9 | A referral trigger refers the case even in the decline band, and the low score is shown as a reason (R07) | `packages/base/test/decisioning/decide.test.ts` | ☑ |
+| D-8 | The same inputs and versions always give the same result | `packages/base/test/decisioning/decide.test.ts` | ☑ |
 
 ## Booking integrity and failure handling
 
