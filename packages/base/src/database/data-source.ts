@@ -41,16 +41,17 @@ export const ENTITIES = [
 
 /**
  * The one way to configure the database. The schema changes only through migrations
- * (house/no-typeorm-synchronize); `migrationsRun` is the caller's choice (on boot for a
- * deployment, an explicit command in development and CI).
+ * (house/no-typeorm-synchronize). TypeORM's `migrationsRun` is always off: it takes no lock.
+ * Migrations run only through `runMigrationsLocked` (migration-lock.ts): `openDataSource` for
+ * MIGRATE_ON_BOOT, and `db.js migrate`.
  */
-export function dataSourceOptions(url: string, migrationsRun = false): DataSourceOptions {
+export function dataSourceOptions(url: string): DataSourceOptions {
   return {
     type: "postgres",
     url,
     entities: ENTITIES,
     migrations: MIGRATIONS,
-    migrationsRun,
+    migrationsRun: false,
     migrationsTransactionMode: "each",
     synchronize: false,
     logging: ["error"],

@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 # One image definition, two targets (host-neutral; see docs/DEPLOY.md):
-#   docker build --target api -t loan-api .   → NestJS API on :3101 (migrates + seeds on start)
+#   docker build --target api -t loan-api .   → NestJS API on :3101 (migrates under a lock + seeds on start)
 #   docker build --target web -t loan-web .   → Next.js backoffice on :3100 (proxies /api to API_URL)
 # Node is pinned by digest (devops conventions); pnpm comes from package.json via corepack.
 
@@ -26,11 +26,19 @@ RUN pnpm install --frozen-lockfile --ignore-scripts
 FROM deps AS build
 COPY . .
 RUN pnpm turbo run build --filter=@loan/api... --filter=@loan/backoffice...
+# Production-only installs: each app with its runtime dependencies, the built workspace
+# packages it uses, and only what its package.json "files" lists (api: dist; backoffice:
+# .next, next.config.ts, public). No devDependencies, sources, tests, env files or other apps.
+# pnpm 9 (packageManager) deploys workspace:* dependencies as is; pnpm 10 refuses with
+# ERR_PNPM_DEPLOY_NONINJECTED_WORKSPACE unless inject-workspace-packages is set (or --legacy).
+RUN pnpm --filter=@loan/api --prod --ignore-scripts deploy /prod/api \
+ && pnpm --filter=@loan/backoffice --prod --ignore-scripts deploy /prod/web \
+ && rm -rf /prod/web/.next/cache
 
 FROM base AS api
 ENV NODE_ENV=production PORT=3101
-COPY --from=build /app /app
-WORKDIR /app/apps/api
+COPY --from=build /prod/api /app
+WORKDIR /app
 USER node
 EXPOSE 3101
 HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=3 \
@@ -40,8 +48,8 @@ CMD ["sh", "-c", "node dist/cli/db.js migrate && node dist/cli/db.js seed && exe
 
 FROM base AS web
 ENV NODE_ENV=production PORT=3100
-COPY --from=build /app /app
-WORKDIR /app/apps/backoffice
+COPY --from=build /prod/web /app
+WORKDIR /app
 USER node
 EXPOSE 3100
 HEALTHCHECK --interval=10s --timeout=3s --start-period=20s --retries=3 \

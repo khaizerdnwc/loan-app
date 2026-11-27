@@ -26,6 +26,7 @@ export VERIFY_SEMGREP_IMAGE="semgrep/semgrep:1.168.0@sha256:59fbed6127ea7c5dde3b
 export VERIFY_GITLEAKS_IMAGE="zricethezav/gitleaks:v8.21.2@sha256:0e99e8821643ea5b235718642b93bb32486af9c8162c8b8731f7cbdc951a7f46"
 export VERIFY_POSTGRES_IMAGE="postgres:16-alpine@sha256:f2f98726820d0342055351c6e9d36e705f5bfffb3dd53ff556325114b08afb6d"
 export VERIFY_ACTIONLINT_IMAGE="rhysd/actionlint:1.7.7@sha256:887a259a5a534f3c4f36cb02dca341673c6089431057242cdc931e9f133147e9"
+export VERIFY_SHELLCHECK_IMAGE="koalaman/shellcheck:v0.10.0@sha256:2097951f02e735b613f4a34de20c40f937a6c8f18ecb170612c88c34517221fb"
 export VERIFY_HADOLINT_IMAGE="hadolint/hadolint:v2.12.0-alpine@sha256:3c206a451cec6d486367e758645269fd7d696c5ccb6ff59d8b03b0e45268a199"
 
 # --- Throwaway services (scripts/verify/services.sh) ---------------------------------

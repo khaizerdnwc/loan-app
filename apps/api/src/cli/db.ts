@@ -1,5 +1,5 @@
 import "reflect-metadata";
-import { createDataSource, dropEverything, seed } from "@loan/base";
+import { createDataSource, dropEverything, runMigrationsLocked, seed } from "@loan/base";
 import { Logger } from "@nestjs/common";
 import { env } from "../config/env";
 
@@ -21,7 +21,7 @@ async function main(command: string | undefined): Promise<void> {
       await dropEverything(ds);
     }
     if (command === "migrate" || command === "reset") {
-      const ran = await ds.runMigrations({ transaction: "each" });
+      const ran = await runMigrationsLocked(ds, { timeoutMs: env().MIGRATION_LOCK_TIMEOUT_MS });
       logger.log(`migrations applied: ${ran.length}`);
     }
     if (command === "seed" || command === "reset") {

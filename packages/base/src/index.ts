@@ -21,6 +21,13 @@ export {
   dropEverything,
   ENTITIES,
 } from "./database/data-source";
+export {
+  DEFAULT_MIGRATION_LOCK_TIMEOUT_MS,
+  MIGRATION_LOCK_KEY,
+  type MigrationLockOptions,
+  openDataSource,
+  runMigrationsLocked,
+} from "./database/migration-lock";
 export { MIGRATIONS } from "./database/migrations";
 export { moneyColumn, moneyTransformer } from "./database/money.transformer";
 export * from "./decisioning/engine";
