@@ -18,6 +18,8 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     requestedTenorMonths: 36,
     status: "APPROVAL",
     outcome: "REFER",
+    reason: "Thin bureau file",
+    reasonCount: 1,
     grade: "C",
     escalated: false,
     createdAt: "2026-11-28T01:00:00.000Z",
@@ -61,6 +63,7 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     indicativeRepayment: null,
     infoRequest: null,
     documents: [],
+    proposedRepayment: null,
     allowedActions: [],
     decidedDuringOutage: false,
     recommendationTypes: [],
@@ -469,6 +472,43 @@ describe("ActionsPanel shows only what the API allows", () => {
     expect(onChanged).toHaveBeenCalledWith(next);
     expect(refreshShell).toHaveBeenCalled();
   });
+
+  it.each([
+    [
+      "QUOTED",
+      "5253.33",
+      "Monthly repayment ₱5,253.33 at grade C (1.60% / month), calculated by core banking (simulated).",
+    ],
+    [
+      "UNAVAILABLE",
+      null,
+      "Core banking (simulated) could not quote the monthly repayment just now; approving does not depend on it.",
+    ],
+  ] as const)(
+    "the approve dialog states the monthly repayment being approved (%s)",
+    async (status, instalment, sentence) => {
+      renderPanel(
+        detail({
+          allowedActions: [{ action: "APPROVE", enabled: true }],
+          proposedRepayment: {
+            status,
+            amount: "120000.00",
+            tenorMonths: 36,
+            grade: "C",
+            monthlyRate: "0.0160",
+            regularInstalment: instalment,
+            finalInstalment: null,
+            totalRepayable: null,
+            providerMode: status === "QUOTED" ? "SIMULATED" : null,
+          },
+        }),
+      );
+      await userEvent.click(screen.getByRole("button", { name: "Approve" }));
+      const dialog = screen.getByRole("dialog", { hidden: true });
+      expect(dialog).toHaveTextContent(sentence);
+      expect(dialog).toHaveTextContent("Joel Reyes receives an offer on these terms.");
+    },
+  );
 
   it("shows the API's refusal inline in the dialog", async () => {
     vi.stubGlobal(

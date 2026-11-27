@@ -129,6 +129,38 @@ describe("AppShell", () => {
     expect(within(crumb).getByText("APP-1002")).toHaveAttribute("aria-current", "page");
   });
 
+  it("on another detail page (an AML escalation), links back to its list and ends with the record", async () => {
+    me = { id: "STF-DIANE", fullName: "Diane Yu", role: "COMPLIANCE" };
+    location.pathname = "/compliance/escalations/esc-1";
+    render(
+      <ToastProvider>
+        <SessionProvider fallback={<p>Checking…</p>}>
+          <AppShell>
+            <CasePageStandIn reference="APP-1007" />
+          </AppShell>
+        </SessionProvider>
+      </ToastProvider>,
+    );
+    await screen.findByText("Case page");
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    // The page names its record from an effect, so the last part arrives a moment later.
+    expect(await within(crumb).findByText("APP-1007")).toHaveAttribute("aria-current", "page");
+    expect(crumb).toHaveTextContent("Compliance/AML escalations/APP-1007");
+    expect(within(crumb).getByRole("link", { name: "AML escalations" })).toHaveAttribute(
+      "href",
+      "/compliance/escalations",
+    );
+  });
+
+  it("keeps a page with its own nav item (New application) as Section / Page", async () => {
+    location.pathname = "/cases/new";
+    renderShell();
+    await screen.findByText("Paolo Tan");
+    const crumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(within(crumb).queryByRole("link")).toBeNull();
+    expect(crumb).toHaveTextContent(/New application$/);
+  });
+
   it("renders where matchMedia is unavailable, treating the screen as wide (sidebar not inert)", async () => {
     vi.stubGlobal("matchMedia", undefined);
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});

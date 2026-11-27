@@ -58,7 +58,7 @@ The rules that came out of this, and the component list, are in
 
 | # | Screen | Difference | Status |
 |---|---|---|---|
-| 26 | Queue | Prototype has tabs My queue / Team queue / Unassigned and an SLA column | **later** — no team queue, assignment or SLA in this release; our segmented filter by stage uses the same look |
+| 26 | Queue | Prototype has a Reason column, tabs My queue / Team queue / Unassigned, and SLA and Owner columns | **partly fixed** — the Reason column is built (the first referral trigger, or an automatic decline's first reason, from `CaseSummary.reason`) and shows on every case table; team queue, assignment, SLA and owner are **later** (no assignment or SLA data in this release) |
 | 27 | Queue (390) | Prototype KPI cards follow its 4-column grid (2 under 1100px, 1 under 520px); ours were capped at 280px | **fixed** — the same grid, cards fill their column |
 | 28 | All applications | Prototype tabs In progress / Closed / All with counts, and a "New assisted application" action | **fixed** — the same three filters with counts (closed = declined, disbursed, withdrawn, expired), opening on In progress, and "New application" for the loan officer; the prototype's Reason and SLA columns are not built (no SLA in this release) |
 | 29 | New application | Prototype: "Consent" card title, Submit and Save draft side by side; ours "3 · Consent" and stacked full-width buttons | **fixed** |
@@ -67,9 +67,21 @@ The rules that came out of this, and the component list, are in
 | 32 | Case | Prototype: credit bureau, relationship, checks and documents cards; not built | **later** (data not in the API) |
 | 33 | Next action card | Prototype: buttons inline, primary first, tools (Withdraw, Reassign) under a divider; ours full-width stacked | **fixed** — steps inline (one primary), blocked reasons listed under them (still linked to each button), Withdraw apart under a divider in the small size |
 | 34 | Decision record | Prototype: a diff-style monospace record; ours a monospace key/value list | **kept** (a technical record of identifiers and versions) |
-| 35 | Approve dialog | Prototype states the monthly repayment; ours states amount, tenor and who receives the offer | **later** (needs the instalment quote before approval) |
+| 35 | Approve dialog | Prototype states the monthly repayment ("₱6,920.00 at grade C, calculated by core"); ours stated amount, tenor and who receives the offer | **fixed** — the dialog states core banking's quote for the recommended terms at the case's grade and rate (`CaseDetail.proposedRepayment`, the same instalment the approval then records); when core cannot quote it, it says so and that approving does not depend on it |
 | 36 | Simulated services | Prototype Integrations: one table of providers with status and an action; ours a card per service with a failure-mode select | **kept** (our screen sets modes); "(simulated)" in each title plus the Simulated chip is repetitive — **later** |
 | 37 | Sign-in | No prototype screen (role picker) | sign-in uses the shared Card, Field, Button and Callout |
+
+## Compliance screens (lane B: AML escalations, audit log)
+
+| # | Screen | Difference | Status |
+|---|---|---|---|
+| 38 | AML escalations list | Prototype rows are plain (an action button per row); our rule is that a list of records the user opens has clickable rows. Ours: only the name opened it | **fixed** — rows open the escalation through the name link (`ROW_LINK`); the case reference stays its own link |
+| 39 | AML escalations list | The Open / All filter shows no counts (the Applications and queue filters do) and is not kept in the URL | **later** — counts need both lists from the API; the URL scope follows the All applications pattern |
+| 40 | AML escalation detail | Its own crumb ("AML escalations / APP-…") showed beside the top bar's "Compliance / AML escalations" at any width | **fixed** — the top bar reads "Compliance / AML escalations (a link) / APP-…" for any detail page under a nav item; the header crumb shows only below 860px, like the case page |
+| 41 | AML escalation detail | "Open case APP-…" was an underlined text link beside the title | **fixed** — a secondary button, like the case page's "Decision record" |
+| 42 | Audit log | "What happened" showed server sentences with raw amounts ("₱20000.00") | **fixed** — through `formatAmountsInText` |
+| 43 | Audit log | Prototype: one free-text filter, rows open their case; ours: person, action, dates and case filters (richer, kept), case reference as a link | **kept** (filters); rows opening the case — **later** (rows without a case would need a non-clickable state per row) |
+| 44 | Audit log | Monospace on the action code under its label and on the case reference; the time is in the body font (prototype monospace) | **kept** — codes and references are identifiers |
 
 ## States checked on every screen
 

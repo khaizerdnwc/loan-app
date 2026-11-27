@@ -1,7 +1,7 @@
 "use client";
 
 import { type AmlEscalationView, SCREENING_STAGE_LABEL } from "@loan/core";
-import { type Column, formatDateTime, SegmentedFilter, Table } from "@loan/ui";
+import { type Column, formatDateTime, ROW_LINK, SegmentedFilter, Table } from "@loan/ui";
 import Link from "next/link";
 import { useState } from "react";
 import { PageHeader } from "@/components/app-shell";
@@ -15,6 +15,7 @@ const COLUMNS: Column<AmlEscalationView>[] = [
     header: "Name",
     render: (e) => (
       <Link
+        {...ROW_LINK}
         href={`/compliance/escalations/${e.id}`}
         className="font-bold text-ink-900 underline-offset-2 hover:underline"
       >
@@ -85,6 +86,7 @@ export default function EscalationsPage() {
           rows={list.data}
           rowKey={(e) => e.id}
           empty={view === "open" ? "No open escalations." : "No escalations yet."}
+          clickableRows
         />
       )}
     </>

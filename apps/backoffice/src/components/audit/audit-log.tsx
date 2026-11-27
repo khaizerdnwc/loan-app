@@ -14,6 +14,7 @@ import {
   type Column,
   Field,
   FormGrid,
+  formatAmountsInText,
   formatDateTime,
   Input,
   Select,
@@ -89,7 +90,7 @@ function columns(canOpenCases: boolean): Column<AuditEventView>[] {
             Case details are visible to Compliance only.
           </span>
         ) : (
-          <span>{e.summary}</span>
+          <span>{formatAmountsInText(e.summary)}</span>
         ),
     },
   ];

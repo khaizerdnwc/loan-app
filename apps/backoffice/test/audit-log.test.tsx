@@ -118,6 +118,22 @@ describe("AuditLog (AUD-6, AUD-7)", () => {
     expect(screen.queryByLabelText("Case reference")).not.toBeInTheDocument();
   });
 
+  it("shows the amounts in an entry's summary through formatPeso (U-2)", async () => {
+    stubApi([
+      {
+        items: [
+          entry({ summary: "Created draft APP-1001: ₱20000.00 over 12 months for Liza Ramos." }),
+        ],
+        nextBefore: null,
+      },
+    ]);
+    render(<AuditLog canOpenCases />);
+    expect(
+      await screen.findByText("Created draft APP-1001: ₱20,000.00 over 12 months for Liza Ramos."),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/₱20000\.00/)).toBeNull();
+  });
+
   it("names actions in words in the filter and the table, keeping the code", async () => {
     stubApi([{ items: [entry({})], nextBefore: null }]);
     render(<AuditLog canOpenCases />);

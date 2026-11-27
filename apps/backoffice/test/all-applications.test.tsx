@@ -44,6 +44,8 @@ const summary = (id: string, status: CaseStatus, name: string): CaseSummary => (
   requestedTenorMonths: 12,
   status,
   outcome: null,
+  reason: null,
+  reasonCount: 0,
   grade: null,
   escalated: false,
   createdAt: "2026-11-28T01:00:00.000Z",
