@@ -52,7 +52,7 @@ export function Field({ label, hint, error, children }: FieldProps) {
  *   min-h-24 84px    Textarea, about three lines
  */
 const CONTROL =
-  "w-full rounded-btn border border-line bg-white px-3 text-base text-ink-900 " +
+  "w-full rounded-btn border border-line-strong bg-white px-3 text-base text-ink-900 " +
   "placeholder:text-mist-400 focus:border-gold-500 focus:outline-2 focus:outline-offset-0 " +
   "focus:outline-gold-500/40 aria-[invalid=true]:border-bad-500 disabled:cursor-not-allowed " +
   "disabled:bg-mist-050 disabled:text-mist-500";

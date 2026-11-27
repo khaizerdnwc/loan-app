@@ -1,4 +1,5 @@
 import type { FieldError, ProblemDetails } from "@loan/core";
+import { formatAmountsInText } from "@loan/ui";
 
 /**
  * The browser's client for the API, through this app's /api/* route. Every failure becomes
@@ -72,7 +73,10 @@ export async function api<T>(
 }
 
 export function errorMessage(error: unknown): string {
-  return error instanceof ApiError ? error.message : "Something went wrong. Try again.";
+  // A refusal may quote amounts ("₱120000.00 is above your approval limit"): format them.
+  return error instanceof ApiError
+    ? formatAmountsInText(error.message)
+    : "Something went wrong. Try again.";
 }
 
 /**

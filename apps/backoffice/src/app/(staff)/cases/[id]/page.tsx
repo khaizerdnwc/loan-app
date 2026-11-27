@@ -9,15 +9,20 @@ import {
 } from "@loan/core";
 import {
   Button,
+  Callout,
   Card,
+  formatAmountsInText,
   formatDateTime,
   formatMonthlyRate,
   formatPeso,
+  Icon,
+  KeyValues,
   Pill,
   SimulatedLabel,
   StageBar,
   StagePill,
 } from "@loan/ui";
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionsPanel } from "@/components/case/actions-panel";
@@ -51,17 +56,32 @@ export default function CasePage() {
 
   return (
     <div className="flex flex-col gap-5">
+      {/* The prototype's case header: crumb, icon tile, name, a row of facts; stage and
+          record on the right. Only the reference is monospace. */}
       <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="font-mono text-xs text-mist-500">Applications / {c.reference}</p>
-          <h1 className="text-display leading-tight font-extrabold">{c.applicant.fullName}</h1>
-          <p className="mt-1 text-sm">
-            <strong className="text-ink-900">{productLabel(c.productCode)}</strong> ·{" "}
-            {formatPeso(c.requestedAmount)} over {c.requestedTenorMonths} months · {c.purpose} ·
-            created {formatDateTime(c.createdAt)}
-          </p>
+        <div className="flex min-w-0 items-start gap-4">
+          <span className="mt-6 grid size-12 shrink-0 place-items-center rounded-btn border border-line bg-mist-100 text-ink-700">
+            <Icon name="file" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm text-mist-500">
+              <Link href="/cases" className="hover:text-ink-900">
+                Applications
+              </Link>{" "}
+              / <span className="font-mono text-xs">{c.reference}</span>
+            </p>
+            <h1 className="text-display leading-tight font-extrabold">{c.applicant.fullName}</h1>
+            <p className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-mist-500">
+              <span>
+                <strong className="text-ink-900">{productLabel(c.productCode)}</strong> ·{" "}
+                {formatPeso(c.requestedAmount)} over {c.requestedTenorMonths} months
+              </span>
+              <span>{c.purpose}</span>
+              <span>Created {formatDateTime(c.createdAt)}</span>
+            </p>
+          </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StagePill status={c.status} />
           {c.escalated && <Pill tone="bad">Escalated</Pill>}
           {c.decision && (
@@ -127,37 +147,23 @@ export default function CasePage() {
 
 function ApplicantPanel({ detail: c }: { detail: CaseDetail }) {
   const a = c.applicant;
-  // Identifiers in monospace; every other value in the body font.
-  const rows: [string, string, boolean][] = [
-    ["Age", String(a.ageYears), false],
-    ["Government ID", a.governmentIdMasked, true],
-    ["Employer", a.employer, false],
-    ["Employed", `${a.employmentMonths} months`, false],
-    [
-      "WhiteBank customer",
-      a.relationshipMonths === 0 ? "New to bank" : `${a.relationshipMonths} months`,
-      false,
-    ],
-    ["Monthly income", formatPeso(a.monthlyIncome), false],
-    ["Monthly obligations", formatPeso(a.monthlyObligations), false],
-    ["Disburse to", a.depositAccount, true],
-  ];
   return (
     <Card title="Applicant" aside="Synthetic persona">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        {rows.map(([label, value, identifier]) => (
-          <div key={label} className="contents">
-            <dt className="text-mist-500">{label}</dt>
-            <dd
-              className={
-                identifier ? "text-right font-mono text-ink-900" : "text-right text-ink-900"
-              }
-            >
-              {value}
-            </dd>
-          </div>
-        ))}
-      </dl>
+      <KeyValues
+        items={[
+          { label: "Age", value: a.ageYears },
+          { label: "Government ID", value: a.governmentIdMasked, mono: true },
+          { label: "Employer", value: a.employer },
+          { label: "Employed", value: `${a.employmentMonths} months` },
+          {
+            label: "WhiteBank customer",
+            value: a.relationshipMonths === 0 ? "New to bank" : `${a.relationshipMonths} months`,
+          },
+          { label: "Monthly income", value: formatPeso(a.monthlyIncome) },
+          { label: "Monthly obligations", value: formatPeso(a.monthlyObligations) },
+          { label: "Disburse to", value: a.depositAccount, mono: true },
+        ]}
+      />
     </Card>
   );
 }
@@ -191,35 +197,27 @@ function TermsPanel({ detail: c }: { detail: CaseDetail }) {
         </div>
       )}
       {c.approved && (
-        <dl className="mt-4 grid grid-cols-2 gap-3 text-sm sm:grid-cols-4">
-          <div>
-            <dt className="text-xs text-mist-500">Approved amount</dt>
-            <dd className="text-ink-900">{formatPeso(c.approved.amount)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-mist-500">Tenor</dt>
-            <dd className="text-ink-900">{c.approved.tenorMonths} months</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-mist-500">Rate</dt>
-            <dd className="text-ink-900">{formatMonthlyRate(c.approved.monthlyRate)}</dd>
-          </div>
-          <div>
-            <dt className="text-xs text-mist-500">Monthly instalment</dt>
-            <dd className="text-ink-900">{formatPeso(c.approved.regularInstalment)}</dd>
-          </div>
-          <div className="col-span-full text-xs text-mist-500">
+        <div className={c.recommendation ? "mt-4" : undefined}>
+          <KeyValues
+            items={[
+              { label: "Approved amount", value: formatPeso(c.approved.amount) },
+              { label: "Tenor", value: `${c.approved.tenorMonths} months` },
+              { label: "Rate", value: formatMonthlyRate(c.approved.monthlyRate) },
+              { label: "Monthly instalment", value: formatPeso(c.approved.regularInstalment) },
+            ]}
+          />
+          <p className="mt-3 text-xs text-mist-500">
             {c.approved.by ? "Approved by an approver" : "Approved automatically"} · instalment
             quoted by core banking (simulated)
-          </div>
-        </dl>
+          </p>
+        </div>
       )}
       {c.decline && (
-        <p className="mt-4 rounded-btn bg-bad-050 px-4 py-3 text-sm text-bad-700">
-          Declined by {c.decline.byName}: {c.decline.reasonCode} ·{" "}
+        <Callout tone="bad" lead={`Declined by ${c.decline.byName}:`} className="mt-4">
+          <span className="font-mono text-xs">{c.decline.reasonCode}</span> ·{" "}
           {DECLINE_REASON_LABEL[c.decline.reasonCode]}
           {c.decline.note && ` — ${c.decline.note}`}
-        </p>
+        </Callout>
       )}
     </Card>
   );
@@ -228,20 +226,13 @@ function TermsPanel({ detail: c }: { detail: CaseDetail }) {
 function WithdrawalPanel({ withdrawal: w }: { withdrawal: NonNullable<CaseDetail["withdrawal"]> }) {
   return (
     <Card title="Withdrawal">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-        <dt className="text-mist-500">Reason</dt>
-        <dd className="text-ink-900">{WITHDRAW_REASON_LABEL[w.reasonCode]}</dd>
-        <dt className="text-mist-500">Withdrawn by</dt>
-        <dd className="text-ink-900">
-          {w.byName} · {formatDateTime(w.at)}
-        </dd>
-        {w.note && (
-          <>
-            <dt className="text-mist-500">Note</dt>
-            <dd className="text-ink-900">“{w.note}”</dd>
-          </>
-        )}
-      </dl>
+      <KeyValues
+        items={[
+          { label: "Reason", value: WITHDRAW_REASON_LABEL[w.reasonCode] },
+          { label: "Withdrawn by", value: `${w.byName} · ${formatDateTime(w.at)}` },
+          ...(w.note ? [{ label: "Note", value: `“${w.note}”` }] : []),
+        ]}
+      />
     </Card>
   );
 }
@@ -270,10 +261,10 @@ function BookingPanel({ detail: c }: { detail: CaseDetail }) {
         attempt sends this key, so core banking and the disbursement can never run twice.
       </p>
       {b.status === "FAILED" && (
-        <p role="alert" className="mt-3 rounded-btn bg-bad-050 px-4 py-3 text-sm text-bad-700">
-          {b.lastErrorDetail ?? "The last attempt failed."}
+        <Callout tone="bad" alert className="mt-3">
+          {formatAmountsInText(b.lastErrorDetail ?? "The last attempt failed.")}
           {b.lastErrorCode && <span className="ml-2 font-mono text-xs">({b.lastErrorCode})</span>}
-        </p>
+        </Callout>
       )}
     </Card>
   );

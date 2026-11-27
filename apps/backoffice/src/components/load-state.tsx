@@ -1,4 +1,4 @@
-import { Button } from "@loan/ui";
+import { Button, Callout } from "@loan/ui";
 
 /** The loading and error states every fetching screen shows. */
 export function LoadState({
@@ -12,15 +12,12 @@ export function LoadState({
 }) {
   if (error) {
     return (
-      <div
-        role="alert"
-        className="flex items-center justify-between gap-3 rounded-card border border-bad-100 bg-bad-050 px-5 py-4 text-sm text-bad-700"
-      >
+      <Callout tone="bad" alert className="flex flex-wrap items-center justify-between gap-3">
         <span>{error}</span>
-        <Button variant="secondary" onClick={onRetry}>
+        <Button variant="secondary" size="sm" onClick={onRetry}>
           Try again
         </Button>
-      </div>
+      </Callout>
     );
   }
   if (loading) {

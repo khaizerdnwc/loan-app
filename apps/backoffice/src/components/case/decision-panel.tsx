@@ -2,7 +2,9 @@
 
 import type { DecisionRecordView } from "@loan/core";
 import {
+  Callout,
   Card,
+  formatAmountsInText,
   formatMonthlyRate,
   formatRatioPercent,
   GradeTile,
@@ -24,9 +26,9 @@ const RESULT: Record<
   DecisionRecordView["ruleResults"][number]["result"],
   { mark: string; label: string; tone: string }
 > = {
-  PASS: { mark: "✓", label: "Pass", tone: "text-ok-700" },
-  FAIL: { mark: "✕", label: "Fail", tone: "text-bad-700" },
-  NOT_EVALUATED: { mark: "–", label: "Not evaluated", tone: "text-mist-500" },
+  PASS: { mark: "✓", label: "Pass", tone: "bg-ok-050 text-ok-700" },
+  FAIL: { mark: "✕", label: "Fail", tone: "bg-bad-050 text-bad-700" },
+  NOT_EVALUATED: { mark: "–", label: "Not evaluated", tone: "bg-mist-100 text-mist-600" },
 };
 
 export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
@@ -93,9 +95,9 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
       )}
 
       {decision.referralTriggers.length > 0 && (
-        <div className="mt-5 rounded-btn bg-gold-050 px-4 py-3 text-sm text-gold-700">
-          <strong>Referred because:</strong> {decision.referralTriggers.join(" · ")}
-        </div>
+        <Callout tone="warn" lead="Referred because:" className="mt-5">
+          {decision.referralTriggers.join(" · ")}
+        </Callout>
       )}
 
       <div className="mt-5 grid gap-5 min-[1100px]:grid-cols-2">
@@ -109,7 +111,10 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
               return (
                 <li key={rule.id} className="flex items-center justify-between gap-3 py-2 text-sm">
                   <span className="flex items-center gap-2">
-                    <span aria-hidden="true" className={`font-bold ${r.tone}`}>
+                    <span
+                      aria-hidden="true"
+                      className={`grid size-5 shrink-0 place-items-center rounded-full text-2xs font-extrabold ${r.tone}`}
+                    >
                       {r.mark}
                     </span>
                     <span>
@@ -119,7 +124,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
                     {rule.kind === "KNOCKOUT" && <Pill>Knockout</Pill>}
                   </span>
                   <span className="text-right text-xs text-mist-500 tabular-nums">
-                    {rule.value}
+                    {formatAmountsInText(rule.value)}
                   </span>
                 </li>
               );

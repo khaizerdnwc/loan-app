@@ -25,6 +25,7 @@ import {
   Field,
   FormGrid,
   FormStack,
+  formatAmountsInText,
   formatDateTime,
   formatPeso,
   Input,
@@ -220,31 +221,38 @@ export function ActionsPanel({
   }
 
   const simple = open?.kind === "simple" ? SIMPLE[open.action] : undefined;
+  const tools = actions.filter((a) => TOOLS.has(a.action));
+  const steps = actions.filter((a) => !TOOLS.has(a.action));
 
   return (
     <Card title="Next action">
       <p className="text-sm">{waitingFor(detail)}</p>
-      {actions.length > 0 && (
-        <ul className="mt-4 flex flex-col gap-3">
-          {actions.map((a) => (
-            <li key={a.action}>
-              <Button
-                className="w-full"
-                variant={variantFor(a, redecideOffered)}
-                disabled={!a.enabled && !canAttempt(a)}
-                aria-describedby={a.enabled ? undefined : `${a.action}-blocked`}
-                onClick={() => start(a)}
-              >
-                {labelOf(a.action)}
-              </Button>
-              {!a.enabled && (
-                <p id={`${a.action}-blocked`} className="mt-1 text-xs text-bad-700">
-                  {a.detail}
-                </p>
-              )}
-            </li>
+      {/* The prototype's next-action card: the case's actions inline (the step forward is the
+          one primary button), why any of them is blocked underneath, and tools that close
+          the case (Withdraw) apart, under a divider, in the small size. */}
+      {steps.length > 0 && (
+        <div data-group="steps" className="mt-4 flex flex-wrap gap-2">
+          {steps.map((a) => (
+            <ActionButton key={a.action} a={a} redecideOffered={redecideOffered} start={start} />
           ))}
-        </ul>
+        </div>
+      )}
+      <BlockedReasons actions={steps} />
+      {tools.length > 0 && (
+        <div data-group="tools" className="mt-4 border-t border-line-soft pt-4">
+          <div className="flex flex-wrap gap-2">
+            {tools.map((a) => (
+              <ActionButton
+                key={a.action}
+                a={a}
+                redecideOffered={redecideOffered}
+                start={start}
+                size="sm"
+              />
+            ))}
+          </div>
+          <BlockedReasons actions={tools} />
+        </div>
       )}
 
       {simple && open?.kind === "simple" && (
@@ -312,6 +320,49 @@ function canAttempt(a: ActionAvailability): boolean {
 /** The case's decision was made while the bureau (R10) or screening (R13) could not answer. */
 function decidedDuringOutage(c: CaseDetail): boolean {
   return c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13") ?? false;
+}
+
+/** Actions that close the case rather than move it on: shown apart, as the prototype does. */
+const TOOLS = new Set<CaseAction>(["WITHDRAW"]);
+
+/** Why each disabled action in a group is blocked, under its buttons and linked to them. */
+function BlockedReasons({ actions }: { actions: ActionAvailability[] }) {
+  const blocked = actions.filter((a) => !a.enabled);
+  if (blocked.length === 0) return null;
+  return (
+    <ul className="mt-2 flex flex-col gap-1">
+      {blocked.map((a) => (
+        <li key={a.action} id={`${a.action}-blocked`} className="text-xs text-bad-700">
+          <span className="font-semibold">{labelOf(a.action)}:</span>{" "}
+          {formatAmountsInText(a.detail)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function ActionButton({
+  a,
+  redecideOffered,
+  start,
+  size = "md",
+}: {
+  a: ActionAvailability;
+  redecideOffered: boolean;
+  start: (a: ActionAvailability) => void;
+  size?: "md" | "sm";
+}) {
+  return (
+    <Button
+      size={size}
+      variant={variantFor(a, redecideOffered)}
+      disabled={!a.enabled && !canAttempt(a)}
+      aria-describedby={a.enabled ? undefined : `${a.action}-blocked`}
+      onClick={() => start(a)}
+    >
+      {labelOf(a.action)}
+    </Button>
+  );
 }
 
 /**

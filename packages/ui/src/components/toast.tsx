@@ -2,6 +2,7 @@
 
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from "react";
 import { cn } from "../lib/cn";
+import { formatAmountsInText } from "../lib/format";
 
 type ToastKind = "ok" | "warn" | "bad";
 interface ToastItem {
@@ -12,10 +13,11 @@ interface ToastItem {
 
 const ToastContext = createContext<((message: string, kind?: ToastKind) => void) | null>(null);
 
+/** The prototype's toast: dark ink with white text and a coloured edge for its kind. */
 const KIND: Record<ToastKind, string> = {
-  ok: "border-ok-700/30 bg-ok-050 text-ok-700",
-  warn: "border-gold-600/30 bg-gold-050 text-gold-700",
-  bad: "border-bad-700/30 bg-bad-050 text-bad-700",
+  ok: "border-l-ok-100",
+  warn: "border-l-gold-500",
+  bad: "border-l-bad-500",
 };
 
 /** Top-right notices, at most three, gone after four seconds (the prototype's behaviour). */
@@ -42,9 +44,13 @@ export function ToastProvider({ children }: { children: ReactNode }) {
           <div
             key={t.id}
             role="status"
-            className={cn("rounded-btn border px-4 py-3 text-sm shadow-card", KIND[t.kind])}
+            data-kind={t.kind}
+            className={cn(
+              "rounded-nav border-l-4 bg-ink-800 px-3.5 py-2.5 text-sm font-semibold text-white shadow-modal",
+              KIND[t.kind],
+            )}
           >
-            {t.message}
+            {formatAmountsInText(t.message)}
           </div>
         ))}
       </div>

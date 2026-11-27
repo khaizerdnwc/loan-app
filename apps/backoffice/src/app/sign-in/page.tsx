@@ -1,7 +1,7 @@
 "use client";
 
 import type { StaffView } from "@loan/core";
-import { Button, Card, Field, Input } from "@loan/ui";
+import { Button, Callout, Card, Field, Input } from "@loan/ui";
 import { useRouter } from "next/navigation";
 import { type FormEvent, useRef, useState } from "react";
 import { api, errorMessage } from "@/lib/api";
@@ -66,9 +66,9 @@ export default function SignInPage() {
       <Card title="Staff sign-in">
         <form onSubmit={submit} className="flex flex-col gap-4" noValidate>
           {error && (
-            <p role="alert" className="rounded-btn bg-bad-050 px-4 py-3 text-sm text-bad-700">
+            <Callout tone="bad" alert>
               {error}
-            </p>
+            </Callout>
           )}
           <Field label="Username" error={missing.username}>
             <Input

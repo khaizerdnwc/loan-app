@@ -21,6 +21,7 @@ import {
   FormGrid,
   formatPeso,
   Input,
+  KeyValues,
   Select,
   useToast,
 } from "@loan/ui";
@@ -182,24 +183,18 @@ export default function NewApplicationPage() {
                 </Select>
               </Field>
               {selected && (
-                <dl className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <dt className="text-xs text-mist-500">Age</dt>
-                    <dd className="text-ink-900">{selected.ageYears}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-mist-500">Government ID</dt>
-                    <dd className="font-mono text-ink-900">{selected.governmentIdMasked}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-mist-500">Monthly income</dt>
-                    <dd className="text-ink-900">{formatPeso(selected.monthlyIncome)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-xs text-mist-500">Monthly obligations</dt>
-                    <dd className="text-ink-900">{formatPeso(selected.monthlyObligations)}</dd>
-                  </div>
-                </dl>
+                <KeyValues
+                  className="mt-4"
+                  items={[
+                    { label: "Age", value: selected.ageYears },
+                    { label: "Government ID", value: selected.governmentIdMasked, mono: true },
+                    { label: "Monthly income", value: formatPeso(selected.monthlyIncome) },
+                    {
+                      label: "Monthly obligations",
+                      value: formatPeso(selected.monthlyObligations),
+                    },
+                  ]}
+                />
               )}
             </Card>
             <Card
@@ -230,7 +225,7 @@ export default function NewApplicationPage() {
             </Card>
           </div>
           <div className="flex flex-col gap-5">
-            <Card title="3 · Consent" aside={`Terms ${CONSENT_TERMS_VERSION}`}>
+            <Card title="Consent" aside={`Terms ${CONSENT_TERMS_VERSION}`}>
               <p className="text-sm text-mist-600">
                 Captured on the applicant's behalf at the branch. Both are needed before the
                 application is submitted: no consent, no credit bureau check.
@@ -269,8 +264,8 @@ export default function NewApplicationPage() {
                 Submitting runs the checks and the decision at once. Most applications are decided
                 in seconds; a referred one goes to the work queue.
               </p>
-              <div className="mt-4 flex flex-col gap-2">
-                <Button variant="accent" type="button" onClick={ask("submit")}>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <Button variant="primary" type="button" onClick={ask("submit")}>
                   Submit for decision
                 </Button>
                 <Button variant="secondary" type="button" onClick={ask("draft")}>
@@ -301,7 +296,7 @@ export default function NewApplicationPage() {
           )
         }
         confirmLabel={pending?.intent === "submit" ? "Submit" : "Save draft"}
-        variant={pending?.intent === "submit" ? "accent" : "primary"}
+        variant="primary"
         busy={busy}
         error={error}
         onConfirm={confirm}

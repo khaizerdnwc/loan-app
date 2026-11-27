@@ -1,7 +1,7 @@
 "use client";
 
 import type { DecisionRecordView, ReproduceResult } from "@loan/core";
-import { Button, formatDateTime, Modal, Pill } from "@loan/ui";
+import { Button, Callout, formatDateTime, Modal, Pill } from "@loan/ui";
 import { useState } from "react";
 import { api, errorMessage } from "@/lib/api";
 
@@ -111,9 +111,9 @@ export function DecisionRecordDialog({
         </div>
       )}
       {error && (
-        <p role="alert" className="mt-3 rounded-btn bg-bad-050 px-3 py-2 text-sm text-bad-700">
+        <Callout tone="bad" alert className="mt-3">
           {error}
-        </p>
+        </Callout>
       )}
     </Modal>
   );

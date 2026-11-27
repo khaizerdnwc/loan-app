@@ -1,4 +1,5 @@
 import {
+  formatAmountsInText,
   formatDate,
   formatMonthlyRate,
   formatNumber,
@@ -58,5 +59,43 @@ describe("other formatters", () => {
     expect(formatDate("2026-12-28")).toMatch(/28/);
     expect(formatDate("2026-12-28")).toMatch(/2026/);
     expect(formatDate(null)).toBe("—");
+  });
+});
+
+describe("formatAmountsInText — amounts in the API's sentences read like every other amount", () => {
+  it.each([
+    [
+      "Created draft APP-1001: ₱200000.00 over 36 months for Joel Reyes.",
+      "Created draft APP-1001: ₱200,000.00 over 36 months for Joel Reyes.",
+    ],
+    [
+      "Booked loan LN-2026-001001 (₱150000.00 + ₱43200.00 interest, 24 instalments) and disbursed ₱150000.00 to WB-SAV-0021-4410 (DSB-00000001).",
+      "Booked loan LN-2026-001001 (₱150,000.00 + ₱43,200.00 interest, 24 instalments) and disbursed ₱150,000.00 to WB-SAV-0021-4410 (DSB-00000001).",
+    ],
+    [
+      "₱120000.00 is above your approval limit of ₱100000.00",
+      "₱120,000.00 is above your approval limit of ₱100,000.00",
+    ],
+    ["limit 300000.00", "limit ₱300,000.00"],
+    ["Approved ₱20000 today", "Approved ₱20,000.00 today"],
+  ])("%s", (input, expected) => {
+    expect(formatAmountsInText(input)).toBe(expected);
+  });
+
+  it.each([
+    "Amount must be between ₱20,000 and ₱500,000.",
+    "DTI 19.6%",
+    "score 612 (C)",
+    "Approved at 1.60% a month (grade C).",
+    "envelope ENV-00000001",
+    "key bk-7680665e-5505-4f90-8efe-24ef25eaa55c",
+    "Declined (D01).",
+  ])("leaves %s alone", (text) => {
+    expect(formatAmountsInText(text)).toBe(text);
+  });
+
+  it("returns an empty string for nothing", () => {
+    expect(formatAmountsInText(null)).toBe("");
+    expect(formatAmountsInText(undefined)).toBe("");
   });
 });

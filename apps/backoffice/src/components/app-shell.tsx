@@ -128,7 +128,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                   >
                     <Icon name={item.icon} className="size-5 text-mist-300" />
                     <span className="min-w-0 flex-1">{item.label}</span>
-                    {item.count && queue.data && (
+                    {/* The prototype shows a count only when there is something to do. */}
+                    {item.count && queue.data && queue.data.items.length > 0 && (
                       <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-gold-500 px-1.5 text-2xs font-extrabold text-ink-900 tabular-nums">
                         {queue.data.items.length}
                       </span>
@@ -192,11 +193,12 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button
           ref={menuRef}
           type="button"
-          className="rounded-btn border border-line px-3 py-1.5 text-sm font-semibold min-[860px]:hidden"
+          className="grid size-10 place-items-center rounded-nav border border-line bg-white text-ink-700 hover:bg-mist-050 min-[860px]:hidden"
           onClick={() => setDrawerOpen(true)}
           aria-expanded={drawerOpen}
+          aria-label="Menu"
         >
-          Menu
+          <Icon name="menu" />
         </button>
         <nav
           aria-label="Breadcrumb"
@@ -211,7 +213,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           </span>
         </nav>
         <div className="ml-auto flex items-center gap-2.5">
-          {me.role === "ADMIN" && (
+          {me.role === "ADMIN" && !pathname.startsWith("/simulation") && (
             <Link href="/simulation" className={buttonClass("primary")}>
               <Icon name="sliders" className="size-4" />
               Run simulation

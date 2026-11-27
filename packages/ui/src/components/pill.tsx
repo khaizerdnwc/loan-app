@@ -4,19 +4,26 @@ import { cn } from "../lib/cn";
 
 export type Tone = "ok" | "warn" | "bad" | "info" | "neutral";
 
+/**
+ * The prototype's final pill: the tone's lightest tint, a 1px inset ring one step darker and
+ * the 700 text (AA on the 050 tint: gold 5.3, ok 5.6, bad 5.5, info 7.1 :1). Neutral is the
+ * sunken grey with ink text.
+ */
 const TONE: Record<Tone, string> = {
-  ok: "bg-ok-100 text-ok-700",
-  warn: "bg-gold-100 text-gold-700",
-  bad: "bg-bad-100 text-bad-700",
-  info: "bg-info-100 text-info-700",
-  neutral: "bg-mist-100 text-mist-600",
+  ok: "bg-ok-050 text-ok-700 ring-ok-100",
+  warn: "bg-gold-050 text-gold-700 ring-gold-200",
+  bad: "bg-bad-050 text-bad-700 ring-bad-100",
+  info: "bg-info-050 text-info-700 ring-info-100",
+  neutral: "bg-mist-100 text-ink-700 ring-transparent",
 };
 
+/** The one pill: every stage, outcome, status and flag on every screen. */
 export function Pill({ tone = "neutral", children }: { tone?: Tone; children: ReactNode }) {
   return (
     <span
+      data-tone={tone}
       className={cn(
-        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap",
+        "inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold whitespace-nowrap ring-1 ring-inset",
         TONE[tone],
       )}
     >

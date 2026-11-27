@@ -31,6 +31,30 @@ export function formatPeso(value: string | null | undefined): string {
   return `${negative ? "−" : ""}${PESO}${groupThousands(whole)}.${cents}`;
 }
 
+/*
+ * Amounts inside sentences the API wrote (activity summaries, rule values, problem details):
+ *   "₱20000.00"   a peso sign before an ungrouped decimal          → "₱20,000.00"
+ *   "300000.00"   a bare decimal of 4+ digits with exactly 2 decimals → "₱300,000.00"
+ * Already grouped amounts ("₱20,000"), percentages ("19.6%"), scores and references
+ * ("APP-1001", "DSB-00000001", "LN-2026-001001") are left alone.
+ */
+const PESO_DECIMAL_IN_TEXT = /₱(\d+\.\d{1,2})(?![\d,.])/g;
+const PESO_WHOLE_IN_TEXT = /₱(\d+)(?![\d,.])/g;
+const BARE_AMOUNT_IN_TEXT = /(?<![\w.,₱-])(\d{4,}\.\d{2})(?![\d%.,\w])/g;
+
+/**
+ * Every amount in a server-written sentence through formatPeso, so history entries, rule values
+ * and refusals read "₱20,000.00" like the rest of the screen. Stored history is fixed too:
+ * the sentence is formatted when shown, not when written.
+ */
+export function formatAmountsInText(text: string | null | undefined): string {
+  if (!text) return "";
+  return text
+    .replace(PESO_DECIMAL_IN_TEXT, (_, amount: string) => formatPeso(amount))
+    .replace(PESO_WHOLE_IN_TEXT, (_, amount: string) => formatPeso(amount))
+    .replace(BARE_AMOUNT_IN_TEXT, (_, amount: string) => formatPeso(amount));
+}
+
 /** Whole numbers with grouping: 1234567 → "1,234,567". */
 export function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined || !Number.isFinite(value)) return "—";
