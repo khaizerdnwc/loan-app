@@ -25,7 +25,7 @@ live provider modes; real AML list screening (the mechanics forbid real provider
 
 **Success criteria** — every acceptance criterion in `docs/ACCEPTANCE.md` names a passing
 test (46 criteria, all ☑); the full gate is green on the pull request (security, static,
-unit, integration on a fresh Postgres, build and Playwright); F1, F2, an authority breach, a
+unit, integration on a fresh Postgres, build and Playwright) and `main` requires all five; F1, F2, an authority breach, a
 bureau outage and a failed-then-retried booking pass as browser journeys. Evidence today: 78
 API integration tests, 545 unit tests (API 332, domain 72, backoffice 78, UI 24, money 37,
 contracts 2) and 6 browser journeys.
@@ -144,8 +144,7 @@ password change, no lockout beyond 20 attempts a minute); sign-out clears the co
 expires (8 h), though role changes apply at once; Swagger at `/docs` is open on the API
 (the backoffice proxy does not forward it). A case referred during a bureau outage has no grade and cannot be
 approved until re-decided (not built). Simulators share the lending database (separate
-schema and statements). No reconciliation job; no SLA timers; required status checks rely
-on the repository's GitHub plan. The scorecard is a demonstration, not a validated model.
+schema and statements). No reconciliation job; no SLA timers. The scorecard is a demonstration, not a validated model.
 
 **Next most valuable.** (1) Re-decide a referred case when a provider recovers. (2) A
 reconciliation job comparing core accounts with lending records. (3) Real sign-in with MFA
