@@ -53,10 +53,10 @@ commit passed the review loop. Blocked items carry the evidence.
   instead of read from the API; dependency-cruiser has no `no-unresolvable` or
   `ui-depends-only-on-core` rule yet; the /api proxy has no request body cap; the backoffice
   env module is not marked `server-only` (package not installed).
-- `review:preflight --bugfix` cannot prove a backoffice (Vitest) fix: its throwaway worktree has no
-  built `@loan/core` (its `main` is `dist/`, which is not tracked; `@loan/ui` resolves to source), so the "without the fix" run fails to
-  load. Proved by hand instead for the matchMedia fix (without it 1 failed / 4 passed; with it
-  5 passed). To fix in tools/review: build the workspace packages in the worktree first.
+- Fixed: `review:preflight --bugfix` could not prove a backoffice (Vitest) fix, because its
+  throwaway worktree had no built `@loan/core` (`dist/` is not tracked). The repro tool now
+  builds the compiled packages (core, contracts, base) in the worktree before each run;
+  re-proved against b74c302 (fails without the fix, passes with it).
 - Reviewer agents run as general-purpose agents that load `.claude/agents/<role>.md` in the
   session that created them (agents register at session start); later sessions use the
   native agents with the write-scope hook.

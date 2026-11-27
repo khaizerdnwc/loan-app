@@ -1,9 +1,13 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 // commitlint.config.js lives at the workspace root; its rule is a plain function.
 import { fixNeedsRepro } from "../../../commitlint.config.js";
 import { baseRef, reviewRoles } from "../src/_review";
 import {
   childEnv,
+  compiledPackages,
   isE2eSpec,
   isIntegrationTest,
   isRunnableTest,
@@ -253,5 +257,33 @@ describe("review gates — follow-ups from the first /review", () => {
     expect([...reviewRoles(["apps/backoffice/src/app/cases/page.tsx"]).keys()]).not.toContain(
       "security",
     );
+  });
+});
+
+describe("compiledPackages — what the repro worktree must build before tests can load", () => {
+  it("lists packages whose main is dist/ (core first); skips source-entry packages, apps and packages without tsconfig.build.json; others follow alphabetically", () => {
+    const root = mkdtempSync(join(tmpdir(), "repro-pkgs-"));
+    try {
+      const pkg = (dir: string, manifest: object, buildConfig = true) => {
+        mkdirSync(join(root, dir), { recursive: true });
+        writeFileSync(join(root, dir, "package.json"), JSON.stringify(manifest));
+        if (buildConfig) writeFileSync(join(root, dir, "tsconfig.build.json"), "{}");
+      };
+      pkg("packages/base", { main: "./dist/index.js" });
+      pkg("packages/core", { main: "./dist/index.js" });
+      pkg("packages/ui", { main: "./src/index.ts" });
+      pkg("packages/contracts", { main: "./dist/index.js" });
+      pkg("packages/alpha", { main: "./dist/index.js" });
+      pkg("apps/api", { main: "dist/main.js" });
+      pkg("packages/nobuild", { main: "./dist/index.js" }, false);
+      expect(compiledPackages(root)).toEqual([
+        "packages/core",
+        "packages/contracts",
+        "packages/base",
+        "packages/alpha",
+      ]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });
