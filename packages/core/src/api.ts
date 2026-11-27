@@ -4,6 +4,8 @@ import type {
   CoreBankingSimulationMode,
   DecisionOutcome,
   DeclineReason,
+  DocumentStatus,
+  DocumentType,
   Grade,
   OverrideReason,
   ProviderMode,
@@ -249,6 +251,13 @@ export interface CaseDetail extends CaseSummary {
    * requested terms at grade C pricing (`INDICATIVE_GRADE` in packages/base), quoted by core banking (PRD INT-004); else null.
    */
   indicativeRepayment: IndicativeRepaymentView | null;
+  /**
+   * The latest request for information sent to the borrower (PRD WF-007), or null if none.
+   * Open while the case is INFO_REQUESTED.
+   */
+  infoRequest: InfoRequestView | null;
+  /** The case's document checklist (PRD DOC-003): every document requested so far. */
+  documents: CaseDocumentView[];
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
   allowedActions: ActionAvailability[];
   /** The current decision was made while a provider could not answer (bureau, screening, fraud). */
@@ -258,6 +267,45 @@ export interface CaseDetail extends CaseSummary {
    * (only a decline after an outage or a failed knockout). Empty otherwise.
    */
   recommendationTypes: RecommendationAvailability[];
+}
+
+export interface InfoRequestView {
+  documents: DocumentType[];
+  /** The message the borrower sees. */
+  message: string;
+  /** The business date (YYYY-MM-DD) the borrower is asked to answer by; shown, not enforced. */
+  dueOn: string;
+  requestedBy: string;
+  requestedByName: string;
+  requestedAt: string;
+}
+
+/** What the signed-in user may do with one document now (the API decides). */
+export type DocumentAction = "SIMULATE_UPLOAD" | "VERIFY" | "REJECT";
+
+export interface CaseDocumentView {
+  type: DocumentType;
+  status: DocumentStatus;
+  requestedAt: string;
+  /** Synthetic metadata from the simulated upload; null until the borrower uploads. */
+  upload: {
+    reference: string;
+    fileName: string;
+    contentType: string;
+    sizeBytes: number;
+    pages: number;
+    virusScan: "CLEAN";
+    receivedAt: string;
+    providerMode: ProviderMode;
+  } | null;
+  /** The loan officer's verification or rejection; null until reviewed. */
+  review: {
+    by: string;
+    byName: string;
+    at: string;
+    rejectionReason: string | null;
+  } | null;
+  actions: DocumentAction[];
 }
 
 /** The items of the pre-booking checklist (PRD BKG-001; prototype booking screen). */
@@ -298,6 +346,7 @@ export type CaseAction =
   | "EDIT_DRAFT"
   | "SUBMIT"
   | "REDECIDE"
+  | "REQUEST_INFO"
   | "RECOMMEND"
   | "APPROVE"
   | "DECLINE"
@@ -398,6 +447,21 @@ export interface DeclineRequest {
 export interface WithdrawRequest {
   reasonCode: WithdrawReason;
   note?: string;
+}
+
+/** Ask the borrower for documents on a referred case (PRD WF-007): REVIEW → INFO_REQUESTED. */
+export interface InfoRequestRequest {
+  documents: DocumentType[];
+  message: string;
+  /** Days until the answer is due (3 or 5, the prototype's choices). */
+  dueInDays: 3 | 5;
+}
+
+/** The loan officer's verdict on a received document. */
+export interface DocumentReviewRequest {
+  decision: "VERIFIED" | "REJECTED";
+  /** Required when rejecting: what is wrong, so the borrower can be asked again. */
+  reason?: string;
 }
 
 /** The service is in the path; the API answers VALIDATION_FAILED for a mode it does not support. */

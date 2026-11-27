@@ -601,6 +601,29 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
       listedBeforeDisbursement: { matchedList: "Simulated watchlist (updated list)" },
     },
   },
+  // Joel's thin-file profile (Refer, 612 C), for the request-information journey (DC-1..DC-3).
+  {
+    id: "APL-IGNACIO",
+    fullName: "Ignacio Velasco",
+    birthDate: "1999-04-02",
+    governmentIdLast4: "3164",
+    employer: "Pasig Digital Studio",
+    employmentMonths: 40,
+    relationshipMonths: 0,
+    monthlyIncome: "56000.00",
+    monthlyObligations: "11000.00",
+    depositAccount: "WB-SAV-0087-2203",
+    bureau: {
+      fileDepth: "THIN",
+      bureauScore: 640,
+      tradeLines: 1,
+      utilisationPct: 42,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 7,
+    },
+    screening: CLEAR,
+  },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */

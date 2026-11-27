@@ -1,6 +1,7 @@
 import {
   CoreBankingSimulationMode,
   DeclineReason,
+  DocumentType,
   OverrideReason,
   Recommendation,
   WithdrawReason,
@@ -8,6 +9,9 @@ import {
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
+  ArrayMaxSize,
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDecimal,
   IsIn,
@@ -155,6 +159,36 @@ export class WithdrawDto {
   @IsString()
   @MaxLength(2000)
   note?: string;
+}
+
+export class InfoRequestDto {
+  @ApiProperty({ enum: Object.values(DocumentType), isArray: true })
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayMaxSize(3)
+  @IsIn(Object.values(DocumentType), { each: true })
+  documents!: DocumentType[];
+
+  @ApiProperty({ example: "Please upload your last 3 months of bank statements." })
+  @IsString()
+  @MaxLength(1000)
+  message!: string;
+
+  @ApiProperty({ enum: [3, 5] })
+  @IsIn([3, 5])
+  dueInDays!: 3 | 5;
+}
+
+export class DocumentReviewDto {
+  @ApiProperty({ enum: ["VERIFIED", "REJECTED"] })
+  @IsIn(["VERIFIED", "REJECTED"])
+  decision!: "VERIFIED" | "REJECTED";
+
+  @ApiPropertyOptional({ description: "Required when rejecting" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  reason?: string;
 }
 
 /** `GET /products/PL/quote`: the requested terms to quote an indicative repayment for. */

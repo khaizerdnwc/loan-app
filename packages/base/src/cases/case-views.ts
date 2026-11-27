@@ -10,6 +10,7 @@ import type {
   ApplicantView,
   BookingView,
   CaseDetail,
+  CaseDocumentView,
   CaseSummary,
   DecisionRecordView,
   DeclineReason,
@@ -28,9 +29,11 @@ import { allowedActions, recommendationRefusal, recommendationTypes } from "./ca
 import { CasesRepository } from "./cases.repository";
 import { consentComplete } from "./consent";
 import { ageOn, DecisionService } from "./decision.service";
+import { documentActions, requestRefusal, unreviewedRefusal } from "./documents";
 import type { ActivityEventEntity } from "./entities/activity-event.entity";
 import type { ApplicantEntity } from "./entities/applicant.entity";
 import type { BookingRequestEntity } from "./entities/booking.entities";
+import type { CaseDocumentEntity } from "./entities/case-document.entity";
 import type { DecisionRecordEntity } from "./entities/decision-record.entity";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
 import { expiryOf, INDICATIVE_GRADE } from "./product";
@@ -59,6 +62,7 @@ export class CaseViews {
     const account = await this.repo.findLoanAccount(c.id);
     const me = await this.staff.findById(user.id);
     const consent = await this.repo.latestConsent(c.id);
+    const documents = await this.repo.documents(c.id);
     // Who withdrew or expired the case, when, and from which status, is its closing event
     // (written in the same transaction as the move).
     const closing =
@@ -67,9 +71,14 @@ export class CaseViews {
         : null;
     const withdrawn = c.status === CaseStatus.Withdrawn ? closing : null;
     const names = await this.staff.namesById(
-      [c.recommendedBy, c.approvedBy, booking?.makerId, consent?.capturedBy].filter(
-        (x): x is string => Boolean(x),
-      ),
+      [
+        c.recommendedBy,
+        c.approvedBy,
+        booking?.makerId,
+        consent?.capturedBy,
+        c.infoRequestedBy,
+        ...documents.map((d) => d.reviewedBy),
+      ].filter((x): x is string => Boolean(x)),
     );
 
     let regularInstalment: string | null = null;
@@ -93,6 +102,7 @@ export class CaseViews {
       consentComplete(consent),
       checklistRefusal(checklist),
       booking ? await this.compliance.bookingHold(c.id) : null,
+      { request: requestRefusal(documents), recommend: unreviewedRefusal(documents) },
     );
 
     return {
@@ -164,6 +174,18 @@ export class CaseViews {
       indicativeRepayment: decision
         ? null
         : await this.indicativeRepayment(c.requestedAmount, c.requestedTenorMonths),
+      infoRequest:
+        c.infoRequestDocuments && c.infoRequestMessage && c.infoRequestDue && c.infoRequestedBy
+          ? {
+              documents: c.infoRequestDocuments,
+              message: c.infoRequestMessage,
+              dueOn: c.infoRequestDue,
+              requestedBy: c.infoRequestedBy,
+              requestedByName: names.get(c.infoRequestedBy) ?? c.infoRequestedBy,
+              requestedAt: (c.infoRequestedAt ?? c.updatedAt).toISOString(),
+            }
+          : null,
+      documents: documents.map((d) => documentView(d, user, c.status, names)),
       allowedActions: actions,
       decidedDuringOutage: outage,
       recommendationTypes: actions.some((a) => a.action === "RECOMMEND" && a.enabled)
@@ -319,6 +341,42 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     killSwitch: r.killSwitch,
     // Records from before automation modes ran live: the engine's outcome is the outcome.
     engineOutcome: r.engineOutcome ?? r.outcome,
+  };
+}
+
+function documentView(
+  d: CaseDocumentEntity,
+  user: SessionUser,
+  status: CaseStatus,
+  names: Map<string, string>,
+): CaseDocumentView {
+  return {
+    type: d.documentType,
+    status: d.status,
+    requestedAt: d.requestedAt.toISOString(),
+    upload:
+      d.uploadReference && d.fileName && d.receivedAt && d.providerMode
+        ? {
+            reference: d.uploadReference,
+            fileName: d.fileName,
+            contentType: d.contentType ?? "application/pdf",
+            sizeBytes: d.sizeBytes ?? 0,
+            pages: d.pages ?? 0,
+            virusScan: "CLEAN",
+            receivedAt: d.receivedAt.toISOString(),
+            providerMode: d.providerMode,
+          }
+        : null,
+    review:
+      d.reviewedBy && d.reviewedAt
+        ? {
+            by: d.reviewedBy,
+            byName: names.get(d.reviewedBy) ?? d.reviewedBy,
+            at: d.reviewedAt.toISOString(),
+            rejectionReason: d.rejectionReason,
+          }
+        : null,
+    actions: documentActions(user.role, status, d),
   };
 }
 

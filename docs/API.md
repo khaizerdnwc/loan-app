@@ -6,13 +6,15 @@ RFC 9457 problem body (`packages/core/src/problem.ts`) with a stable `code`.
 
 Duplicates: `POST /cases` answers 409 `DUPLICATE_APPLICATION` (naming the open case) when the applicant already has an open application for the product.
 
-Statuses: DRAFT, REVIEW, APPROVAL, OFFER, BOOKING, PENDING_CHECKER, BOOKING_FAILED, DISBURSED, DECLINED, WITHDRAWN, EXPIRED. DECLINED, DISBURSED, WITHDRAWN and EXPIRED are closed (`CLOSED_CASE_STATUSES`): nothing leaves them, and they do not count as the applicant's open application. `CaseDetail.withdrawal` is `{ reasonCode, note, by, byName, at }` for a withdrawn case, else null; `CaseDetail.closedFrom` is the status a withdrawn or expired case was in when it closed. `CaseDetail.expiresAt` is when a DRAFT (`DRAFT_EXPIRY_DAYS` after its last change) or an OFFER (`OFFER_EXPIRY_DAYS` after it was made) expires, else null; both periods are exported by `@loan/core`.
+Statuses: DRAFT, REVIEW, INFO_REQUESTED, APPROVAL, OFFER, BOOKING, PENDING_CHECKER, BOOKING_FAILED, DISBURSED, DECLINED, WITHDRAWN, EXPIRED. DECLINED, DISBURSED, WITHDRAWN and EXPIRED are closed (`CLOSED_CASE_STATUSES`): nothing leaves them, and they do not count as the applicant's open application. `CaseDetail.withdrawal` is `{ reasonCode, note, by, byName, at }` for a withdrawn case, else null; `CaseDetail.closedFrom` is the status a withdrawn or expired case was in when it closed. `CaseDetail.expiresAt` is when a DRAFT (`DRAFT_EXPIRY_DAYS` after its last change) or an OFFER (`OFFER_EXPIRY_DAYS` after it was made) expires, else null; both periods are exported by `@loan/core`.
 
 Expiry: a draft unchanged for 30 days and an offer unsigned 5 days after it was made are refused (409 `INVALID_STATE_TRANSITION`, "This draft/offer expired on …") by `PATCH /cases/:id` (consent-only edits too), `submit` and `sign`, and an API timer (`EXPIRY_SWEEP_SECONDS`, 0 = off) moves them to EXPIRED with a SYSTEM activity event. There is no HTTP route for the sweep.
 
 Pre-booking checklist (BKG-001): `CaseDetail.bookingChecklist` lists `{ check, label, passed, detail }` for APPROVALS_COMPLETE, DOCUMENTS_SIGNED, KYC_VALID and DISBURSEMENT_ACCOUNT_VERIFIED in BOOKING, PENDING_CHECKER and BOOKING_FAILED (else null). `POST /cases/:id/booking` and `POST /cases/:id/booking/approve` (approve and retry) answer 409 `BOOKING_CHECKLIST_INCOMPLETE` naming the first failing item, with nothing written, until every item passes.
 
 Indicative repayment (INT-004): `CaseDetail.indicativeRepayment` is the `IndicativeRepaymentView` for the requested terms while the case has no decision (a draft), else null. `CaseDetail.approved.regularInstalment` is null when core banking cannot quote it; the case still opens.
+
+Documents (WF-007, DOC-003): `CaseDetail.infoRequest` is the latest request `{ documents, message, dueOn, requestedBy, requestedByName, requestedAt }` or null; `CaseDetail.documents` is the checklist, one `CaseDocumentView` per requested type `{ type, status: REQUESTED | RECEIVED | VERIFIED | REJECTED, requestedAt, upload (synthetic metadata, labelled SIMULATED) | null, review | null, actions }`, where `actions` lists what the caller may do with it now (SIMULATE_UPLOAD, VERIFY, REJECT). The due date is shown, not enforced.
 
 Consent: `POST /cases` and `PATCH /cases/:id` accept `consent: { creditBureauCheck, dataProcessing, termsVersion }` (current version `CONSENT_TERMS_VERSION`, 1.0). `POST /cases/:id/submit` (and `POST /cases` with `submit: true`) answers 400 on the `consent` field until both consents for the current version are recorded; `CaseDetail.consent` shows the latest record.
 
@@ -48,7 +50,10 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | POST | /cases/:id/approve | approver (APPROVAL, within authority) | → `CaseDetail` |
 | POST | /cases/:id/decline | approver (APPROVAL) | `DeclineRequest` → `CaseDetail` |
 | POST | /cases/:id/return | approver (APPROVAL) | → `CaseDetail` (back to REVIEW) |
-| POST | /cases/:id/withdraw | loan officer (DRAFT, REVIEW, APPROVAL, OFFER) | `WithdrawRequest` `{ reasonCode: APPLICANT_REQUEST \| DUPLICATE_APPLICATION \| NOT_PROCEEDING, note? }` → `CaseDetail` (WITHDRAWN). 409 from any other status, nothing written; 400 for a missing or unknown reason or a note over 2000 characters |
+| POST | /cases/:id/info-request | loan officer (REVIEW) | `InfoRequestRequest` `{ documents: (BANK_STATEMENTS_3M \| CERTIFICATE_OF_EMPLOYMENT \| INCOME_TAX_RETURN)[], message, dueInDays: 3 \| 5 }` → `CaseDetail` (INFO_REQUESTED). 400 for no or unknown documents, no message, another due date, or a document already verified; 409 outside REVIEW or while a received document is not reviewed, nothing written |
+| POST | /cases/:id/documents/:type/upload | loan officer (INFO_REQUESTED, document REQUESTED) | The borrower's upload, simulated through the DocumentIntake port → `CaseDetail`; the last awaited document moves the case back to REVIEW. 503 when the upload service cannot answer (nothing written); 409 when the document is not waiting for an upload |
+| POST | /cases/:id/documents/:type/review | loan officer (REVIEW or INFO_REQUESTED, document RECEIVED) | `DocumentReviewRequest` `{ decision: VERIFIED \| REJECTED, reason? }` (reason required to reject) → `CaseDetail`. 409 when the document has not been received |
+| POST | /cases/:id/withdraw | loan officer (DRAFT, REVIEW, INFO_REQUESTED, APPROVAL, OFFER) | `WithdrawRequest` `{ reasonCode: APPLICANT_REQUEST \| DUPLICATE_APPLICATION \| NOT_PROCEEDING, note? }` → `CaseDetail` (WITHDRAWN). 409 from any other status, nothing written; 400 for a missing or unknown reason or a note over 2000 characters |
 | POST | /cases/:id/sign | loan operations, supervisor (OFFER) | → `CaseDetail` (simulated e-signature) |
 | POST | /cases/:id/booking | loan operations, supervisor (BOOKING) | → `CaseDetail` (maker step) |
 | POST | /cases/:id/booking/approve | supervisor, not the maker (PENDING_CHECKER or BOOKING_FAILED) | → `CaseDetail` (books and disburses). Both APPROVE_BOOKING and RETRY_BOOKING use this endpoint, with the same idempotency key (ADR 0020 R5); the maker stays excluded on retry. |
@@ -112,6 +117,7 @@ refuses it now:
 | APPROVE | the recommendation is to decline (decline or return it instead) | INVALID_STATE_TRANSITION |
 | APPROVE | the case was decided while a provider could not answer (return it to be decided again) | INVALID_STATE_TRANSITION |
 | APPROVE_BOOKING / RETRY_BOOKING | the supervisor submitted the booking | MAKER_CHECKER_VIOLATION |
+| RECOMMEND / REQUEST_INFO | a received document is not verified or rejected yet (REQUEST_INFO also: every document already verified) | INVALID_STATE_TRANSITION |
 | SUBMIT_BOOKING / APPROVE_BOOKING / RETRY_BOOKING | an item of the pre-booking checklist fails (the first failing item is the detail) | BOOKING_CHECKLIST_INCOMPLETE |
 | EDIT_DRAFT / SUBMIT | the draft is unchanged for 30 days (expired; the sweep closes it) | INVALID_STATE_TRANSITION |
 | SIGN | the offer was made more than 5 days ago (expired; the sweep closes it) | INVALID_STATE_TRANSITION |

@@ -29,6 +29,7 @@ import { CaseViews } from "./case-views";
 import { CasesRepository } from "./cases.repository";
 import { CONSENT_CHANNEL, consentComplete } from "./consent";
 import { DecisionService } from "./decision.service";
+import { unreviewedRefusal } from "./documents";
 import {
   authorityExceeded,
   DomainError,
@@ -353,13 +354,16 @@ export class CasesService {
     await this.tx.run(async (m) => {
       const c = await this.lockOrFail(m, user, id);
       this.transition("RECOMMEND", c.status);
+      // Received documents are looked at before a recommendation (WF-007): read under the lock.
+      const unreviewed = unreviewedRefusal(await this.repo.documents(c.id, m));
+      if (unreviewed) throw invalidState(unreviewed);
       if (!body.rationale?.trim()) {
         throw validation("Explain the recommendation.", [
           { field: "rationale", message: "Enter a rationale." },
         ]);
       }
       if (body.type !== Recommendation.Decline && c.decisionId) {
-        const decision = await this.repo.findDecision(c.decisionId);
+        const decision = await this.repo.findDecision(c.decisionId, m);
         // After an outage, or a failed knockout referred because automation was not live,
         // only a decline may be recommended (the case view lists the same refusal).
         const refusal = recommendationRefusal(

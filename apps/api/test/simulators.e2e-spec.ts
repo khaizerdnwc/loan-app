@@ -5,6 +5,8 @@ import {
   type CreditBureau,
   DISBURSEMENT,
   type Disbursement,
+  DOCUMENT_INTAKE,
+  type DocumentIntake,
   E_SIGNATURE,
   type ESignature,
   FRAUD_CHECK,
@@ -138,6 +140,46 @@ describe("simulated providers conform to their ports", () => {
     },
   );
 
+  it("document intake returns synthetic metadata, labelled simulated, idempotent on the key", async () => {
+    const intake = h.app.get<DocumentIntake>(DOCUMENT_INTAKE);
+    const req = {
+      idempotencyKey: "conf-doc-1",
+      applicationId: "conf-app-1",
+      documentType: "BANK_STATEMENTS_3M" as const,
+    };
+    const first = await intake.receive(req);
+    expect(first).toMatchObject({
+      provider: "Document intake (simulated)",
+      mode: "SIMULATED",
+      fileName: "bank-statements-3-months.pdf",
+      contentType: "application/pdf",
+      virusScan: "CLEAN",
+    });
+    expect(first.reference).toMatch(/^DOC-\d{8}$/);
+    const replay = await intake.receive(req);
+    expect(replay.reference).toBe(first.reference);
+    expect(replay.receivedAt).toBe(first.receivedAt);
+    const other = await intake.receive({ ...req, idempotencyKey: "conf-doc-2" });
+    expect(other.reference).not.toBe(first.reference);
+  });
+
+  it.each(["OUTAGE", "TIMEOUT", "MALFORMED"])(
+    "document intake in %s fails with ProviderUnavailableError, never a wrong answer",
+    async (mode) => {
+      await setMode(h, "DOCUMENT_INTAKE", mode);
+      const err = await h.app
+        .get<DocumentIntake>(DOCUMENT_INTAKE)
+        .receive({
+          idempotencyKey: `f-doc-${mode}`,
+          applicationId: "a",
+          documentType: "INCOME_TAX_RETURN",
+        })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProviderUnavailableError);
+      expect((err as ProviderUnavailableError).service).toBe("DOCUMENT_INTAKE");
+    },
+  );
+
   it("disbursement and e-signature are idempotent on the key", async () => {
     const pay = h.app.get<Disbursement>(DISBURSEMENT);
     const req = {
@@ -220,6 +262,7 @@ describe("simulation controls", () => {
       "CORE_BANKING",
       "CREDIT_BUREAU",
       "DISBURSEMENT",
+      "DOCUMENT_INTAKE",
       "E_SIGNATURE",
       "FRAUD",
       "KYC_AML",

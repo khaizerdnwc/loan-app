@@ -11,6 +11,7 @@ import {
   LoanAccountEntity,
   ScheduleLineEntity,
 } from "./entities/booking.entities";
+import { CaseDocumentEntity } from "./entities/case-document.entity";
 import { ConsentRecordEntity } from "./entities/consent-record.entity";
 import { DecisionRecordEntity } from "./entities/decision-record.entity";
 import { LoanCaseEntity } from "./entities/loan-case.entity";
@@ -78,7 +79,12 @@ export class CasesRepository {
     switch (user.role) {
       case Role.LoanOfficer:
         return view === "queue"
-          ? this.cases.find({ where: { status: In([CaseStatus.Draft, CaseStatus.Review]) }, order })
+          ? this.cases.find({
+              where: {
+                status: In([CaseStatus.Draft, CaseStatus.Review, CaseStatus.InfoRequested]),
+              },
+              order,
+            })
           : this.cases.find({ order });
       case Role.Approver:
         return view === "queue"
@@ -206,6 +212,22 @@ export class CasesRepository {
     return this.cases.manager
       .getRepository(ActivityEventEntity)
       .find({ where: { caseId }, order: { createdAt: "ASC" } });
+  }
+
+  // --- document checklist (one row per case and document type) ----------------------------
+
+  documents(caseId: string, manager?: EntityManager): Promise<CaseDocumentEntity[]> {
+    return (manager ?? this.cases.manager)
+      .getRepository(CaseDocumentEntity)
+      .find({ where: { caseId }, order: { requestedAt: "ASC", documentType: "ASC" } });
+  }
+
+  saveDocument(manager: EntityManager, doc: CaseDocumentEntity): Promise<CaseDocumentEntity> {
+    return manager.getRepository(CaseDocumentEntity).save(doc);
+  }
+
+  newDocument(manager: EntityManager): CaseDocumentEntity {
+    return manager.getRepository(CaseDocumentEntity).create();
   }
 
   // --- booking -----------------------------------------------------------------------------

@@ -122,6 +122,9 @@ describe("roles and segregation of duties (backend-enforced)", () => {
       ["post", `/cases/${id}/sign`],
       ["post", `/cases/${id}/booking`],
       ["post", `/cases/${id}/booking/approve`],
+      ["post", `/cases/${id}/info-request`],
+      ["post", `/cases/${id}/documents/BANK_STATEMENTS_3M/upload`],
+      ["post", `/cases/${id}/documents/BANK_STATEMENTS_3M/review`],
       ["put", "/simulation/services/CREDIT_BUREAU"],
     ] as const) {
       const res = await h.as("diane")[method](path, {}).expect(403);

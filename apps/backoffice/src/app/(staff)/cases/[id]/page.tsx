@@ -33,6 +33,7 @@ import { BookingChecklistPanel } from "@/components/case/booking-checklist-panel
 import { ConsentPanel } from "@/components/case/consent-panel";
 import { DecisionPanel } from "@/components/case/decision-panel";
 import { DecisionRecordDialog } from "@/components/case/decision-record-dialog";
+import { DocumentsPanel } from "@/components/case/documents-panel";
 import { IndicativeRepayment } from "@/components/case/indicative-repayment";
 import { LoanAccountPanel } from "@/components/case/loan-account-panel";
 import { OutcomeBanner } from "@/components/case/outcome-banner";
@@ -117,6 +118,15 @@ export default function CasePage() {
                 </div>
               )}
             </Card>
+          )}
+          {(c.documents.length > 0 || c.infoRequest) && (
+            <DocumentsPanel
+              detail={c}
+              onChanged={(next) => {
+                setDetail(next);
+                setVersion((v) => v + 1);
+              }}
+            />
           )}
           {c.withdrawal && <WithdrawalPanel withdrawal={c.withdrawal} />}
           {(c.recommendation || c.approved || c.decline) && <TermsPanel detail={c} />}

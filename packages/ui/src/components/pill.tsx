@@ -36,6 +36,7 @@ export function Pill({ tone = "neutral", children }: { tone?: Tone; children: Re
 const STATUS_TONE: Record<CaseStatus, Tone> = {
   DRAFT: "neutral",
   REVIEW: "warn",
+  INFO_REQUESTED: "warn",
   APPROVAL: "warn",
   OFFER: "info",
   BOOKING: "info",
