@@ -21,6 +21,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ActionsPanel } from "@/components/case/actions-panel";
 import { ActivityTimeline } from "@/components/case/activity-timeline";
+import { ConsentPanel } from "@/components/case/consent-panel";
 import { DecisionPanel } from "@/components/case/decision-panel";
 import { DecisionRecordDialog } from "@/components/case/decision-record-dialog";
 import { LoanAccountPanel } from "@/components/case/loan-account-panel";
@@ -91,6 +92,14 @@ export default function CasePage() {
           <ActionsPanel
             detail={c}
             onShowDecision={() => setShowRecord(true)}
+            onChanged={(next) => {
+              setDetail(next);
+              setVersion((v) => v + 1);
+            }}
+          />
+          <ConsentPanel
+            key={c.consent?.capturedAt ?? "none"}
+            detail={c}
             onChanged={(next) => {
               setDetail(next);
               setVersion((v) => v + 1);

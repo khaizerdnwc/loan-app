@@ -4,6 +4,29 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## security-20261127-precondition-rechecked-under-the-lock
+
+When a service checks a precondition before calling a provider outside the transaction (the
+consent gate before the bureau pull in `submit`), re-check it inside the transaction after
+`lockOrFail`, or make every writer of that precondition bump the case `version` the optimistic
+check already compares. Why: C-1 read the latest consent before `gatherInputs` and then only
+compared `c.version` under the lock; a consent-only `PATCH /cases/:id` inserts a consent record
+without touching the case row, so a withdrawal that lands between the check and the commit
+leaves a decision recorded on a case whose latest consent says no. Nearest gate: an integration
+test that withdraws consent between the gate and the commit (a paused bureau simulator, or a
+spy on `gatherInputs`) and asserts 400 or 409 and no decision record.
+
+## security-20261127-validate-nested-declares-its-shape
+
+Gate: house/require-shape-with-validate-nested
+
+`@ValidateNested()` accepts an array as readily as one object (class-validator walks each
+element), and without `@Type(() => X)` the nested body is never built into the DTO class, so
+its whitelist has nothing to check. C-1 added the first nested DTO (`consent`) with `@Type` but
+no `@IsObject()`: `consent: []` passed the pipe and reached the service as an array. It failed
+closed only because the service compared `termsVersion`; the next nested field may not have a
+service-side check. The rule requires `@Type` and `@IsObject()` or `@IsArray()` on the property.
+
 ## security-20261127-re-entry-clears-earlier-actors
 
 Gate: test: apps/api/test/booking-and-failures.e2e-spec.ts ("re-deciding after a recommendation, a return and recovery clears the earlier actors")

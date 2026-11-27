@@ -8,6 +8,7 @@ import {
   LoanAccountEntity,
   ScheduleLineEntity,
 } from "../cases/entities/booking.entities";
+import { ConsentRecordEntity } from "../cases/entities/consent-record.entity";
 import { DecisionRecordEntity } from "../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { MIGRATIONS } from "./migrations";
@@ -23,6 +24,7 @@ export const ENTITIES = [
   ScheduleLineEntity,
   DisbursementEntity,
   ActivityEventEntity,
+  ConsentRecordEntity,
 ];
 
 /**

@@ -5,17 +5,20 @@ import {
   Recommendation,
 } from "@loan/core";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
+import { Type } from "class-transformer";
 import {
   IsBoolean,
   IsDecimal,
   IsIn,
   IsInt,
+  IsObject,
   IsOptional,
   IsString,
   Length,
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from "class-validator";
 
 /**
@@ -25,6 +28,21 @@ import {
  * for the numbers: product.ts).
  */
 const DECIMAL = { decimal_digits: "0,2", force_decimal: false } as const;
+
+export class ConsentDto {
+  @ApiProperty({ description: "Consent to a credit bureau check" })
+  @IsBoolean()
+  creditBureauCheck!: boolean;
+
+  @ApiProperty({ description: "Consent to processing under the Data Privacy Act" })
+  @IsBoolean()
+  dataProcessing!: boolean;
+
+  @ApiProperty({ example: "1.0", description: "Terms and conditions version agreed to" })
+  @IsString()
+  @Length(1, 20)
+  termsVersion!: string;
+}
 
 export class CreateCaseDto {
   @ApiProperty({ example: "APL-MARIA" })
@@ -50,9 +68,23 @@ export class CreateCaseDto {
   @ApiProperty({ description: "Submit for decision now (true) or save a draft (false)" })
   @IsBoolean()
   submit!: boolean;
+
+  @ApiPropertyOptional({ type: ConsentDto, description: "Required before submitting" })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ConsentDto)
+  consent?: ConsentDto;
 }
 
 export class UpdateDraftDto {
+  @ApiPropertyOptional({ type: ConsentDto })
+  @IsOptional()
+  @IsObject()
+  @ValidateNested()
+  @Type(() => ConsentDto)
+  consent?: ConsentDto;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })

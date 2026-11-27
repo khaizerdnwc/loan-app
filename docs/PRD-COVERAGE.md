@@ -66,7 +66,7 @@ Summary: 13 built, 40 partly built, 86 not built (139 IDs). Of the 8 flows, 3 ar
 | INT-003 | Save and resume for 30 days | partly built | A-4, A-5, `PATCH /cases/:id` | Drafts save and edit. No expiry and no cross-channel resume. |
 | INT-004 | Loan calculator, indicative offer | partly built | `case-views.ts` (`core.quote`), `CaseDetail.approved.regularInstalment` | The instalment is quoted from simulated core only after approval. No calculator before submission. |
 | INT-005 | Staff-assisted intake, including walk-ins | partly built | `apps/backoffice/src/app/(staff)/cases/new/page.tsx` | A loan officer captures for a seeded applicant. You cannot capture a new or walk-in customer (name, age, employer, income). There is no branch officer role. |
-| INT-006 | Consent with timestamp, terms version, channel | not built | — | No consent field anywhere. The bureau pull runs without a recorded consent. |
+| INT-006 | Consent with timestamp, terms version, channel | built | C-1 | Insert-only consent records (bureau check, data processing, terms version, channel, who, when); submit and so the bureau pull refused without them. |
 | INT-007 | Duplicate application detection | not built | — | Nothing stops two open PL cases for the same applicant. The ACCEPTANCE "duplicate protection" items (B-1..B-3, B-6) are booking idempotency, not INT-007. |
 | INT-010 | Email/file intake with OCR | not built | — | |
 | INT-011 | Lead capture, pre-approved offers | not built | — | |
@@ -287,7 +287,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | # | Item | PRD IDs | Size | Why here |
 |---|---|---|---|---|
 | 1 | ✅ Done (B-10). Re-decide a referred case when the provider recovers: a new decision record, the old one kept, and a REVIEW → REVIEW edge | NFR-005, IH-003, NFR-011 | S | Today an outage referral cannot end in an approval, which breaks the PRD's "degrade to referral" promise. Small and contained. |
-| 2 | Consent capture on the application (bureau check, data processing, terms version, timestamp, channel); submit refused without it, and the bureau pull gated on it | INT-006, CMP-001 (part), AIS-002 | M | F1 and F3 both start with consent. The bureau is pulled today with no recorded consent. Migration + DTO + form + tests. |
+| 2 | ✅ Done (C-1). Consent capture on the application (bureau check, data processing, terms version, timestamp, channel); submit refused without it, and the bureau pull gated on it | INT-006, CMP-001 (part), AIS-002 | M | F1 and F3 both start with consent. The bureau is pulled today with no recorded consent. Migration + DTO + form + tests. |
 | 3 | Duplicate application detection by applicant and product (409 with the open case reference; partial unique index on open statuses) | INT-007 | S | P1 intake control the prototype already shows. Cheap DB-backed guard. |
 | 4 | Withdraw, cancel and offer expiry, with lifecycle edges to a WITHDRAWN/EXPIRED terminal state and a configurable expiry | WF-012, INT-003 (30-day expiry) | M | Closes cases that currently can only sit forever in DRAFT/OFFER; needed by every flow. |
 | 5 | Request information from a referred case (REVIEW → INFO_REQUESTED → REVIEW), with a per-case document checklist (received, verified, rejected) and a simulated upload | WF-007, DOC-003, DOC-001 (simulated) | L | F2's own step 3. It completes the F2 path the PRD describes. |

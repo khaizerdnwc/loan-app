@@ -16,6 +16,7 @@ import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { allowedActions } from "./case-access";
 import { CasesRepository } from "./cases.repository";
+import { consentComplete } from "./consent";
 import { ageOn, DecisionService } from "./decision.service";
 import type { ActivityEventEntity } from "./entities/activity-event.entity";
 import type { ApplicantEntity } from "./entities/applicant.entity";
@@ -45,8 +46,11 @@ export class CaseViews {
     const booking = await this.repo.findBooking(c.id);
     const account = await this.repo.findLoanAccount(c.id);
     const me = await this.staff.findById(user.id);
+    const consent = await this.repo.latestConsent(c.id);
     const names = await this.staff.namesById(
-      [c.recommendedBy, c.approvedBy, booking?.makerId].filter((x): x is string => Boolean(x)),
+      [c.recommendedBy, c.approvedBy, booking?.makerId, consent?.capturedBy].filter(
+        (x): x is string => Boolean(x),
+      ),
     );
 
     let regularInstalment: string | null = null;
@@ -98,6 +102,18 @@ export class CaseViews {
             }
           : null,
       signatureEnvelopeId: c.signatureEnvelopeId,
+      consent: consent
+        ? {
+            creditBureauCheck: consent.creditBureauCheck,
+            dataProcessing: consent.dataProcessing,
+            termsVersion: consent.termsVersion,
+            channel: consent.channel,
+            capturedBy: consent.capturedBy,
+            capturedByName: names.get(consent.capturedBy) ?? consent.capturedBy,
+            capturedAt: consent.capturedAt.toISOString(),
+            complete: consentComplete(consent),
+          }
+        : null,
       booking: booking ? bookingView(booking, names.get(booking.makerId) ?? booking.makerId) : null,
       loanAccountId: account?.id ?? null,
       allowedActions: allowedActions(
@@ -106,6 +122,7 @@ export class CaseViews {
         me,
         booking,
         DecisionService.decidedDuringOutage(decision),
+        consentComplete(consent),
       ),
     };
   }

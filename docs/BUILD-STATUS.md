@@ -19,6 +19,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | M9b | Test sign-in (username + scrypt-hashed test password) replacing the persona picker; no password-less route | done | R-10 (API, unit, browser, component) · sign-in throttled per account (20/min) and per source (60/min) · migration 1764300000003 rehearsed on the seeded dev database (upgrade, seed, revert, upgrade) · docs/ASSUMPTIONS.md Sign-in · M9b commit |
 | M9c | One published test password (`Password123!`) for every account; no account list on the sign-in page and no public staff list endpoint; docs/TEST-ACCOUNTS.md | done | R-10 updated (API, unit, component, browser) · M9c commit |
 | P1 | PRD backlog #1: re-decide a case referred during a provider outage (NFR-005) | done | B-10 (integration) · lifecycle REDECIDE edges (unit) · officer's "Decide again" action · PRD-COVERAGE updated |
+| P2 | PRD backlog #2: consent before the bureau check (INT-006, AIS-002) | done | C-1 (integration, unit, browser) · migration 1764300000004 (insert-only, FK to the case) · consent card on New application and a Consent panel on the case |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 

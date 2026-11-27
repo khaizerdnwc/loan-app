@@ -4,6 +4,23 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261127-precondition-reread-under-lock
+
+A precondition that a service checks before its locked transaction (because providers are
+called outside the lock) must be re-read inside the transaction after the row lock, or every
+write that can change it must bump the locked row's version so the existing version guard
+fires. Why: the gap between the unlocked check and the lock is exactly where a concurrent
+edit lands; the decision is then committed against state the guard was meant to refuse, and
+the record says nothing about it. Nearest deterministic gate: an integration test that
+changes the precondition between the check and the lock (as the "submit race" test does for
+terms) for each pre-transaction guard.
+
+- 2026-11-27 — Consent capture (C-1). submit() checked latestConsent() before gatherInputs()
+  and never again; a consent-only PATCH records a new consent row but returns before saving
+  the case, so loan_case.version does not move and the submit race guard (version) does not
+  fire. A withdrawal committed during the bureau call still produces a decision. Found by the
+  data reviewer.
+
 ## data-20261127-migration-backfill-needs-populated-run
 
 A migration that backfills existing rows (UPDATE … then SET NOT NULL / ADD UNIQUE) or whose

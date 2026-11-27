@@ -1,6 +1,6 @@
 import "reflect-metadata";
 import { SEED_TEST_PASSWORD } from "@loan/base";
-import type { CaseDetail, CreateCaseRequest } from "@loan/core";
+import { type CaseDetail, CONSENT_TERMS_VERSION, type CreateCaseRequest } from "@loan/core";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -88,7 +88,7 @@ export async function startHarness(): Promise<Harness> {
 
 /** Empty every case table and reset the simulators; staff, applicants and personas stay. */
 export async function resetData(ds: DataSource): Promise<void> {
-  await ds.query(`TRUNCATE schedule_line, disbursement, loan_account, booking_request, loan_case,
+  await ds.query(`TRUNCATE consent_record, schedule_line, disbursement, loan_account, booking_request, loan_case,
     sim.core_account, sim.disbursement, sim.signature, sim.service_mode`);
   // Decision records and activity are insert-only by trigger; truncation is still allowed.
   await ds.query("TRUNCATE decision_record, activity_event");
@@ -98,7 +98,14 @@ export async function setMode(h: Harness, service: string, mode: string): Promis
   await h.as("leo").put(`/simulation/services/${service}`, { mode }).expect(200);
 }
 
-/** Create and submit an application as the loan officer. */
+/** The applicant's full consent for the current terms (PRD INT-006). */
+export const FULL_CONSENT = {
+  creditBureauCheck: true,
+  dataProcessing: true,
+  termsVersion: CONSENT_TERMS_VERSION,
+} as const;
+
+/** Create and submit an application as the loan officer, with the applicant's consent. */
 export async function submitCase(
   h: Harness,
   body: Partial<CreateCaseRequest> & { applicantId: string },
@@ -110,6 +117,7 @@ export async function submitCase(
       tenorMonths: 24,
       purpose: "Home improvement",
       submit: true,
+      consent: FULL_CONSENT,
       ...body,
     })
     .expect(201);

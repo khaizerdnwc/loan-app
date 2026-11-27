@@ -19,6 +19,7 @@ import noTodoComment from "../src/rules/no-todo-comment.js";
 import noTypeormSynchronize from "../src/rules/no-typeorm-synchronize.js";
 import requireOrderWithTake from "../src/rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "../src/rules/require-roles-on-controller-handler.js";
+import requireShapeWithValidateNested from "../src/rules/require-shape-with-validate-nested.js";
 
 /** The rules are plain JS; their inferred literal types are narrower than ESLint's. */
 const asRule = (rule: unknown) => rule as Rule.RuleModule;
@@ -481,6 +482,68 @@ ruleTester.run("no-arbitrary-text-size", asRule(noArbitraryTextSize), {
       filename: WEB,
       code: `export const k = cn("rounded", "text-[12.5px]");`,
       errors: [{ messageId: "arbitrary" }],
+    },
+  ],
+});
+
+const DTO = at("packages/base/src/cases/dto.ts");
+const CV = `import { IsArray, IsObject, IsOptional, ValidateNested } from "class-validator";\nimport { Type } from "class-transformer";\n`;
+
+ruleTester.run("require-shape-with-validate-nested", asRule(requireShapeWithValidateNested), {
+  valid: [
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsOptional() @IsObject() @ValidateNested() @Type(() => C) consent?: C; }`,
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsArray() @ValidateNested({ each: true }) @Type(() => L) lines!: L[]; }`,
+    },
+    {
+      filename: DTO,
+      code: `import * as cv from "class-validator";\nimport * as ct from "class-transformer";\nclass D { @cv.IsObject() @cv.ValidateNested() @ct.Type(() => C) c!: C; }`,
+    },
+    { filename: DTO, code: `${CV}class D { @IsOptional() @IsObject() plain?: object; }` },
+    { filename: WEB, code: `class D { @ValidateNested() c!: C; }` },
+    {
+      filename: DTO,
+      code: `${CV}class D {\n  // eslint-disable-next-line rule-to-test/require-shape-with-validate-nested -- test\n  @ValidateNested() c!: C;\n}`,
+    },
+  ],
+  invalid: [
+    // The consent DTO as staged: @Type but no @IsObject, so an array passes.
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsOptional() @ValidateNested() @Type(() => C) consent?: C; }`,
+      errors: [{ messageId: "missingShape" }],
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsObject() @ValidateNested() consent!: C; }`,
+      errors: [{ messageId: "missingType" }],
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @ValidateNested() consent!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // An aliased import is the same decorator.
+    {
+      filename: DTO,
+      code: `import { ValidateNested as Nested } from "class-validator";\nclass D { @Nested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // A namespace import is the same decorator.
+    {
+      filename: DTO,
+      code: `import * as cv from "class-validator";\nclass D { @cv.ValidateNested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // In apps/api too.
+    {
+      filename: at("apps/api/src/simulation/dto.ts"),
+      code: `import { ValidateNested } from "class-validator";\nclass D { @ValidateNested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
     },
   ],
 });

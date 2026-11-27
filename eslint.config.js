@@ -46,6 +46,7 @@ export default tseslint.config(
       "house/no-math-random-in-server": "error",
       "house/no-process-env-outside-config": "error",
       "house/require-roles-on-controller-handler": "error",
+      "house/require-shape-with-validate-nested": "error",
       "house/no-dangerous-html-without-sanitize": "error",
       "house/no-error-name-branching": "error",
       // data

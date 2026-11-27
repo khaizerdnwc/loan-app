@@ -207,6 +207,8 @@ export interface CaseDetail extends CaseSummary {
     note: string | null;
   } | null;
   signatureEnvelopeId: string | null;
+  /** The latest consent recorded for this application, or null if none yet. */
+  consent: ConsentView | null;
   booking: BookingView | null;
   loanAccountId: string | null;
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
@@ -252,6 +254,28 @@ export interface CaseList {
 
 // --- Request bodies ----------------------------------------------------------------------
 
+/** The terms and conditions version the applicant agrees to in this release. */
+export const CONSENT_TERMS_VERSION = "1.0";
+
+/** The applicant's consents, captured by staff on their behalf (PRD INT-006). */
+export interface ConsentInput {
+  /** Consent to a credit bureau check. */
+  creditBureauCheck: boolean;
+  /** Consent to processing under the Data Privacy Act. */
+  dataProcessing: boolean;
+  /** The terms and conditions version agreed to (CONSENT_TERMS_VERSION). */
+  termsVersion: string;
+}
+
+export interface ConsentView extends ConsentInput {
+  channel: string;
+  capturedBy: string;
+  capturedByName: string;
+  capturedAt: string;
+  /** Both consents given and the current terms version: the case may be submitted. */
+  complete: boolean;
+}
+
 export interface CreateCaseRequest {
   applicantId: string;
   amount: string;
@@ -259,9 +283,13 @@ export interface CreateCaseRequest {
   purpose: string;
   /** Submit for decision straight away (true) or save as a draft (false). */
   submit: boolean;
+  /** Required before the case can be submitted; a draft may be saved without it. */
+  consent?: ConsentInput;
 }
 
 export interface UpdateDraftRequest {
+  /** Record (or correct) the applicant's consents on the draft. */
+  consent?: ConsentInput;
   amount?: string;
   tenorMonths?: number;
   purpose?: string;

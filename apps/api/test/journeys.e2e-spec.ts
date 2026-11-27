@@ -90,6 +90,7 @@ describe("F1 — Maria Santos, auto-approved ₱150,000 over 24 months", () => {
       .body as ActivityView[];
     expect(events.map((e) => [e.actorName, e.action, e.toStatus])).toEqual([
       ["Paolo Tan", "CASE_CREATED", "DRAFT"],
+      ["Paolo Tan", "CONSENT_RECORDED", null],
       ["Paolo Tan", "CASE_SUBMITTED", null],
       ["Decision engine", "DECISION_MADE", "OFFER"],
       ["Marco Bautista", "SIGNED", "BOOKING"],

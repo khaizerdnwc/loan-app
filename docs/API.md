@@ -4,6 +4,8 @@ The NestJS API (apps/api, port 3101 in development). Request and response shapes
 types in `packages/core/src/api.ts`. Swagger UI is served at `/docs`. Every error is an
 RFC 9457 problem body (`packages/core/src/problem.ts`) with a stable `code`.
 
+Consent: `POST /cases` and `PATCH /cases/:id` accept `consent: { creditBureauCheck, dataProcessing, termsVersion }` (current version `CONSENT_TERMS_VERSION`, 1.0). `POST /cases/:id/submit` (and `POST /cases` with `submit: true`) answers 400 on the `consent` field until both consents for the current version are recorded; `CaseDetail.consent` shows the latest record.
+
 Authentication: `POST /auth/sign-in` checks a username and test password and sets an httpOnly
 `session` cookie (a signed JWT carrying only the staff id). There is no password-less route.
 The backoffice never calls the API from the browser directly: its `/api/*` route forwards

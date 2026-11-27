@@ -49,6 +49,7 @@ column honest once tests exist). Format: GIVEN / WHEN / THEN. Status: ☐ not bu
 | A-4 | A saved draft and a submitted case read back identically after a reload | `apps/api/test/access-and-validation.e2e-spec.ts` | ☑ |
 | A-5 | A draft edited while its decision inputs are being gathered is refused (409), never decided on stale terms | `apps/api/test/approval-and-session.e2e-spec.ts` | ☑ |
 | A-6 | A malformed JSON body gets a 400 problem body | `apps/api/test/approval-and-session.e2e-spec.ts` | ☑ |
+| C-1 | No consent, no bureau check (PRD INT-006, AIS-002): a draft cannot be submitted until the applicant's consent to the credit bureau check and to data processing, for the current terms version, is recorded (400 on `consent`, no decision made). Consent is recorded at capture or on the draft, with the channel, who captured it and when; a correction is a new insert-only record and the latest applies (re-read under the lock, so consent withdrawn mid-submit stops the decision); capture-and-submit without full consent stores nothing; re-deciding also needs it; SUBMIT is offered disabled with the reason until consent is complete; the case shows it and a draft's consent can be recorded there | `apps/api/test/approval-and-session.e2e-spec.ts`, `packages/base/test/cases/consent.test.ts` + component: `apps/backoffice/test/consent-panel.test.tsx` + browser: `apps/backoffice/e2e/consent.spec.ts` | ☑ |
 
 ## Decision rules
 

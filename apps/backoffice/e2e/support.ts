@@ -53,6 +53,9 @@ export async function submitApplication(
   await page.getByLabel("Amount (pesos)").fill(amount);
   await page.getByLabel("Tenor (months)").fill(tenorMonths);
   await page.getByLabel("Purpose").fill("Home improvement");
+  // No consent, no bureau check: both are recorded before submitting (C-1).
+  await page.getByLabel("Credit bureau check").check();
+  await page.getByLabel("Data processing under the Data Privacy Act").check();
   await page.getByRole("button", { name: "Submit for decision" }).click();
   await expect(dialog(page)).toContainText("months");
   await dialog(page).getByRole("button", { name: "Submit", exact: true }).click();

@@ -51,6 +51,7 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     approved: null,
     decline: null,
     signatureEnvelopeId: null,
+    consent: null,
     booking: null,
     loanAccountId: null,
     allowedActions: [],

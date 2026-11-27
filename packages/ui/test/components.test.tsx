@@ -5,6 +5,7 @@ import { vi } from "vitest";
 import {
   Avatar,
   Button,
+  Checkbox,
   ConfirmDialog,
   Field,
   FormGrid,
@@ -333,5 +334,18 @@ describe("the segmented stage filter", () => {
     expect(onChange).toHaveBeenCalledWith("REVIEW");
     expect(review).toHaveAttribute("aria-pressed", "true");
     expect(all).toHaveAttribute("aria-pressed", "false");
+  });
+});
+
+describe("Checkbox", () => {
+  it("is labelled by its sentence and marks itself invalid only when told to", () => {
+    const { rerender } = render(
+      <Checkbox label="The applicant consents to a credit bureau check" />,
+    );
+    const box = screen.getByLabelText("The applicant consents to a credit bureau check");
+    expect(box).toHaveAttribute("type", "checkbox");
+    expect(box).not.toHaveAttribute("aria-invalid");
+    rerender(<Checkbox label="The applicant consents to a credit bureau check" invalid />);
+    expect(screen.getByLabelText(/credit bureau check/)).toHaveAttribute("aria-invalid", "true");
   });
 });

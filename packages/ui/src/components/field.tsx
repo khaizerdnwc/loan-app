@@ -74,6 +74,28 @@ export function Textarea(props: Omit<ComponentProps<"textarea">, "className">) {
   return <textarea className={TEXTAREA} {...props} />;
 }
 
+/**
+ * A labelled checkbox: the box and its sentence in one click target. Takes no className, like
+ * the other controls; `invalid` marks it for assistive tech when a required box is unticked.
+ */
+export function Checkbox({
+  label,
+  invalid,
+  ...props
+}: Omit<ComponentProps<"input">, "className" | "type"> & { label: ReactNode; invalid?: boolean }) {
+  return (
+    <label className="flex cursor-pointer items-start gap-2.5 text-base text-ink-800">
+      <input
+        type="checkbox"
+        aria-invalid={invalid ? true : undefined}
+        className="mt-0.5 size-4 shrink-0 cursor-pointer rounded-sm accent-ink-800 aria-[invalid=true]:outline-2 aria-[invalid=true]:outline-bad-500"
+        {...props}
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 /** Fields side by side from the small breakpoint up, stacked on a phone; one gap everywhere. */
 export function FormGrid({ children }: { children: ReactNode }) {
   return <div className="grid gap-4 sm:grid-cols-2">{children}</div>;

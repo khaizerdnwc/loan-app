@@ -5,6 +5,8 @@ const valid = {
   amount: "150000",
   tenorMonths: "24",
   purpose: "Home improvement",
+  creditBureauCheck: false,
+  dataProcessing: false,
 };
 const errorFor = (patch: Partial<typeof valid>) => {
   const result = applicationSchema.safeParse({ ...valid, ...patch });

@@ -2,7 +2,7 @@ import { DecisionService, SEED_TEST_PASSWORD } from "@loan/base";
 import type { ActivityView, CaseDetail } from "@loan/core";
 import { JwtService } from "@nestjs/jwt";
 import request from "supertest";
-import { type Harness, STAFF, startHarness, submitCase } from "./support/harness";
+import { FULL_CONSENT, type Harness, STAFF, startHarness, submitCase } from "./support/harness";
 
 let h: Harness;
 beforeAll(async () => {
@@ -275,6 +275,7 @@ describe("submit decides the draft it read (data review: submit race)", () => {
           tenorMonths: 24,
           purpose: "Home improvement",
           submit: false,
+          consent: FULL_CONSENT,
         })
         .expect(201)
     ).body as CaseDetail;
@@ -314,5 +315,189 @@ describe("sign-in source cap (last in this file: it uses up this address's sign-
       limited = res.status === 429;
     }
     expect(limited).toBe(true);
+  });
+});
+
+describe("consent before the bureau check (C-1, PRD INT-006 / AIS-002)", () => {
+  const draft = async (consent?: object) =>
+    (
+      await h
+        .as("paolo")
+        .post("/cases", {
+          applicantId: "APL-MARIA",
+          amount: "60000.00",
+          tenorMonths: 12,
+          purpose: "Home improvement",
+          submit: false,
+          ...(consent ? { consent } : {}),
+        })
+        .expect(201)
+    ).body as CaseDetail;
+  const decisions = (id: string) =>
+    h.ds
+      .query("SELECT count(*)::int AS n FROM decision_record WHERE case_id = $1", [id])
+      .then((r: { n: number }[]) => r[0]?.n);
+
+  it("C-1 a draft without consent cannot be submitted: 400 on the consent field, no decision, still a draft", async () => {
+    const d = await draft();
+    expect(d.consent).toBeNull();
+    const res = await h.as("paolo").post(`/cases/${d.id}/submit`).expect(400);
+    expect(res.body).toMatchObject({ code: "VALIDATION_FAILED" });
+    expect(res.body.errors.map((e: { field: string }) => e.field)).toContain("consent");
+    expect(await decisions(d.id)).toBe(0);
+    expect((await h.as("paolo").get(`/cases/${d.id}`).expect(200)).body.status).toBe("DRAFT");
+  });
+
+  it("a partial consent is recorded but does not allow submitting", async () => {
+    const d = await draft({ ...FULL_CONSENT, creditBureauCheck: false });
+    expect(d.consent).toMatchObject({
+      creditBureauCheck: false,
+      dataProcessing: true,
+      complete: false,
+    });
+    await h.as("paolo").post(`/cases/${d.id}/submit`).expect(400);
+    expect(await decisions(d.id)).toBe(0);
+  });
+
+  it("consent for anything but the current terms is refused, and nothing is created", async () => {
+    const before = (await h.as("paolo").get("/cases?view=all").expect(200)).body.items.length;
+    const res = await h
+      .as("paolo")
+      .post("/cases", {
+        applicantId: "APL-MARIA",
+        amount: "60000.00",
+        tenorMonths: 12,
+        purpose: "Home improvement",
+        submit: false,
+        consent: { ...FULL_CONSENT, termsVersion: "0.9" },
+      })
+      .expect(400);
+    expect(res.body.errors.map((e: { field: string }) => e.field)).toContain(
+      "consent.termsVersion",
+    );
+    expect((await h.as("paolo").get("/cases?view=all").expect(200)).body.items.length).toBe(before);
+  });
+
+  it("consent recorded on a draft lets it be submitted; the case shows who captured it, and when", async () => {
+    const d = await draft();
+    const patched = (
+      await h.as("paolo").patch(`/cases/${d.id}`, { consent: FULL_CONSENT }).expect(200)
+    ).body as CaseDetail;
+    expect(patched.consent).toMatchObject({
+      creditBureauCheck: true,
+      dataProcessing: true,
+      termsVersion: FULL_CONSENT.termsVersion,
+      channel: "BRANCH_ASSISTED",
+      capturedBy: STAFF.paolo,
+      capturedByName: "Paolo Tan",
+      complete: true,
+    });
+    expect(Date.parse(patched.consent?.capturedAt ?? "")).not.toBeNaN();
+    const submitted = (await h.as("paolo").post(`/cases/${d.id}/submit`).expect(200))
+      .body as CaseDetail;
+    expect(submitted.status).toBe("OFFER");
+    const history = (await h.as("diane").get(`/cases/${d.id}/activity`).expect(200)).body as {
+      action: string;
+      details: Record<string, unknown>;
+    }[];
+    expect(history).toContainEqual(
+      expect.objectContaining({
+        action: "CONSENT_RECORDED",
+        details: expect.objectContaining({ creditBureauCheck: true, dataProcessing: true }),
+      }),
+    );
+  });
+
+  it("a correction is a new record: the latest consent applies, and the records cannot be edited or deleted", async () => {
+    const d = await draft(FULL_CONSENT);
+    await h
+      .as("paolo")
+      .patch(`/cases/${d.id}`, { consent: { ...FULL_CONSENT, dataProcessing: false } })
+      .expect(200);
+    const view = (await h.as("paolo").get(`/cases/${d.id}`).expect(200)).body as CaseDetail;
+    expect(view.consent).toMatchObject({ dataProcessing: false, complete: false });
+    await h.as("paolo").post(`/cases/${d.id}/submit`).expect(400);
+    const rows = (await h.ds.query(
+      "SELECT count(*)::int AS n FROM consent_record WHERE case_id = $1",
+      [d.id],
+    )) as { n: number }[];
+    expect(rows[0]?.n).toBe(2);
+    await expect(
+      h.ds.query("UPDATE consent_record SET data_processing = true WHERE case_id = $1", [d.id]),
+    ).rejects.toThrow(/insert-only/);
+    await expect(
+      h.ds.query("DELETE FROM consent_record WHERE case_id = $1", [d.id]),
+    ).rejects.toThrow(/insert-only/);
+  });
+
+  it("consent withdrawn while the providers answer stops the decision (re-read under the lock)", async () => {
+    const d = await draft(FULL_CONSENT);
+    const decisions_ = h.app.get(DecisionService);
+    const original = decisions_.gatherInputs.bind(decisions_);
+    const spy = jest.spyOn(decisions_, "gatherInputs").mockImplementationOnce(async (c, date) => {
+      const inputs = await original(c, date);
+      await h
+        .as("paolo")
+        .patch(`/cases/${d.id}`, { consent: { ...FULL_CONSENT, dataProcessing: false } })
+        .expect(200);
+      return inputs;
+    });
+    try {
+      const res = await h.as("paolo").post(`/cases/${d.id}/submit`).expect(400);
+      expect(res.body.errors.map((e: { field: string }) => e.field)).toContain("consent");
+    } finally {
+      spy.mockRestore();
+    }
+    expect(await decisions(d.id)).toBe(0);
+    expect((await h.as("paolo").get(`/cases/${d.id}`).expect(200)).body.status).toBe("DRAFT");
+  });
+
+  it("capture-and-submit without full consent is refused before anything is stored", async () => {
+    const before = (await h.as("paolo").get("/cases?view=all").expect(200)).body.items.length;
+    const res = await h
+      .as("paolo")
+      .post("/cases", {
+        applicantId: "APL-MARIA",
+        amount: "60000.00",
+        tenorMonths: 12,
+        purpose: "Home improvement",
+        submit: true,
+        consent: { ...FULL_CONSENT, creditBureauCheck: false },
+      })
+      .expect(400);
+    expect(res.body.errors.map((e: { field: string }) => e.field)).toContain("consent");
+    expect((await h.as("paolo").get("/cases?view=all").expect(200)).body.items.length).toBe(before);
+  });
+
+  it("allowedActions offers SUBMIT disabled, with the reason, until consent is complete", async () => {
+    const d = await draft();
+    expect(d.allowedActions).toContainEqual(
+      expect.objectContaining({ action: "SUBMIT", enabled: false, blockedBy: "VALIDATION_FAILED" }),
+    );
+    const after = (
+      await h.as("paolo").patch(`/cases/${d.id}`, { consent: FULL_CONSENT }).expect(200)
+    ).body as CaseDetail;
+    expect(after.allowedActions).toContainEqual({ action: "SUBMIT", enabled: true });
+  });
+
+  it("consent cannot be recorded on a submitted case, and nothing is written", async () => {
+    const c = await submitCase(h, {
+      applicantId: "APL-MARIA",
+      amount: "60000.00",
+      tenorMonths: 12,
+    });
+    await h.as("paolo").patch(`/cases/${c.id}`, { consent: FULL_CONSENT }).expect(409);
+    const rows = (await h.ds.query(
+      "SELECT count(*)::int AS n FROM consent_record WHERE case_id = $1",
+      [c.id],
+    )) as { n: number }[];
+    expect(rows[0]?.n).toBe(1);
+  });
+
+  it("only the loan officer records consent (it rides on capture and draft edits)", async () => {
+    const d = await draft();
+    const res = await h.as("rina").patch(`/cases/${d.id}`, { consent: FULL_CONSENT }).expect(403);
+    expect(res.body.code).toBe("FORBIDDEN_ROLE");
+    expect((await h.as("paolo").get(`/cases/${d.id}`).expect(200)).body.consent).toBeNull();
   });
 });

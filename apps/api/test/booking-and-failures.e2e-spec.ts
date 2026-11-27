@@ -514,6 +514,30 @@ describe("re-deciding a case referred during an outage (B-10, PRD NFR-005)", () 
     expect([await records(referred.id), await redecidedEvents(referred.id)]).toEqual([2, 1]);
   });
 
+  it("a case with no consent on record cannot be re-decided, so the bureau is not pulled again", async () => {
+    const referred = await referredDuringOutage();
+    // A case from before consent existed: remove only this case's consent record, with the
+    // insert-only trigger off for the one statement.
+    await h.ds.query("ALTER TABLE consent_record DISABLE TRIGGER consent_record_insert_only");
+    try {
+      await h.ds.query("DELETE FROM consent_record WHERE case_id = $1", [referred.id]);
+    } finally {
+      await h.ds.query("ALTER TABLE consent_record ENABLE TRIGGER consent_record_insert_only");
+    }
+    await setMode(h, "CREDIT_BUREAU", "OK");
+    const view = (await h.as("paolo").get(`/cases/${referred.id}`).expect(200)).body as CaseDetail;
+    expect(view.allowedActions).toContainEqual(
+      expect.objectContaining({
+        action: "REDECIDE",
+        enabled: false,
+        blockedBy: "VALIDATION_FAILED",
+      }),
+    );
+    const res = await h.as("paolo").post(`/cases/${referred.id}/redecide`).expect(400);
+    expect(res.body.errors.map((e: { field: string }) => e.field)).toContain("consent");
+    expect([await records(referred.id), await redecidedEvents(referred.id)]).toEqual([1, 0]);
+  });
+
   it("only the loan officer may re-decide", async () => {
     const c = await referredDuringOutage();
     await setMode(h, "CREDIT_BUREAU", "OK");

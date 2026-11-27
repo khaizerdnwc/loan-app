@@ -11,6 +11,7 @@ import {
   LoanAccountEntity,
   ScheduleLineEntity,
 } from "./entities/booking.entities";
+import { ConsentRecordEntity } from "./entities/consent-record.entity";
 import { DecisionRecordEntity } from "./entities/decision-record.entity";
 import { LoanCaseEntity } from "./entities/loan-case.entity";
 
@@ -133,6 +134,23 @@ export class CasesRepository {
   }
 
   // --- history -----------------------------------------------------------------------------
+
+  async insertConsent(
+    manager: EntityManager,
+    record: Partial<ConsentRecordEntity>,
+  ): Promise<ConsentRecordEntity> {
+    const repo = manager.getRepository(ConsentRecordEntity);
+    const result = await repo.insert(record);
+    const id = result.identifiers[0]?.id as string;
+    return (await repo.findOne({ where: { id } })) as ConsentRecordEntity;
+  }
+
+  /** The latest consent recorded for the case (insert-only: the newest one applies). */
+  latestConsent(caseId: string, manager?: EntityManager): Promise<ConsentRecordEntity | null> {
+    return (manager ?? this.cases.manager)
+      .getRepository(ConsentRecordEntity)
+      .findOne({ where: { caseId }, order: { capturedAt: "DESC", id: "DESC" } });
+  }
 
   activity(caseId: string): Promise<ActivityEventEntity[]> {
     return this.cases.manager

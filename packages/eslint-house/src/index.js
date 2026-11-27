@@ -16,6 +16,7 @@
  *   - no-math-random-in-server           : ids, keys and tokens come from a CSPRNG
  *   - no-process-env-outside-config      : process.env only in apps/<app>/src/config/env.ts
  *   - require-roles-on-controller-handler: every handler declares @Roles(...) or @Public()
+ *   - require-shape-with-validate-nested : @ValidateNested() comes with @Type() and @IsObject()/@IsArray()
  *   - no-dangerous-html-without-sanitize : dangerouslySetInnerHTML only through sanitizeHtml()
  *   - no-error-name-branching            : branch on error class or code, never err.name
  *   - no-float-money                     : money is Money (decimal), never number math or float columns
@@ -54,6 +55,7 @@ import noTypeormSynchronize from "./rules/no-typeorm-synchronize.js";
 import requireLabelInName from "./rules/require-label-in-name.js";
 import requireOrderWithTake from "./rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "./rules/require-roles-on-controller-handler.js";
+import requireShapeWithValidateNested from "./rules/require-shape-with-validate-nested.js";
 import textSizeBeforeLeading from "./rules/text-size-before-leading.js";
 
 export default {
@@ -65,6 +67,7 @@ export default {
     "no-math-random-in-server": noMathRandomInServer,
     "no-process-env-outside-config": noProcessEnvOutsideConfig,
     "require-roles-on-controller-handler": requireRolesOnControllerHandler,
+    "require-shape-with-validate-nested": requireShapeWithValidateNested,
     "no-dangerous-html-without-sanitize": noDangerousHtmlWithoutSanitize,
     "no-error-name-branching": noErrorNameBranching,
     "no-float-money": noFloatMoney,

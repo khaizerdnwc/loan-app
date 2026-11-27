@@ -2,6 +2,7 @@ export { Avatar, initials } from "./components/avatar";
 export { Button, type ButtonProps, type ButtonVariant, buttonClass } from "./components/button";
 export { Card, type CardProps } from "./components/card";
 export {
+  Checkbox,
   Field,
   type FieldProps,
   FormGrid,

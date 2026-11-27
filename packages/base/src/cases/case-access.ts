@@ -89,6 +89,8 @@ export function allowedActions(
   booking: BookingRequestEntity | null,
   /** The case's current decision was made while a provider could not answer. */
   decidedDuringOutage = false,
+  /** The latest consent is complete (INT-006); submitting is refused until it is. */
+  consentComplete = true,
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -97,6 +99,26 @@ export function allowedActions(
     if (action === "EDIT_DRAFT" && c.status !== CaseStatus.Draft) continue;
     if (action === "REPRODUCE_DECISION" && !c.decisionId) continue;
     if (action === "REDECIDE" && !decidedDuringOutage) continue;
+    if (action === "REDECIDE" && !consentComplete) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.Validation,
+        detail:
+          "This case has no complete consent on record, so the bureau cannot be checked again. Recommend a decline instead.",
+      });
+      continue;
+    }
+    if (action === "SUBMIT" && !consentComplete) {
+      out.push({
+        action,
+        enabled: false,
+        blockedBy: ProblemCode.Validation,
+        detail:
+          "Record the applicant's consent to the credit bureau check and to data processing first.",
+      });
+      continue;
+    }
     if (action === "APPROVE_BOOKING" && c.status !== CaseStatus.PendingChecker) continue;
     if (action === "RETRY_BOOKING" && c.status !== CaseStatus.BookingFailed) continue;
 

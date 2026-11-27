@@ -4,6 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import {
   type ApplicantView,
   type CaseDetail,
+  CONSENT_TERMS_VERSION,
   type CreateCaseRequest,
   productLabel,
 } from "@loan/core";
@@ -14,6 +15,7 @@ const PRODUCT_CODE = "PL";
 import {
   Button,
   Card,
+  Checkbox,
   ConfirmDialog,
   Field,
   FormGrid,
@@ -35,6 +37,7 @@ import {
   MIN_AMOUNT,
   toDecimalString,
 } from "@/lib/application-schema";
+import { CONSENT_LABEL } from "@/lib/consent";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
 
@@ -53,9 +56,19 @@ export default function NewApplicationPage() {
   const [pending, setPending] = useState<{ intent: Intent; values: ApplicationForm } | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [consentError, setConsentError] = useState<string | null>(null);
+  /** The boxes themselves are at fault (not, say, the terms version). */
+  const [boxesInvalid, setBoxesInvalid] = useState(false);
   const form = useForm<ApplicationForm>({
     resolver: zodResolver(applicationSchema),
-    defaultValues: { applicantId: "", amount: "", tenorMonths: "", purpose: "" },
+    defaultValues: {
+      applicantId: "",
+      amount: "",
+      tenorMonths: "",
+      purpose: "",
+      creditBureauCheck: false,
+      dataProcessing: false,
+    },
   });
   const errors = form.formState.errors;
   const selected = applicants.data?.find((a) => a.id === form.watch("applicantId"));
@@ -69,7 +82,20 @@ export default function NewApplicationPage() {
     );
   }
 
-  const ask = (intent: Intent) => form.handleSubmit((values) => setPending({ intent, values }));
+  const ask = (intent: Intent) =>
+    form.handleSubmit((values) => {
+      // The API refuses to submit without both consents; say so before the round trip.
+      if (intent === "submit" && !(values.creditBureauCheck && values.dataProcessing)) {
+        setConsentError(
+          "Record both consents before submitting. A draft can be saved without them.",
+        );
+        setBoxesInvalid(true);
+        return;
+      }
+      setConsentError(null);
+      setBoxesInvalid(false);
+      setPending({ intent, values });
+    });
 
   async function confirm() {
     if (!pending) return;
@@ -81,6 +107,18 @@ export default function NewApplicationPage() {
       tenorMonths: Number.parseInt(pending.values.tenorMonths, 10),
       purpose: pending.values.purpose.trim(),
       submit: pending.intent === "submit",
+      // Recorded when any consent is given, and always when submitting.
+      ...(pending.intent === "submit" ||
+      pending.values.creditBureauCheck ||
+      pending.values.dataProcessing
+        ? {
+            consent: {
+              creditBureauCheck: pending.values.creditBureauCheck,
+              dataProcessing: pending.values.dataProcessing,
+              termsVersion: CONSENT_TERMS_VERSION,
+            },
+          }
+        : {}),
     };
     try {
       const created = await api<CaseDetail>("/cases", { method: "POST", body });
@@ -93,7 +131,16 @@ export default function NewApplicationPage() {
     } catch (e) {
       setBusy(false);
       // Field errors go next to their inputs: close the dialog so the officer can fix them.
-      const fields = Object.entries(fieldErrorsOf(e)).filter(([name]) => isFormField(name));
+      const all = fieldErrorsOf(e);
+      const consentProblem = Object.entries(all).find(([name]) => name.startsWith("consent"));
+      if (consentProblem) {
+        setPending(null);
+        setError(null);
+        setConsentError(consentProblem[1]);
+        setBoxesInvalid(consentProblem[0] === "consent");
+        return;
+      }
+      const fields = Object.entries(all).filter(([name]) => isFormField(name));
       if (fields.length) {
         for (const [name, message] of fields) form.setError(name as FormField, { message });
         setPending(null);
@@ -182,20 +229,56 @@ export default function NewApplicationPage() {
               </div>
             </Card>
           </div>
-          <Card title="Submit">
-            <p className="text-sm">
-              Submitting runs the checks and the decision at once. Most applications are decided in
-              seconds; a referred one goes to the work queue.
-            </p>
-            <div className="mt-4 flex flex-col gap-2">
-              <Button variant="accent" type="button" onClick={ask("submit")}>
-                Submit for decision
-              </Button>
-              <Button variant="secondary" type="button" onClick={ask("draft")}>
-                Save draft
-              </Button>
-            </div>
-          </Card>
+          <div className="flex flex-col gap-5">
+            <Card title="3 · Consent" aside={`Terms ${CONSENT_TERMS_VERSION}`}>
+              <p className="text-sm text-mist-600">
+                Captured on the applicant's behalf at the branch. Both are needed before the
+                application is submitted: no consent, no credit bureau check.
+              </p>
+              <fieldset className="mt-3 flex flex-col gap-2.5">
+                <legend className="sr-only">Applicant consents</legend>
+                <Checkbox
+                  label={CONSENT_LABEL.creditBureauCheck}
+                  invalid={boxesInvalid && !form.watch("creditBureauCheck")}
+                  {...form.register("creditBureauCheck", {
+                    onChange: () => {
+                      setConsentError(null);
+                      setBoxesInvalid(false);
+                    },
+                  })}
+                />
+                <Checkbox
+                  label={CONSENT_LABEL.dataProcessing}
+                  invalid={boxesInvalid && !form.watch("dataProcessing")}
+                  {...form.register("dataProcessing", {
+                    onChange: () => {
+                      setConsentError(null);
+                      setBoxesInvalid(false);
+                    },
+                  })}
+                />
+              </fieldset>
+              {consentError && (
+                <p role="alert" className="mt-3 text-xs font-semibold text-bad-700">
+                  {consentError}
+                </p>
+              )}
+            </Card>
+            <Card title="Submit">
+              <p className="text-sm">
+                Submitting runs the checks and the decision at once. Most applications are decided
+                in seconds; a referred one goes to the work queue.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <Button variant="accent" type="button" onClick={ask("submit")}>
+                  Submit for decision
+                </Button>
+                <Button variant="secondary" type="button" onClick={ask("draft")}>
+                  Save draft
+                </Button>
+              </div>
+            </Card>
+          </div>
         </form>
       )}
       <ConfirmDialog

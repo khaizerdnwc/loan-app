@@ -1,5 +1,11 @@
 import type { CaseDetail, CaseList } from "@loan/core";
-import { type Harness, readyForChecker, startHarness, submitCase } from "./support/harness";
+import {
+  FULL_CONSENT,
+  type Harness,
+  readyForChecker,
+  startHarness,
+  submitCase,
+} from "./support/harness";
 
 let h: Harness;
 let joel: CaseDetail;
@@ -249,7 +255,7 @@ describe("application capture and validation", () => {
     });
     const edited = await h
       .as("paolo")
-      .patch(`/cases/${created.body.id}`, { amount: "80000.00" })
+      .patch(`/cases/${created.body.id}`, { amount: "80000.00", consent: FULL_CONSENT })
       .expect(200);
     expect(edited.body.requestedAmount).toBe("80000.00");
     const submitted = await h.as("paolo").post(`/cases/${created.body.id}/submit`).expect(200);

@@ -3,6 +3,8 @@ import {
   type CaseDetail,
   type CaseList,
   CaseStatus,
+  CONSENT_TERMS_VERSION,
+  type ConsentInput,
   type CreateCaseRequest,
   DecisionOutcome,
   type DeclineRequest,
@@ -22,6 +24,7 @@ import { ActivityService } from "./activity.service";
 import { authorityProblem, canView } from "./case-access";
 import { CaseViews } from "./case-views";
 import { CasesRepository } from "./cases.repository";
+import { CONSENT_CHANNEL, consentComplete } from "./consent";
 import { DecisionService } from "./decision.service";
 import {
   authorityExceeded,
@@ -103,6 +106,9 @@ export class CasesService {
     if (errors.length || !amount || !applicant)
       throw validation("Check the highlighted fields.", errors);
 
+    if (body.consent) this.checkConsentInput(body.consent);
+    // Capture-and-submit without full consent would leave a draft behind a 400: refuse first.
+    if (body.submit && !consentComplete(body.consent ?? null)) throw consentRequired();
     const id = await this.tx.run(async (m) => {
       const c = new LoanCaseEntity();
       c.reference = await this.repo.nextReference(m);
@@ -122,15 +128,21 @@ export class CasesService {
         summary: `Created draft ${saved.reference}: ₱${amount.toString()} over ${body.tenorMonths} months for ${applicant.fullName}.`,
         toStatus: CaseStatus.Draft,
       });
+      if (body.consent) await this.recordConsent(m, user, saved, body.consent);
       return saved.id;
     });
     return body.submit ? this.submit(user, id) : this.get(user, id);
   }
 
   async updateDraft(user: SessionUser, id: string, body: UpdateDraftRequest): Promise<CaseDetail> {
+    if (body.consent) this.checkConsentInput(body.consent);
     await this.tx.run(async (m) => {
       const c = await this.lockOrFail(m, user, id);
       if (c.status !== CaseStatus.Draft) throw invalidState("Only a draft can be edited.");
+      if (body.consent) await this.recordConsent(m, user, c, body.consent);
+      const changesTerms =
+        body.amount !== undefined || body.tenorMonths !== undefined || body.purpose !== undefined;
+      if (!changesTerms) return;
       const amount = body.amount === undefined ? c.requestedAmount : parseAmount(body.amount);
       const tenor = body.tenorMonths ?? c.requestedTenorMonths;
       const errors = termErrors(amount, tenor);
@@ -166,6 +178,8 @@ export class CasesService {
     const draft = await this.visible(user, id);
     if (draft.status !== CaseStatus.Draft)
       throw invalidState("This application has already been submitted.");
+    // No consent, no bureau pull (PRD INT-006, AIS-002): checked before any provider call.
+    if (!consentComplete(await this.repo.latestConsent(draft.id))) throw consentRequired();
     // Providers are called before the transaction: no row lock is held while they answer.
     const inputs = await this.decisions.gatherInputs(draft, businessDate());
 
@@ -176,6 +190,11 @@ export class CasesService {
       // the decision record always explains the terms it approves (ADR 0022 R2).
       if (c.version !== draft.version) {
         throw invalidState("The draft changed while it was being decided. Submit it again.");
+      }
+      // Consent edits do not change the case's version, so read it again under the lock: a
+      // consent withdrawn while the providers answered stops the decision (INT-006).
+      if (!consentComplete(await this.repo.latestConsent(c.id, m))) {
+        throw consentRequired();
       }
       const { record, result } = await this.decisions.decideAndRecord(m, c, inputs, user.id);
       const to = OUTCOME_STATUS[result.outcome];
@@ -231,6 +250,8 @@ export class CasesService {
         "This case was decided with every provider answering; there is nothing to decide again.",
       );
     }
+    // No consent, no bureau pull: also on a re-decision (e.g. a case from before consent).
+    if (!consentComplete(await this.repo.latestConsent(current.id))) throw consentRequired();
     const inputs = await this.decisions.gatherInputs(current, businessDate());
     if (inputs.bureau.status === "UNAVAILABLE" || inputs.screening.status === "UNAVAILABLE") {
       // Nothing is written: another outage record would add nothing, and each try is a
@@ -533,6 +554,52 @@ export class CasesService {
 
   // --- helpers ------------------------------------------------------------------------------
 
+  private checkConsentInput(consent: ConsentInput): void {
+    if (consent.termsVersion !== CONSENT_TERMS_VERSION) {
+      throw validation("These are not the current terms and conditions.", [
+        {
+          field: "consent.termsVersion",
+          message: `The current terms are version ${CONSENT_TERMS_VERSION}.`,
+        },
+      ]);
+    }
+  }
+
+  private async recordConsent(
+    m: EntityManager,
+    user: SessionUser,
+    c: LoanCaseEntity,
+    consent: ConsentInput,
+  ): Promise<void> {
+    await this.repo.insertConsent(m, {
+      caseId: c.id,
+      applicantId: c.applicantId,
+      creditBureauCheck: consent.creditBureauCheck,
+      dataProcessing: consent.dataProcessing,
+      termsVersion: consent.termsVersion,
+      channel: CONSENT_CHANNEL,
+      capturedBy: user.id,
+    });
+    const given = [
+      consent.creditBureauCheck ? "credit bureau check" : null,
+      consent.dataProcessing ? "data processing" : null,
+    ].filter(Boolean);
+    await this.activity.record(m, {
+      caseId: c.id,
+      actor: user,
+      action: "CONSENT_RECORDED",
+      summary: given.length
+        ? `Recorded the applicant's consent (${given.join(", ")}; terms ${consent.termsVersion}) at the branch.`
+        : `Recorded that the applicant has not consented (terms ${consent.termsVersion}).`,
+      details: {
+        creditBureauCheck: consent.creditBureauCheck,
+        dataProcessing: consent.dataProcessing,
+        termsVersion: consent.termsVersion,
+        channel: CONSENT_CHANNEL,
+      },
+    });
+  }
+
   private async decisionRate(c: LoanCaseEntity): Promise<string | null> {
     if (!c.decisionId) return null;
     return (await this.repo.findDecision(c.decisionId))?.monthlyRate ?? null;
@@ -564,6 +631,15 @@ function asInvalidState(check: () => void): void {
     if (err instanceof InvalidTransitionError) throw invalidState(err.message);
     throw err;
   }
+}
+
+function consentRequired(): DomainError {
+  return validation("Record the applicant's consent before submitting.", [
+    {
+      field: "consent",
+      message: `The applicant must consent to the credit bureau check and to data processing under terms ${CONSENT_TERMS_VERSION}.`,
+    },
+  ]);
 }
 
 function parseAmount(raw: string | undefined): Money | null {

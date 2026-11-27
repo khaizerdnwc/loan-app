@@ -75,6 +75,9 @@ export const applicationSchema = z.object({
     .trim()
     .min(3, "Enter the purpose of the loan.")
     .max(120, "Keep the purpose under 120 characters."),
+  /** Consents (PRD INT-006). A draft may be saved without them; submitting needs both. */
+  creditBureauCheck: z.boolean(),
+  dataProcessing: z.boolean(),
 });
 
 export type ApplicationForm = z.infer<typeof applicationSchema>;
