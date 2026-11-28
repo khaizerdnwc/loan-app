@@ -2,7 +2,7 @@
 
 import { Button, Callout, Icon, SegmentedFilter } from "@loan/ui";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { type ReactNode, Suspense, useState } from "react";
+import { type ReactNode, Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { LoadState } from "@/components/load-state";
 import { apiFile, errorMessage } from "@/lib/api";
@@ -57,12 +57,17 @@ function Report<T>({
   const periodLabel = PERIODS.find((p) => p.value === days)?.label ?? `${days} days`;
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  // A refusal belongs to the period it was asked for: another period starts clean.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: reset whenever the period changes
+  useEffect(() => {
+    setDownloadError(null);
+  }, [days]);
 
   async function download(csvPath: string) {
     setDownloading(true);
     setDownloadError(null);
     try {
-      const { blob, fileName } = await apiFile(`${csvPath}${query}`);
+      const { blob, fileName } = await apiFile(`${csvPath}${query}`, "report.csv");
       const href = URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = href;
@@ -70,7 +75,8 @@ function Report<T>({
       document.body.append(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(href);
+      // On the next tick: some browsers start the download after the click returns.
+      setTimeout(() => URL.revokeObjectURL(href), 0);
     } catch (err) {
       setDownloadError(errorMessage(err));
     } finally {

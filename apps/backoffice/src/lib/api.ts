@@ -74,9 +74,13 @@ export async function api<T>(
 
 /**
  * Fetch a file the API hands over as an attachment (a report CSV): its bytes and the file
- * name from Content-Disposition. A refusal becomes an ApiError, as with `api`.
+ * name from Content-Disposition (`fallbackName` when the reply names none). A refusal becomes
+ * an ApiError, as with `api`.
  */
-export async function apiFile(path: string): Promise<{ blob: Blob; fileName: string }> {
+export async function apiFile(
+  path: string,
+  fallbackName: string,
+): Promise<{ blob: Blob; fileName: string }> {
   let response: Response;
   try {
     response = await fetch(`/api${path}`, { credentials: "same-origin", cache: "no-store" });
@@ -97,7 +101,7 @@ export async function apiFile(path: string): Promise<{ blob: Blob; fileName: str
     throw toApiError(response.status, body);
   }
   const disposition = response.headers.get("content-disposition") ?? "";
-  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "download";
+  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? fallbackName;
   return { blob: await response.blob(), fileName };
 }
 
