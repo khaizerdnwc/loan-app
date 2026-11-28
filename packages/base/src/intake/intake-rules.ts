@@ -10,6 +10,7 @@ import {
   Money,
   Role,
 } from "@loan/core";
+import { normaliseName } from "../cases/applicant-identity";
 import { termErrors } from "../cases/product";
 import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
 
@@ -34,14 +35,8 @@ export function incomeMismatch(declared: Money, read: Money, tolerance: string):
   return read.isZero() ? !declared.isZero() : gap.greaterThan(read.times(tolerance));
 }
 
-/** A name or employer compared without case, punctuation or repeated spaces. */
-export function normaliseName(value: string): string {
-  return value
-    .toLowerCase()
-    .replace(/[^\p{L}\p{N} ]/gu, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
+/** Names are compared as everywhere an identity is (cases/applicant-identity). */
+export { normaliseName };
 
 export interface ExtractedRowFacts {
   governmentIdLast4: string | null;

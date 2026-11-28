@@ -3,6 +3,12 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { type EntityManager, In, LessThanOrEqual, Not, type Repository } from "typeorm";
 import type { SessionUser } from "../auth/session";
+import {
+  type Identity,
+  type IdentityMatch,
+  identityKey,
+  normaliseName,
+} from "./applicant-identity";
 import { ActivityEventEntity } from "./entities/activity-event.entity";
 import { ApplicantEntity } from "./entities/applicant.entity";
 import {
@@ -15,6 +21,9 @@ import { CaseDocumentEntity } from "./entities/case-document.entity";
 import { ConsentRecordEntity } from "./entities/consent-record.entity";
 import { DecisionRecordEntity } from "./entities/decision-record.entity";
 import { LoanCaseEntity } from "./entities/loan-case.entity";
+
+/** The first key of the two-key advisory lock on an applicant identity (its own key space). */
+const IDENTITY_LOCK_SPACE = 4004;
 
 /** The stages each role works on (docs/API.md "Who sees what"). */
 export const OPERATIONS_STAGES: CaseStatus[] = [
@@ -49,8 +58,63 @@ export class CasesRepository {
     return this.applicants.findOne({ where: { customerNumber } });
   }
 
-  insertApplicant(manager: EntityManager, a: ApplicantEntity): Promise<ApplicantEntity> {
-    return manager.getRepository(ApplicantEntity).save(a);
+  /**
+   * A new applicant: an INSERT, never save()'s upsert, so a row with an id already on file is
+   * refused (23505) instead of overwriting the customer stored under it.
+   */
+  async insertApplicant(manager: EntityManager, a: ApplicantEntity): Promise<ApplicantEntity> {
+    await manager.getRepository(ApplicantEntity).insert(a);
+    return a;
+  }
+
+  /** Update an applicant already on record (a walk-in linked to core). */
+  async updateApplicant(manager: EntityManager, a: ApplicantEntity): Promise<void> {
+    await manager.getRepository(ApplicantEntity).update(
+      { id: a.id },
+      {
+        customerNumber: a.customerNumber,
+        depositAccount: a.depositAccount,
+        relationshipMonths: a.relationshipMonths,
+        monthlyIncome: a.monthlyIncome,
+        declaredMonthlyIncome: a.declaredMonthlyIncome,
+      },
+    );
+  }
+
+  /**
+   * The customers on record with this identity (name as compared, birth date, ID ending): none,
+   * exactly one, or several (an ambiguity a person must resolve; never read as "not on record").
+   */
+  async matchApplicantIdentity(
+    identity: Identity,
+    manager?: EntityManager,
+  ): Promise<IdentityMatch> {
+    // Every customer with this birth date and ID ending (no cap: a capped list could hide a
+    // match and read "several" or "one" as fewer); the name is then compared as everywhere.
+    // No index: the applicant table is small (synthetic personas and captures); add one on
+    // (birth_date, government_id_last4) when it is not.
+    const candidates = await (manager?.getRepository(ApplicantEntity) ?? this.applicants).find({
+      where: { birthDate: identity.birthDate, governmentIdLast4: identity.governmentIdLast4 },
+      order: { id: "ASC" },
+    });
+    const name = normaliseName(identity.fullName);
+    const hits = candidates.filter((a) => normaliseName(a.fullName) === name);
+    if (hits.length === 0) return { kind: "none" };
+    if (hits.length > 1) return { kind: "many", applicants: hits };
+    return { kind: "one", applicant: hits[0] as ApplicantEntity };
+  }
+
+  /**
+   * Serialise captures of one identity for the rest of the transaction: a transaction-scoped
+   * advisory lock on the identity key, in its own key space (two-key form, apart from the
+   * audit log's single-key lock). Taken before matching, so two captures of the same person at
+   * once (walk-ins, intake drafts, or one of each) store them once.
+   */
+  async lockApplicantIdentity(manager: EntityManager, identity: Identity): Promise<void> {
+    await manager.query("SELECT pg_advisory_xact_lock($1, hashtext($2))", [
+      IDENTITY_LOCK_SPACE,
+      identityKey(identity),
+    ]);
   }
 
   /** How many open officer-stage cases (draft, review, information requested) each officer owns. */
@@ -209,6 +273,14 @@ export class CasesRepository {
   // --- history -----------------------------------------------------------------------------
 
   /** The applicant's open application for the product (not in a closed status), if any. */
+  /** Every open (not closed) case of an applicant, oldest first. */
+  openCasesOfApplicant(applicantId: string, manager: EntityManager): Promise<LoanCaseEntity[]> {
+    return manager.getRepository(LoanCaseEntity).find({
+      where: { applicantId, status: Not(In([...CLOSED_CASE_STATUSES])) },
+      order: { createdAt: "ASC", id: "ASC" },
+    });
+  }
+
   findOpenCase(
     applicantId: string,
     productCode: string,

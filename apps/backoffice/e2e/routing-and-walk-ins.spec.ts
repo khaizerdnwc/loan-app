@@ -27,12 +27,15 @@ async function applyFor(page: Page, amount: string, tenor: string) {
 
 test("WI-1 and QR-1 a walk-in is captured by hand, referred to the team queue, picked, reassigned and prioritised", async ({
   page,
-}) => {
+}, testInfo) => {
+  // One person is on record once (WI-2): a retry captures Rogelio with other ID digits, so the
+  // first attempt's walk-in does not refuse it.
+  const idLast4 = String(4410 + testInfo.retry);
   await newApplication(page);
   await dialog(page).getByRole("button", { name: "New to the bank" }).click();
   await dialog(page).getByLabel("Full name", { exact: true }).fill("Rogelio Santiago");
   await dialog(page).getByLabel("Birth date", { exact: true }).fill("1988-06-12");
-  await dialog(page).getByLabel("Government ID (last 4 digits)", { exact: true }).fill("4410");
+  await dialog(page).getByLabel("Government ID (last 4 digits)", { exact: true }).fill(idLast4);
   await dialog(page).getByLabel("Employer", { exact: true }).fill("Bulacan Hardware Trading");
   await dialog(page).getByLabel("Months with employer", { exact: true }).fill("36");
   await dialog(page).getByLabel("Monthly income (pesos)", { exact: true }).fill("52000");
