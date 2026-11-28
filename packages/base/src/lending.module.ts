@@ -60,6 +60,9 @@ import { ReportsController } from "./reports/reports.controller";
 import { ReportsRepository } from "./reports/reports.repository";
 import { ReportsService } from "./reports/reports.service";
 import { SimulationController } from "./simulation/simulation.controller";
+import { CalendarController } from "./sla/calendar.controller";
+import { CalendarRepository } from "./sla/calendar.repository";
+import { CalendarService } from "./sla/calendar.service";
 import { SlaController, TurnaroundController } from "./sla/sla.controller";
 import { SlaRepository } from "./sla/sla.repository";
 import { SlaService } from "./sla/sla.service";
@@ -101,6 +104,7 @@ export class LendingModule {
         ReportsController,
         SlaController,
         TurnaroundController,
+        CalendarController,
         NotificationsController,
         ProvidersController,
         GovernanceController,
@@ -137,6 +141,8 @@ export class LendingModule {
         ReportExportService,
         SlaRepository,
         SlaService,
+        CalendarRepository,
+        CalendarService,
         NotificationRepository,
         NotificationService,
         NotificationReadsService,

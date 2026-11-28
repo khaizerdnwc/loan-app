@@ -36,6 +36,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/models",
       "/approval-matrix",
       "/features",
+      "/calendar",
     ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
@@ -202,6 +203,13 @@ describe("a module the bank switched off leaves the sidebar (FF-5, PRD PLT-006)"
     expect(hrefsWith("ADMIN")).toContain("/features");
     for (const role of ["LOAN_OFFICER", "APPROVER", "COMPLIANCE", "LOAN_OPERATIONS"] as Role[]) {
       expect(hrefsWith(role)).not.toContain("/features");
+    }
+  });
+
+  it("only administrators get the Business calendar screen (HC-7, PRD PLT-005)", () => {
+    expect(hrefsWith("ADMIN")).toContain("/calendar");
+    for (const role of ["LOAN_OFFICER", "APPROVER", "COMPLIANCE", "LOAN_OPERATIONS"] as Role[]) {
+      expect(hrefsWith(role)).not.toContain("/calendar");
     }
   });
 });

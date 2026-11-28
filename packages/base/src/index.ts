@@ -39,4 +39,10 @@ export { NotificationService } from "./notifications/notification.service";
 export { NotificationReadsService } from "./notifications/notification-reads.service";
 export { ProviderGateway } from "./providers/provider-gateway.service";
 export { ProvidersRepository } from "./providers/providers.repository";
-export { SEED_APPLICANTS, SEED_STAFF, SEED_TEST_PASSWORD, seed } from "./seed/seed";
+export {
+  SEED_APPLICANTS,
+  SEED_HOLIDAYS,
+  SEED_STAFF,
+  SEED_TEST_PASSWORD,
+  seed,
+} from "./seed/seed";

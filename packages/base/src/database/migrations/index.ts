@@ -19,6 +19,7 @@ import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtra
 import { IntakeCapturedApplicant1764300004001 } from "./1764300004001-IntakeCapturedApplicant";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
 import { FeatureFlags1764300009001 } from "./1764300009001-FeatureFlags";
+import { BusinessHolidayChanges1764300009002 } from "./1764300009002-BusinessHolidayChanges";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -48,4 +49,5 @@ export const MIGRATIONS = [
   IntakeCapturedApplicant1764300004001,
   ForeignKeysAndTruncateGuards1764300009000,
   FeatureFlags1764300009001,
+  BusinessHolidayChanges1764300009002,
 ];

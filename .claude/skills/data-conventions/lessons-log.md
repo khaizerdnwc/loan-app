@@ -113,6 +113,20 @@ own columns written only by the events that should move them.
   with no `expiryRefusal` check. Reassigning an expired, unswept draft resets its 30-day
   clock. Found by the data reviewer.
 
+## data-20261128-seed-never-overwrites-screen-data
+
+A table that staff maintain from a screen, under maker-checker and audit, is no longer seed
+data. The seed may fill it once (when empty, or in a migration), never upsert it on every run.
+Why: the image runs `db.js seed` on every container start (Dockerfile CMD), so an upsert
+quietly re-inserts a row an administrator removed, or overwrites one they changed. The table
+then disagrees with its audit history, and nothing records the reversal. The integration
+suite seeds once in global-setup, so it never sees it. Nearest deterministic alternative: an
+integration test that approves a change, calls `seed(ds)`, and asserts the change survived.
+
+- 2026-11-28 — Lane H PLT-005 (holiday calendar from a screen). seed.ts:839 upserts
+  SEED_HOLIDAYS on every run, so an approved removal of a seeded holiday comes back at the
+  next restart, and SLA due times move back with no audit entry. Found by the data reviewer.
+
 ## data-20261128-provider-call-outside-lock
 
 Gate: house/no-provider-call-in-transaction

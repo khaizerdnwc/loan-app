@@ -48,7 +48,7 @@ this (`pnpm deps:check`, part of the `static` stage).
   folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
   hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
   (booking exceptions, reconciliation), `reports/` (read-only aggregates), `sla/` (stage SLAs,
-  business time), `notifications/` (staff alerts, borrower messages), `intake/` (email and
+  business time, the holiday calendar and its maker-checker changes), `notifications/` (staff alerts, borrower messages), `intake/` (email and
   file intake drafts and OCR readings, which only feed the case aggregate), `providers/` (the
   decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
   (model registry, override and drift monitoring, read-only), `eligibility/` (the pre-check over
