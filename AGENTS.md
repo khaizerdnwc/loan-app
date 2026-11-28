@@ -43,7 +43,7 @@ and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
 | AML escalations and screening before disbursement; the hash-chained audit log | `packages/base/src/compliance/`, `packages/base/src/audit/` (same module) |
 | Booking exceptions and reconciliation; decision-mix and funnel reports | `packages/base/src/operations/`, `packages/base/src/reports/` (same module) |
 | Email and file intake (OCR drafts) and OCR readings of case documents | `packages/base/src/intake/` (same module; uses `cases/`, never imported by it) |
-| Stage SLAs, Philippine business time and the turnaround report | `packages/base/src/sla/` (same module) |
+| Stage SLAs, Philippine business time, the business calendar (holidays kept under maker-checker) and the turnaround report | `packages/base/src/sla/` (same module) |
 | Staff alerts, borrower messages (outbox written in the case transaction, sent outside it), SLA-breach alerts | `packages/base/src/notifications/` (same module); the API's sweep `apps/api/src/notification-sweep.ts` |
 | Feature flags: the bank's optional modules switched on or off (maker-checker) | `packages/base/src/features/` (same module; used by `eligibility/` and `intake/` through `FeaturesService.assertEnabled`) |
 | Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |

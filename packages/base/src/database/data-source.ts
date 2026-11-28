@@ -33,6 +33,7 @@ import {
 import { ReconciliationRunEntity } from "../operations/entities/reconciliation-run.entity";
 import { BureauReportCacheEntity, ProviderCallEntity } from "../providers/providers.entities";
 import { BusinessHolidayEntity } from "../sla/entities/business-holiday.entity";
+import { BusinessHolidayChangeEntity } from "../sla/entities/business-holiday-change.entity";
 import { MIGRATIONS } from "./migrations";
 
 /** Every lending entity, listed explicitly (no glob: the same list works from src and dist). */
@@ -58,6 +59,7 @@ export const ENTITIES = [
   CaseDocumentEntity,
   ReconciliationRunEntity,
   BusinessHolidayEntity,
+  BusinessHolidayChangeEntity,
   StaffNotificationEntity,
   NotificationDeliveryEntity,
   ProviderCallEntity,

@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import "reflect-metadata";
-import { SEED_TEST_PASSWORD } from "@loan/base";
+import { SEED_HOLIDAYS, SEED_TEST_PASSWORD } from "@loan/base";
 import { type CaseDetail, CONSENT_TERMS_VERSION, type CreateCaseRequest } from "@loan/core";
 import type { INestApplication } from "@nestjs/common";
 import { Test } from "@nestjs/testing";
@@ -127,6 +127,7 @@ export async function resetData(ds: DataSource): Promise<void> {
     "notification_delivery",
     "sim.notification",
     "feature_flag_change",
+    "business_holiday_change",
     "intake_draft",
     "intake_batch",
     "document_extraction",
@@ -138,6 +139,23 @@ export async function resetData(ds: DataSource): Promise<void> {
       kill_switch_set_by = NULL, kill_switch_set_at = NULL, external_engine = 'NONE'`);
   // Every module on, as the feature-flag migration leaves them.
   await ds.query(`UPDATE feature_flag SET enabled = true, updated_by = NULL`);
+  await resetCalendar(ds);
+}
+
+/**
+ * The business calendar back to the seeded one, with no changes waiting (a test may have
+ * added or removed a day; PLT-005). In one transaction, so no reader sees it half done.
+ */
+export async function resetCalendar(ds: DataSource): Promise<void> {
+  await ds.transaction(async (m) => {
+    await m.query("DELETE FROM business_holiday_change");
+    await m.query("DELETE FROM business_holiday");
+    await m.query(
+      `INSERT INTO business_holiday (date, name)
+         SELECT * FROM unnest($1::date[], $2::text[])`,
+      [SEED_HOLIDAYS.map((d) => d.date), SEED_HOLIDAYS.map((d) => d.name)],
+    );
+  });
 }
 
 /**

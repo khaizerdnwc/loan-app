@@ -97,6 +97,9 @@ export function navFor(role: Role, features?: Partial<FeatureStateView> | null):
     system.push({ href: "/approval-matrix", label: "Approval matrix", icon: "check" });
   // Feature flags (PRD PLT-006): administrators switch modules on or off, two at a time.
   if (role === "ADMIN") system.push({ href: "/features", label: "Feature flags", icon: "sliders" });
+  // The business calendar (PRD PLT-005): administrators add or remove holidays, two at a time.
+  if (role === "ADMIN")
+    system.push({ href: "/calendar", label: "Business calendar", icon: "list" });
   groups.push({ heading: "System", items: system });
   return groups;
 }

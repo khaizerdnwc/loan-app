@@ -18,7 +18,7 @@ with `MIGRATE_ON_BOOT=true`: several API replicas can start at once; the first a
 pending migrations and the others wait for it, then find nothing to do. A waiter gives up
 with an error after `MIGRATION_LOCK_TIMEOUT_MS` (default 300000, five minutes) and migrates
 nothing; the container then exits and restarts. A holder that dies frees the lock when its
-connection closes. The seed upserts, so concurrent seeds are safe too. Both images report health (`HEALTHCHECK`: API `/health`,
+connection closes. The seed upserts, or fills empty tables idempotently (the holiday calendar is written only into a fresh environment, with `ON CONFLICT DO NOTHING`), so concurrent seeds are safe too. Both images report health (`HEALTHCHECK`: API `/health`,
 backoffice `/sign-in`).
 
 The final images hold a production-only install: `pnpm deploy --prod` copies each app with

@@ -5,6 +5,7 @@ import { hashPassword } from "../auth/password";
 import { StaffEntity } from "../auth/staff.entity";
 import { ApplicantEntity } from "../cases/entities/applicant.entity";
 import { BusinessHolidayEntity } from "../sla/entities/business-holiday.entity";
+import { BusinessHolidayChangeEntity } from "../sla/entities/business-holiday-change.entity";
 
 /**
  * Synthetic demo data only (mechanics: "use synthetic data only, and create it yourself").
@@ -780,7 +781,8 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
 /**
  * A small Philippine holiday calendar for the business clock (PRD PLT-005): the regular and
  * special non-working days of late 2026 and early 2027, as commonly proclaimed. Synthetic
- * demo data: a deployment would load the official proclamation each year.
+ * demo data: a deployment would load the official proclamation each year. Written only into an
+ * empty calendar (see seed()): after that the calendar is the administrators'.
  */
 export const SEED_HOLIDAYS: { date: string; name: string }[] = [
   { date: "2026-08-21", name: "Ninoy Aquino Day" },
@@ -836,7 +838,21 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
         [a.id, documentProfile(a)],
       );
     }
-    await m.getRepository(BusinessHolidayEntity).upsert(SEED_HOLIDAYS, ["date"]);
+    // The demo calendar is a starting point, not seed data to keep in step. Administrators
+    // change business_holiday from the Business calendar screen (PLT-005), and the image seeds
+    // on every boot, so the demo days are written only into a fresh environment: no holiday
+    // and no approved calendar change (a calendar emptied by administrators stays empty). A
+    // restart never undoes an approved removal or addition. Replicas seeding at once both
+    // pass the check; ON CONFLICT DO NOTHING lets the second insert find the rows and go on.
+    const holidays = m.getRepository(BusinessHolidayEntity);
+    const fresh =
+      (await holidays.count()) === 0 &&
+      (await m
+        .getRepository(BusinessHolidayChangeEntity)
+        .count({ where: { status: "APPROVED" } })) === 0;
+    if (fresh) {
+      await holidays.createQueryBuilder().insert().values(SEED_HOLIDAYS).orIgnore().execute();
+    }
   });
   return { staff: SEED_STAFF.length, applicants: SEED_APPLICANTS.length };
 }
