@@ -28,6 +28,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/reports/turnaround",
       "/simulation",
       "/automation",
+      "/models",
     ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
@@ -39,8 +40,11 @@ describe("where each role lands and what its sidebar offers", () => {
       "/reports/turnaround",
       "/simulation",
       "/automation",
+      "/models",
     ]);
     expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
+    expect(hrefs("LOAN_OFFICER")).not.toContain("/models");
+    expect(hrefs("APPROVER")).not.toContain("/models");
   });
 
   it("booking exceptions for loan operations and Compliance; reports for the roles that read decisions", () => {
@@ -83,6 +87,7 @@ describe("breadcrumb and page icons", () => {
     ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],
     ["ADMIN", "/simulation", "System", "Simulated services", "sliders"],
     ["ADMIN", "/automation", "System", "Automation controls", "sliders"],
+    ["COMPLIANCE", "/models", "System", "Model governance", "chart"],
     ["ADMIN", "/audit", "Compliance", "Audit log", "list"],
     ["COMPLIANCE", "/compliance/escalations", "Compliance", "AML escalations", "shieldAlert"],
     ["COMPLIANCE", "/compliance/escalations/0b6d", "Compliance", "AML escalations", "shieldAlert"],

@@ -109,6 +109,14 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         </Callout>
       )}
 
+      {decision.score !== null && !bands && (
+        <p className="mt-5 text-sm text-mist-600">
+          Score band not shown: this decision names rule set {decision.ruleSetVersion}, which this
+          version of the system does not know, so its band edges cannot be drawn. The score and the
+          rule results above are as recorded.
+        </p>
+      )}
+
       {decision.score !== null && bands && (
         <div className="mt-5">
           <ScoreBand

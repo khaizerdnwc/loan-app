@@ -56,6 +56,14 @@ describe("the decision's score band comes from the API (F1-1)", () => {
     expect(screen.getByLabelText(/decline below 620, .* approve from 720$/)).toBeInTheDocument();
   });
 
+  it("a decision whose rule set the API does not know says why the band is missing", () => {
+    render(<DecisionPanel decision={decision({ ruleSetVersion: "RS-PL-99", scoreBand: null })} />);
+    expect(screen.queryByLabelText(/^Score /)).toBeNull();
+    expect(
+      screen.getByText(/Score band not shown: this decision names rule set RS-PL-99/),
+    ).toBeInTheDocument();
+  });
+
   it("an unscored decision shows no band", () => {
     render(<DecisionPanel decision={decision({ score: null, grade: null })} />);
     expect(screen.queryByLabelText(/^Score /)).toBeNull();

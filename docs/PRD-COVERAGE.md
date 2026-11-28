@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 31 built, 37 partly built, 71 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
+Summary: 33 built, 38 partly built, 68 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -205,12 +205,12 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | AIS-004 | Cold-start: bureau score plus expert scorecard | built | `scorecards.ts` (SC-PL-1), D-1..D-9 | An additive expert scorecard that includes the bureau score band. This is the only model mode. |
 | AIS-005 | Tenant-specific models after repayment outcomes | not built (**OOR**) | — | Needs real repayment outcomes. |
 | AIS-006 | Pooled models (P2) | not built | — | Phase 2. |
-| AIS-007 | Shadow mode | partly built | AU-1, AU-2, D-13, `automation.service.ts` | Per-product shadow mode: the engine scores and decides every application, its outcome is recorded (`engine_outcome`) and a person decides. Missing: agreement-rate and outcome reporting before automation is enabled, and shadowing a challenger model beside a live one. |
-| AIS-008 | Model registry | partly built | `scorecards.ts` versions | Versions only. No lineage, validation, sign-off or deployment history. |
-| AIS-009 | Drift and segment monitoring | not built | — | |
+| AIS-007 | Shadow mode | partly built | AU-1, AU-2, D-13, `automation.service.ts` | Per-product shadow mode: the engine scores and decides every application, its outcome is recorded (`engine_outcome`) and a person decides. The agreement rate where the engine only advised is reported (MG-3). Missing: outcome performance reporting before automation is enabled, and shadowing a challenger model beside a live one. |
+| AIS-008 | Model registry | partly built | `governance/`, MG-2, `GET /models`, Model governance screen | Every scorecard and rule set with its use (decisions, first and last), the features each scorecard reads, whether it carries a PD, and the prohibited-features check. Missing: lineage, independent validation, sign-off and deployment history. |
+| AIS-009 | Drift and segment monitoring | partly built | MG-4, `GET /models/drift` | Grade-share drift (population stability index) between a recent window and a baseline, with a status and a minimum of 30 scored decisions per window. Missing: segment-level and feature-level monitoring, alerting. |
 | AIS-010 | Fairness testing | not built (**OOR** for meaningful results) | — | A harness could run on synthetic personas, but the results would mean nothing without real data. |
-| AIS-011 | Override capture feeding monitoring | partly built | OV01–OV06 on recommendations, F2-3/F2-4 | Captured and stored. Nothing consumes it. |
-| AIS-012 | Prohibited-features list | not built | — | The scorecard uses no protected attribute, but there is no list or enforcement. |
+| AIS-011 | Override capture feeding monitoring | built | OV01–OV06, F2-3/F2-4, MG-3, `GET /models/overrides` | Overrides are captured with reason codes and consumed: override rate, reasons, the engine-versus-officer matrix and agreement where the engine only advised (shadow, off, kill switch). |
+| AIS-012 | Prohibited-features list | built | `scorecards.ts` (`PROHIBITED_FEATURES`, `features`), MG-1, MG-2 | A list of prohibited attributes (protected characteristics, age as a score factor); every scorecard declares the features it reads, and one that lists a prohibited attribute is refused when it scores. |
 
 ### 7.4–7.5 Review and rollout controls
 
@@ -245,8 +245,8 @@ These are PRD sections, not requirement IDs.
 | CMP-004 | Data privacy | partly built | `applicant.entity.ts` (only the last 4 digits of the government ID), masked IDs in views | Data minimisation and no applicant data in logs. No access, correction, retention or deletion workflow. |
 | CMP-005 | AML at onboarding and pre-disbursement, escalation, export | partly built | `kyc-aml.port.ts`, D-2, R13, CMP-1..CMP-10 | Screened at submission and again before disbursement (a match holds the booking; an outage holds it for a retry, never declines). Matches escalate to Compliance, who acknowledge and close them; a false positive releases the held booking, a confirmed match keeps it blocked. Missing: export to the bank's AML system, and real list screening (simulated only, **OOR**). |
 | CMP-006 | Related-party controls | partly built | D-12, TR-1 | A related-party flag on the applicant (seeded) and mandatory referral (RS-PL-2, R18). Missing: where the flag comes from (a core or HR lookup), the special approval workflow and reporting. |
-| CMP-007 | Fair lending | partly built | DEC-007 codes | Decline codes only. |
-| CMP-008 | Model risk governance | not built | — | |
+| CMP-007 | Fair lending | partly built | DEC-007 codes, MG-1 | Borrower-safe decline codes and the prohibited-features check at scoring. Missing: fairness testing on outcomes (AIS-010). |
+| CMP-008 | Model risk governance | partly built | MG-2..MG-4 | Registry, override monitoring and drift for administrators and compliance. Missing: a validation and sign-off workflow, model inventory approvals. |
 | CMP-009 | Fair collection | not built | — | Depends on CLX. |
 | CMP-010 | Tamper-evident audit trail | built | AUD-4, AUD-5, AUD-8, `1764300002000-AuditLogAndAmlEscalations.ts`, `audit/audit-chain.ts` | The audit log is hash-chained (sha256 of the previous hash and the canonical entry) and `GET /audit/verify` recomputes it, naming the first changed or missing entry; triggers refuse UPDATE, DELETE and TRUNCATE on it. The older per-case tables (`activity_event`, `decision_record`) still allow TRUNCATE; their events are covered by the chain. No external anchor of the head hash. |
 | CMP-011 | Segregation of duties | built | R-1..R-9, ADR 0020 | |
@@ -305,13 +305,13 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 17 | Credit memo generated from the case, editable by the analyst, stored with versions | WF-008 | M | Part of F2 review in the PRD. |
 | 18 | Disclosure statement generated from approved terms and acknowledged before the simulated signature; templates | CMP-002, DOC-004, SS-002 (staff side) | M | Truth in Lending requirement for the PH release. Needs a fee model (PC-002). |
 | 19 | Configurable approval matrix (product, exception type, delegated levels) as data | WF-004 | M | Generalises the amount-and-grade authority already built. |
-| 20 | Rule sets as published data with draft, review and publish under maker-checker, effective dates, and a draft-vs-live test harness over stored decisions | DEC-001, DEC-003, DEC-004, PC-005, PC-006, F8 | L | Needed for F8 and the "product setup in under 2 weeks" metric. Must keep ADR 0022 replay (published versions immutable). |
+| 20 | Rule sets as published data with draft, review and publish under maker-checker, effective dates, and a draft-vs-live test harness over stored decisions | DEC-001, DEC-003, DEC-004, PC-005, PC-006, F8 | L | Needed for F8 and the "product setup in under 2 weeks" metric. Must keep ADR 0022 replay (published versions immutable). Deferred from lane C batch 3 in favour of #26: storing rule sets as data changes ADR 0022 R4 (versions are code), every replay path and the editor screen, more than one batch. |
 | 21 | Product configuration (core product reference, ranges, pricing grids, fees, form fields, document checklists) | PC-001..PC-004, PC-002 fees | L | Follows #20. Fees unblock #18. |
 | 22 | Credit committee: circulation, votes, quorum, conditions, minutes | WF-010 | L | F5 and above-authority cases. Replaces today's "escalated" flag. |
 | 23 | Notifications through a simulated SMS/email/push port: staff alerts, borrower templates, delivery log | NTF-001..003, CLX-003 | M | Needed by WF-007 and collections. |
 | 24 | Tenant ID on every record | NFR-007 | M | A Phase 1 NFR. Cheaper before more tables exist. |
 | 25 | Field-level encryption of financial fields; MFA (TOTP) for staff | NFR-008, NFR-009 | M | Security NFRs not blocked by mechanics. |
-| 26 | Model registry, override and drift monitoring, prohibited-features list checked at scoring | AIS-008, AIS-009, AIS-011, AIS-012, CMP-007, CMP-008 | L | Governance around the scorecard. Meaningful only with volume. |
+| 26 | ✅ Done (MG-1..MG-4). Model registry, override and drift monitoring, prohibited-features list checked at scoring | AIS-008, AIS-009, AIS-011, AIS-012, CMP-007, CMP-008 | L | Governance around the scorecard. Meaningful only with volume. |
 | 27 | ✅ Done (D-16, D-17, PR-5). PD and recommended amount from the scorecard; latency measurement | AIS-001, NFR-003 | S | Completes the AIS-001 output. |
 | 28 | ✅ Done (PR-1..PR-4). Provider resilience: automatic retry with backoff, circuit breaker, bureau result cache, per-call cost counter | IH-003, IH-005, IH-006 | M | Platform hardening. |
 | 29 | Secured lending: collateral register, simulated appraisal, LTV enforcement, liens and insurance, deposit holds in simulated core; home-loan product | COL-001..006, PC-009, F5 | L | Second Phase 1 wave in the PRD ("then secured lending"). |

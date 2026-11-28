@@ -441,6 +441,8 @@ export class CasesService {
           tenorMonths: tenor,
           overrideReason: c.overrideReason,
           rationale: c.recommendationRationale,
+          // The automated decision this recommendation acted on (override monitoring, MG-3).
+          decisionId: c.decisionId,
         },
       });
     });

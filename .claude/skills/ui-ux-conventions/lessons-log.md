@@ -4,6 +4,10 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## ui-ux-20261128-no-figure-below-minimum
+
+The Model governance drift card pills "Not enough decisions" (fewer than 30 scored decisions in a window) yet the sentence beside it still prints "Population stability index 0.4123 (under 0.10 stable, 0.25 and over significant)". The API computes PSI on any non-empty windows and only withholds the status. A compliance reader sees a figure in the "significant" range next to a pill saying there is nothing to judge, and the figure is the one that gets quoted. Why: Engineering Standard 6 (understandable states); a statistic below its minimum sample is noise. Fix shape: under INSUFFICIENT_DATA show "PSI not computed: baseline N, recent M of the 30 needed per window" (or the API sends psi null). Found reviewing lane C batch 3 on 2026-11-28. Nearest deterministic alternative: a component test rendering DriftMonitor with status INSUFFICIENT_DATA that asserts no PSI figure and the counts.
+
 ## ui-ux-20261128-no-engine-version-table
 
 Gate: house/no-engine-version-literal

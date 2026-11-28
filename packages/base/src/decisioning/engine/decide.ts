@@ -3,7 +3,7 @@ import { AutomationMode, DecisionOutcome, type Grade, Money } from "@loan/core";
 import { ratioAsPercent } from "./ratio";
 import { REASONS } from "./reason-codes";
 import { type RuleSet, ruleSet } from "./rule-sets";
-import { type Scorecard, score, scorecard } from "./scorecards";
+import { prohibitedFeaturesIn, type Scorecard, score, scorecard } from "./scorecards";
 import type {
   DecisionInputs,
   DecisionResult,
@@ -100,6 +100,11 @@ function recommendedAmount(
 function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): RulesResult {
   const rs = ruleSet(versions.ruleSet);
   const sc = scorecard(versions.scorecard);
+  // PRD AIS-012: a scorecard that reads a prohibited attribute never scores anyone.
+  const prohibited = prohibitedFeaturesIn(sc);
+  if (prohibited.length > 0) {
+    throw new Error(`Scorecard ${sc.version} uses prohibited features: ${prohibited.join(", ")}`);
+  }
   const { applicant, application, bureau, screening } = inputs;
   if (application.productCode !== rs.productCode) {
     throw new Error(

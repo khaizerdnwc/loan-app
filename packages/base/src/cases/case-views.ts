@@ -20,11 +20,11 @@ import type {
   ProblemCode,
 } from "@loan/core";
 import { CaseStatus, Money } from "@loan/core";
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
-import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
+import { CURRENT_RULE_SET, RULE_SETS, ruleSet } from "../decisioning/engine";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions, recommendationRefusal, recommendationTypes } from "./case-access";
 import { CasesRepository } from "./cases.repository";
@@ -367,9 +367,19 @@ function applicantView(a: ApplicantEntity, asOf: string): ApplicantView {
   };
 }
 
+const bandLogger = new Logger("CaseViews");
+
 /** The band edges of a stored record's own rule set (every stored version is kept, ADR 0022 R4). */
 function scoreBandOf(version: string): DecisionRecordView["scoreBand"] {
-  const rs = ruleSet(version);
+  const rs = RULE_SETS[version];
+  if (!rs) {
+    // Every stored version is kept in code (ADR 0022 R4), so this means a record from a newer
+    // deployment or a damaged row: show the case without a band rather than fail the view.
+    bandLogger.warn(
+      `Decision record names unknown rule set ${version}; shown without a score band`,
+    );
+    return null;
+  }
   return { declineBelow: rs.declineBelow, approveFrom: rs.approveFrom };
 }
 

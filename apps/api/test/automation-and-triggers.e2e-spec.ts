@@ -8,6 +8,7 @@ import type {
   DecisionRecordView,
   ReproduceResult,
 } from "@loan/core";
+import { Logger } from "@nestjs/common";
 import {
   count,
   FULL_CONSENT,
@@ -584,5 +585,35 @@ describe("TR-2 records made under RS-PL-1, before automation modes, still reprod
     const replay = (await h.as("diane").post(`/decisions/${id}/reproduce`).expect(200))
       .body as ReproduceResult;
     expect(replay).toMatchObject({ match: false, differences: ["automationMode"] });
+  });
+
+  it("a record naming a rule set this API does not know still shows its case, without a band", async () => {
+    const id = await storeOld(fixture[0] as StoredRecord);
+    const [{ case_id: caseId }] = (await h.ds.query(
+      "SELECT case_id FROM decision_record WHERE id = $1",
+      [id],
+    )) as [{ case_id: string }];
+    // A record from a newer deployment: rename its version by re-inserting it (records are
+    // insert-only), then point the case at it.
+    const [{ id: unknownId }] = (await h.ds.query(
+      `INSERT INTO decision_record (case_id, inputs, inputs_hash, rule_set_version, scorecard_version,
+         outcome, score, grade, rule_results, score_contributions, reason_codes, referral_triggers,
+         debt_to_income, monthly_rate, provider_mode, decided_by, automation_mode, kill_switch, engine_outcome)
+       SELECT case_id, inputs, inputs_hash, 'RS-PL-99', scorecard_version, outcome, score, grade,
+         rule_results, score_contributions, reason_codes, referral_triggers, debt_to_income,
+         monthly_rate, provider_mode, decided_by, automation_mode, kill_switch, outcome
+       FROM decision_record WHERE id = $1 RETURNING id`,
+      [id],
+    )) as [{ id: string }];
+    await h.ds.query("UPDATE loan_case SET decision_id = $2 WHERE id = $1", [caseId, unknownId]);
+    const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    const view = (await h.as("paolo").get(`/cases/${caseId}`).expect(200)).body as CaseDetail;
+    expect(view.decision).toMatchObject({ ruleSetVersion: "RS-PL-99", scoreBand: null });
+    const record = (await h.as("paolo").get(`/cases/${caseId}/decision`).expect(200)).body;
+    expect(record).toMatchObject({ id: unknownId, scoreBand: null });
+    expect(warn).toHaveBeenCalledWith(
+      "Decision record names unknown rule set RS-PL-99; shown without a score band",
+    );
+    warn.mockRestore();
   });
 });

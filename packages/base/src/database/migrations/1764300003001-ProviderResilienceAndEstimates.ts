@@ -52,6 +52,19 @@ export class ProviderResilienceAndEstimates1764300003001 implements MigrationInt
   }
 
   async down(q: QueryRunner): Promise<void> {
+    // Forward-only once used: reverting would drop the estimates and latency of decision
+    // records and the provider-call counter. Refuse instead of losing them.
+    const [{ records, calls }] = (await q.query(
+      `SELECT (SELECT count(*)::int FROM "decision_record"
+                WHERE "rule_set_version" NOT IN ('RS-PL-1', 'RS-PL-2') OR "scorecard_version" <> 'SC-PL-1'
+                   OR "pd" IS NOT NULL OR "recommended_amount" IS NOT NULL OR "latency_ms" IS NOT NULL) AS records,
+              (SELECT count(*)::int FROM "provider_call") AS calls`,
+    )) as [{ records: number; calls: number }];
+    if (records > 0 || calls > 0) {
+      throw new Error(
+        `Cannot revert ProviderResilienceAndEstimates: ${records} decision record(s) made after RS-PL-2 / SC-PL-1 or carrying estimates or latency, and ${calls} provider call(s), would be lost. Reset the demo database instead.`,
+      );
+    }
     await q.query(`DROP INDEX "IDX_decision_record_created"`);
     await q.query(`ALTER TABLE "decision_record" DROP COLUMN "latency_ms"`);
     await q.query(`ALTER TABLE "decision_record" DROP COLUMN "recommended_amount"`);
