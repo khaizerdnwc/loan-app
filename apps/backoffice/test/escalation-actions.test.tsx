@@ -41,6 +41,12 @@ const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
 
 describe("EscalationActions (CMP-1, CMP-2)", () => {
+  it("is the page's Next action region, as on the case page, with the actions inside it", () => {
+    renderActions(escalation());
+    const next = screen.getByRole("region", { name: "Next action" });
+    expect(within(next).getByRole("button", { name: "Acknowledge" })).toBeInTheDocument();
+  });
+
   it("acknowledges an open escalation after confirming, and hands back the result", async () => {
     const acked = escalation({ status: "ACKNOWLEDGED", acknowledgedByName: "Diane Yu" });
     const fetchMock = vi.fn().mockResolvedValueOnce(json(acked));

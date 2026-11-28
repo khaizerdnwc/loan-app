@@ -115,7 +115,7 @@ export class NotificationDeliveryEntity {
   @Column({ name: "last_error", type: "text", nullable: true })
   lastError!: string | null;
 
-  /** A sweep's lease on the message while it is with the gateway (claimPending). */
+  /** A sweep's lease on the message while it is with the gateway (claimNext). */
   @Column({ name: "claimed_until", type: "timestamptz", nullable: true })
   claimedUntil!: Date | null;
 

@@ -373,14 +373,17 @@ describe("the sweep's resilience (NTF-3)", () => {
       return real(msg);
     });
     const warn = jest.spyOn(Logger.prototype, "warn").mockImplementation(() => undefined);
+    let warned: unknown[][] = [];
     try {
       expect(await dispatch()).toEqual({ sent: 1, waiting: 1, failed: 0 });
     } finally {
+      // Read before restoring (mockRestore clears the recorded calls); only this service's lines.
+      warned = warn.mock.calls.filter(
+        (c) => typeof c[0] === "string" && c[0].startsWith("Borrower message"),
+      );
+      warn.mockRestore();
       spy.mockRestore();
     }
-    // Read before restoring: mockRestore clears the recorded calls.
-    const warned = [...warn.mock.calls];
-    warn.mockRestore();
     const [a] = await messages(first.id);
     const [b] = await messages(second.id);
     const failed = [a, b].find((m) => m?.status === "PENDING");

@@ -109,7 +109,7 @@ export function EscalationActions({
   }
 
   return (
-    <Card title="Next action">
+    <Card region title="Next action">
       <p className="text-sm">
         {e.status === "OPEN"
           ? "Waiting for Compliance: acknowledge the escalation, review the match, then close it with your notes."
