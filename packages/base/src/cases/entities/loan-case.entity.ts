@@ -18,11 +18,13 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
+  type Relation,
   UpdateDateColumn,
   VersionColumn,
 } from "typeorm";
 import { moneyColumn } from "../../database/money.transformer";
 import { ApplicantEntity } from "./applicant.entity";
+import { DecisionRecordEntity } from "./decision-record.entity";
 
 /**
  * One loan application and everything decided about it. Its `status` only changes through
@@ -88,6 +90,11 @@ export class LoanCaseEntity {
   // --- automated decision ---------------------------------------------------------------
   @Column({ name: "decision_id", type: "uuid", nullable: true })
   decisionId!: string | null;
+
+  /** The current decision is one of this case's own decision records. */
+  @ManyToOne(() => DecisionRecordEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "decision_id", foreignKeyConstraintName: "FK_loan_case_decision" })
+  decision?: Relation<DecisionRecordEntity>;
 
   @Column({ type: "varchar", length: 1, nullable: true })
   grade!: Grade | null;

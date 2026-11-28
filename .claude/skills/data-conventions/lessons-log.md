@@ -43,6 +43,43 @@ own columns written only by the events that should move them.
   with no `expiryRefusal` check. Reassigning an expired, unswept draft resets its 30-day
   clock. Found by the data reviewer.
 
+## data-20261128-provider-call-outside-lock
+
+Gate: house/no-provider-call-in-transaction
+
+Provider calls through ProviderGateway run before the transaction, never inside `tx.run`. Why:
+no row lock is held while a provider answers (ADR 0020). A provider can be slow, retry with
+backoff or time out, and inside the transaction the case row stays locked throughout, so every
+other request on the case waits behind it and a pooled connection is held. Rule limits: an
+alias of the gateway, the gateway passed into the callback, a helper method the callback calls,
+a port called directly, or a transaction started another way are not caught.
+
+- 2026-11-28 — Round 3: the case lock became FOR NO KEY UPDATE, which a foreign-key check does
+  not wait on, so the gateway's own `provider_call` insert (second connection, FK to loan_case)
+  no longer waits on the lock. The rule's reason is the lock duration above; the FK wait is
+  history, not the rationale.
+
+- 2026-11-28 — Lane H7 added FK_provider_call_case. Every gateway call today is in
+  `gatherInputs`, which runs before `tx.run` (cases.service.ts submit and redecide), so nothing
+  hangs yet. The rule makes that ordering a gate. Found by the data reviewer.
+
+## data-20261128-insert-only-guards-from-catalogue
+
+A guard that must cover "every insert-only table" (a TRUNCATE refusal, the harness reset, a
+foreign-key inventory) is tested against the set the database itself reports, the tables
+carrying a row-level `refuse_change()` UPDATE/DELETE trigger in `pg_trigger`, not against a
+table list typed into the migration and the test. Why: lanes build in parallel worktrees, and
+each adds its own insert-only table with only the row trigger. A hard-coded list stays green
+on merge while the new table can still be emptied by one TRUNCATE. Nearest deterministic
+alternative: an integration assertion that the set of tables with a row-level refuse_change
+trigger equals the set with a statement-level BEFORE TRUNCATE trigger.
+
+- 2026-11-28 — Lane H7 (1764300009000) guarded decision_record, activity_event,
+  consent_record and automation_event, and integrity.e2e-spec.ts asserts the same four by
+  name. Lane B's reconciliation_run (2001) and lane C's provider_call (3001), both insert-only,
+  were in other worktrees and got no TRUNCATE guard, and no test would have failed after the
+  merge. Found by the data reviewer.
+
 ## data-20261128-engine-step-needs-a-version
 
 Every piece of logic `decide()` runs must be reachable only through a version the record

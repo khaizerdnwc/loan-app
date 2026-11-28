@@ -91,8 +91,8 @@ export async function startHarness(): Promise<Harness> {
 
 /**
  * Empty every case table and reset the simulators; staff, applicants and personas stay.
- * Decision records and activity are insert-only by trigger; truncation is still allowed (one
- * statement, since aml_escalation references both loan_case and decision_record).
+ * One TRUNCATE statement (the child tables reference each other by foreign key), with the
+ * insert-only tables' TRUNCATE guards switched off for that transaction (truncateGuarded).
  *
  * The audit log (`audit_event`) is never emptied: its triggers refuse TRUNCATE, so its hash
  * chain keeps growing across test files within a run. global-setup drops and re-migrates the
@@ -101,14 +101,54 @@ export async function startHarness(): Promise<Harness> {
  * rebuilds the database; to repair a retained test database by hand, drop and recreate it.
  */
 export async function resetData(ds: DataSource): Promise<void> {
-  await ds.query(`TRUNCATE aml_escalation, consent_record, schedule_line, disbursement, loan_account, booking_request, loan_case,
-    decision_record, activity_event, automation_change, automation_event, reconciliation_run,
-    provider_call, bureau_report_cache,
-    sim.core_account, sim.disbursement, sim.signature, sim.service_mode, sim.document_upload, case_document`);
+  await truncateGuarded(ds, [
+    "aml_escalation",
+    "consent_record",
+    "schedule_line",
+    "disbursement",
+    "loan_account",
+    "booking_request",
+    "loan_case",
+    "decision_record",
+    "activity_event",
+    "automation_change",
+    "automation_event",
+    "reconciliation_run",
+    "provider_call",
+    "bureau_report_cache",
+    "sim.core_account",
+    "sim.disbursement",
+    "sim.signature",
+    "sim.service_mode",
+    "sim.document_upload",
+    "case_document",
+  ]);
   // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
       kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
+}
+
+/**
+ * TRUNCATE tables between tests although the insert-only ones refuse TRUNCATE (migration
+ * 1764300009000). Their BEFORE TRUNCATE triggers are disabled, as the table owner, and enabled
+ * again in the same transaction, so a failed reset leaves every guard on and no other session
+ * ever sees them off (ALTER TABLE holds an exclusive lock until commit). Deleting row by row
+ * instead is not possible: the row-level insert-only triggers refuse DELETE too. The guards
+ * are found from the catalogue, so a new insert-only table needs no change here.
+ */
+export async function truncateGuarded(ds: DataSource, tables: string[]): Promise<void> {
+  await ds.transaction(async (m) => {
+    const guards = (await m.query(
+      `SELECT tgrelid::regclass::text AS tbl, tgname AS name FROM pg_trigger
+       WHERE NOT tgisinternal AND tgenabled <> 'D' AND (tgtype & 32) = 32
+         AND tgrelid = ANY($1::regclass[])`,
+      [tables],
+    )) as { tbl: string; name: string }[];
+    for (const g of guards) await m.query(`ALTER TABLE ${g.tbl} DISABLE TRIGGER "${g.name}"`);
+    await m.query(`TRUNCATE ${tables.join(", ")}`);
+    for (const g of guards) await m.query(`ALTER TABLE ${g.tbl} ENABLE TRIGGER "${g.name}"`);
+  });
 }
 
 export async function setMode(h: Harness, service: string, mode: string): Promise<void> {

@@ -2,8 +2,8 @@
 # Rehearse a restore: back up a source database with backup.sh, restore it with restore.sh
 # into a throwaway Postgres 16 container, and compare the two — every table's row count in
 # both schemas, the applied migrations, every sequence's position (loan_case_ref_seq: a reset
-# would reissue case references) and the triggers with their enabled state (the insert-only
-# guards). Exits
+# would reissue case references), the triggers with their enabled state (the insert-only and
+# TRUNCATE guards) and every foreign key (validated, delete rule). Exits
 # non-zero on any difference; the container is always removed. The source is only read.
 #
 #   SRC_CONTAINER=loan-app-postgres \
@@ -54,6 +54,8 @@ INSERT INTO facts SELECT 'sequence ' || schemaname || '.' || sequencename || ' '
   || coalesce(last_value::text, 'unused') FROM pg_sequences WHERE schemaname IN ('public','sim');
 INSERT INTO facts SELECT 'trigger ' || tgrelid::regclass || ' ' || tgname || ' enabled=' || tgenabled::text
   FROM pg_trigger WHERE NOT tgisinternal;
+INSERT INTO facts SELECT 'fk ' || conrelid::regclass || ' ' || conname || ' validated=' || convalidated
+  || ' on_delete=' || confdeltype::text FROM pg_constraint WHERE contype = 'f';
 SELECT f FROM facts ORDER BY f;"
 docker exec -i "$SRC_CONTAINER" psql -X -q -tA -v ON_ERROR_STOP=1 "$SRC_URL" \
   <<<"$snapshot_sql" >"$work/source.txt"
@@ -68,5 +70,6 @@ rows=$(awk '/^rows /{s+=$3} END{print s+0}' "$work/source.txt")
 migrations=$(grep -c '^migration ' "$work/source.txt")
 triggers=$(grep -c '^trigger ' "$work/source.txt")
 sequences=$(grep -c '^sequence ' "$work/source.txt" || true)
-echo "rehearsal: ✅ restored copy matches — $tables tables, $rows rows, $migrations migrations, $sequences sequences (positions), $triggers triggers (enabled state)"
-grep '^sequence \|^trigger ' "$work/source.txt"
+fks=$(grep -c '^fk ' "$work/source.txt" || true)
+echo "rehearsal: ✅ restored copy matches — $tables tables, $rows rows, $migrations migrations, $sequences sequences (positions), $triggers triggers (enabled state), $fks foreign keys"
+grep '^sequence \|^trigger \|^fk ' "$work/source.txt"

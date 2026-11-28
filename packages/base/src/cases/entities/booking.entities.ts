@@ -4,11 +4,15 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   OneToMany,
   PrimaryGeneratedColumn,
+  type Relation,
   UpdateDateColumn,
 } from "typeorm";
 import { moneyColumn } from "../../database/money.transformer";
+import { LoanCaseEntity } from "./loan-case.entity";
 
 export type BookingStatus = "PENDING" | "BOOKED" | "FAILED";
 
@@ -23,6 +27,10 @@ export class BookingRequestEntity {
 
   @Column({ name: "case_id", type: "uuid", unique: true })
   caseId!: string;
+
+  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_booking_request_case" })
+  loanCase?: Relation<LoanCaseEntity>;
 
   @Column({ name: "idempotency_key", type: "varchar", length: 60, unique: true })
   idempotencyKey!: string;
@@ -58,11 +66,22 @@ export class LoanAccountEntity {
   @Column({ name: "case_id", type: "uuid", unique: true })
   caseId!: string;
 
+  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_loan_account_case" })
+  loanCase?: Relation<LoanCaseEntity>;
+
   @Column({ name: "core_account_number", type: "varchar", length: 30, unique: true })
   coreAccountNumber!: string;
 
   @Column({ name: "booking_request_id", type: "uuid" })
   bookingRequestId!: string;
+
+  @ManyToOne(() => BookingRequestEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({
+    name: "booking_request_id",
+    foreignKeyConstraintName: "FK_loan_account_booking_request",
+  })
+  bookingRequest?: Relation<BookingRequestEntity>;
 
   @Column(moneyColumn())
   principal!: Money;
@@ -101,7 +120,16 @@ export class ScheduleLineEntity {
   @Column({ name: "loan_account_id", type: "uuid" })
   loanAccountId!: string;
 
-  loanAccount!: LoanAccountEntity;
+  @ManyToOne(
+    () => LoanAccountEntity,
+    (account) => account.schedule,
+    { onDelete: "NO ACTION" },
+  )
+  @JoinColumn({
+    name: "loan_account_id",
+    foreignKeyConstraintName: "FK_schedule_line_loan_account",
+  })
+  loanAccount?: Relation<LoanAccountEntity>;
 
   @Column({ type: "integer" })
   number!: number;
@@ -127,6 +155,10 @@ export class DisbursementEntity {
 
   @Column({ name: "loan_account_id", type: "uuid", unique: true })
   loanAccountId!: string;
+
+  @ManyToOne(() => LoanAccountEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "loan_account_id", foreignKeyConstraintName: "FK_disbursement_loan_account" })
+  loanAccount?: Relation<LoanAccountEntity>;
 
   @Column({ name: "idempotency_key", type: "varchar", length: 60, unique: true })
   idempotencyKey!: string;

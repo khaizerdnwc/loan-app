@@ -23,21 +23,23 @@ beforeEach(() => {
   writeFileSync(dump, "not a real dump; the fake pg_restore reads it");
   writeFileSync(log, "");
   // pg_restore: the --data-only listing prints the backup's migrations table; otherwise it is
-  // the restore itself. psql: answers the migrations-table and head queries.
+  // the restore itself. psql: answers the migrations-table query, then the applied names
+  // (FAKE_TARGET_NAMES, separated by \n).
   fake(
     "pg_restore",
     `echo "pg_restore $*" >>"$FAKE_LOG"; cat >/dev/null
 if [[ "$*" == *--data-only* ]]; then
   echo 'COPY public.migrations (id, "timestamp", name) FROM stdin;'
   printf '1\\t1764300000000\\tLendingSchema1764300000000\\n'
-  printf '2\\t1764300000006\\tWithdrawAndExpiry1764300000006\\n'
+  printf '2\\t1764300009000\\tForeignKeysAndTruncateGuards1764300009000\\n'
+  printf '3\\t1764300002001\\tReconciliation1764300002001\\n'
   echo '\\.'
 fi`,
   );
   fake(
     "psql",
     `echo "psql $*" >>"$FAKE_LOG"
-if [[ "$*" == *to_regclass* ]]; then echo "$FAKE_HAS_TABLE"; else echo "$FAKE_TARGET_HEAD"; fi`,
+if [[ "$*" == *to_regclass* ]]; then echo "$FAKE_HAS_TABLE"; else printf '%b\\n' "$FAKE_TARGET_NAMES"; fi`,
   );
 });
 
@@ -59,7 +61,7 @@ function restore(env: Record<string, string>) {
       HOME: dir,
       FAKE_LOG: log,
       FAKE_HAS_TABLE: "f",
-      FAKE_TARGET_HEAD: "",
+      FAKE_TARGET_NAMES: "",
       ...env,
     },
   });
@@ -100,16 +102,28 @@ describe("restore.sh refusals (H-6)", () => {
     },
   );
 
-  it("refuses a target at a different migration head, without restoring", () => {
+  it("refuses a target with a migration the backup lacks, without restoring", () => {
     const r = restore({
       DATABASE_URL: URL,
       RESTORE_CONFIRM: LABEL,
       FAKE_HAS_TABLE: "t",
-      FAKE_TARGET_HEAD: "NewerThing1764300009999",
+      FAKE_TARGET_NAMES:
+        "LendingSchema1764300000000\\nReconciliation1764300002001\\nProviderCalls1764300003001\\nForeignKeysAndTruncateGuards1764300009000",
     });
     expect(r.status).toBe(3);
-    expect(r.stderr).toContain("NewerThing1764300009999");
-    expect(r.stderr).toContain("WithdrawAndExpiry1764300000006");
+    expect(r.stderr).toContain("only in the target: ProviderCalls1764300003001");
+    expect(restored(r.calls)).toBe(false);
+  });
+
+  it("refuses a target at the same latest migration that lacks an earlier one (merged out of order)", () => {
+    const r = restore({
+      DATABASE_URL: URL,
+      RESTORE_CONFIRM: LABEL,
+      FAKE_HAS_TABLE: "t",
+      FAKE_TARGET_NAMES: "LendingSchema1764300000000\\nForeignKeysAndTruncateGuards1764300009000",
+    });
+    expect(r.status).toBe(3);
+    expect(r.stderr).toContain("only in the backup: Reconciliation1764300002001");
     expect(restored(r.calls)).toBe(false);
   });
 
@@ -117,15 +131,16 @@ describe("restore.sh refusals (H-6)", () => {
     const r = restore({ DATABASE_URL: URL, RESTORE_CONFIRM: LABEL });
     expect(r.status).toBe(0);
     expect(restored(r.calls)).toBe(true);
-    expect(r.stdout).toContain("WithdrawAndExpiry1764300000006");
+    expect(r.stdout).toContain("3 migrations");
   });
 
-  it("restores into a target at the same migration head", () => {
+  it("restores into a target with the same set of migrations, in any order", () => {
     const r = restore({
       DATABASE_URL: URL,
       RESTORE_CONFIRM: LABEL,
       FAKE_HAS_TABLE: "t",
-      FAKE_TARGET_HEAD: "WithdrawAndExpiry1764300000006",
+      FAKE_TARGET_NAMES:
+        "ForeignKeysAndTruncateGuards1764300009000\\nLendingSchema1764300000000\\nReconciliation1764300002001",
     });
     expect(r.status).toBe(0);
     expect(restored(r.calls)).toBe(true);

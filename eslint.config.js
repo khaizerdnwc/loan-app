@@ -56,6 +56,7 @@ export default tseslint.config(
       "house/no-datasource-outside-repository": "error",
       "house/no-typeorm-synchronize": "error",
       "house/require-order-with-take": "error",
+      "house/no-provider-call-in-transaction": "error",
       // architecture
       "house/no-provider-import-outside-adapters": "error",
       "house/no-case-status-assignment-outside-lifecycle": "error",

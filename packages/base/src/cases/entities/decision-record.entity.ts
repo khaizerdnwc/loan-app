@@ -1,5 +1,15 @@
 import type { AutomationMode, DecisionOutcome, Grade, Money, ProviderMode } from "@loan/core";
-import { Check, Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Check,
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  type Relation,
+} from "typeorm";
 import { moneyColumn } from "../../database/money.transformer";
 import type {
   DecisionInputs,
@@ -7,6 +17,7 @@ import type {
   RuleResult,
   ScoreContribution,
 } from "../../decisioning/engine";
+import { LoanCaseEntity } from "./loan-case.entity";
 
 /**
  * The automated decision, insert-only (ADR 0022 R3). The repository has no update or
@@ -28,6 +39,11 @@ export class DecisionRecordEntity {
 
   @Column({ name: "case_id", type: "uuid" })
   caseId!: string;
+
+  /** A decision belongs to an existing case; nothing cascades into it. */
+  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_decision_record_case" })
+  loanCase?: Relation<LoanCaseEntity>;
 
   @Column({ type: "jsonb" })
   inputs!: DecisionInputs;

@@ -73,15 +73,19 @@ export class CasesRepository {
   }
 
   /**
-   * Load a case and lock its row until the transaction ends (SELECT … FOR UPDATE). Two
+   * Load a case and lock its row until the transaction ends (SELECT … FOR NO KEY UPDATE). Two
    * requests acting on the same case are serialised here, so the second one sees the
-   * first one's status — the basis of the booking guarantee (ADR 0020 R2).
+   * first one's status — the basis of the booking guarantee (ADR 0020 R2). NO KEY UPDATE
+   * conflicts with itself and with every UPDATE of the row exactly as FOR UPDATE does, but not
+   * with the FOR KEY SHARE a foreign-key check takes: a child row written for this case on
+   * another connection (a provider call) does not wait on this lock. A case's id never
+   * changes, and every child written under the lock is written in this same transaction.
    */
   async lockCase(manager: EntityManager, id: string): Promise<LoanCaseEntity | null> {
     const locked = await manager
       .getRepository(LoanCaseEntity)
       .createQueryBuilder("c")
-      .setLock("pessimistic_write")
+      .setLock("for_no_key_update")
       .where("c.id = :id", { id })
       .getOne();
     if (!locked) return null;

@@ -16,6 +16,7 @@ import {
   setMode,
   startHarness,
   submitCase,
+  truncateGuarded,
   twin,
 } from "./support/harness";
 
@@ -32,7 +33,7 @@ afterAll(async () => {
 });
 afterEach(async () => {
   await h.ds.query("TRUNCATE sim.service_mode");
-  await h.ds.query("TRUNCATE automation_change, automation_event");
+  await truncateGuarded(h.ds, ["automation_change", "automation_event"]);
   await h.ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
       kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
@@ -312,7 +313,7 @@ describe("AU-2 the mode decides what the engine's outcome does; the record store
   });
 
   it("a product with no automation row runs off (fail safe)", async () => {
-    await h.ds.query("TRUNCATE automation_change, automation_event");
+    await truncateGuarded(h.ds, ["automation_change", "automation_event"]);
     await h.ds.query("DELETE FROM product_automation WHERE product_code = 'PL'");
     const c = await submitCase(h, { applicantId: "APL-MARIA" });
     expect(c.status).toBe("REVIEW");
