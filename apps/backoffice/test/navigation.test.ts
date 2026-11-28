@@ -25,6 +25,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/audit",
       "/reports/funnel",
       "/reports/decisions",
+      "/reports/turnaround",
       "/simulation",
       "/automation",
     ]);
@@ -35,6 +36,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/operations/exceptions",
       "/reports/funnel",
       "/reports/decisions",
+      "/reports/turnaround",
       "/simulation",
       "/automation",
     ]);

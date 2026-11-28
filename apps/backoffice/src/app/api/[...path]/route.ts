@@ -18,6 +18,7 @@ const ALLOWED_ROOTS = new Set([
   "automation",
   "operations",
   "reports",
+  "sla",
   "providers",
 ]);
 

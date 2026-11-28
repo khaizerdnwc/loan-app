@@ -42,6 +42,7 @@ and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
 | Lending domain (one Nest module, `lending.module.ts`: auth, cases, simulation controls, automation mode and kill switch, the decision's provider gateway) | `packages/base/src/{auth,cases,simulation,automation,providers}/` |
 | AML escalations and screening before disbursement; the hash-chained audit log | `packages/base/src/compliance/`, `packages/base/src/audit/` (same module) |
 | Booking exceptions and reconciliation; decision-mix and funnel reports | `packages/base/src/operations/`, `packages/base/src/reports/` (same module) |
+| Stage SLAs, Philippine business time and the turnaround report | `packages/base/src/sla/` (same module) |
 | Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |
 | Decision engine, rule sets, scorecard | `packages/base/src/decisioning/engine/` |
 | Migrations, data source, transaction runner | `packages/base/src/database/` |

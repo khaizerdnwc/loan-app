@@ -90,6 +90,9 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /operations/reconciliation/latest | loan operations, supervisor, compliance | `LatestReconciliationView` (`run` null before the first run) |
 | GET | /operations/reconciliation/runs | loan operations, supervisor, compliance | `ReconciliationRunSummaryView[]`, newest first (20) |
 | GET | /reports/decision-mix?from=&to= | loan officer, approver, compliance, admin | `DecisionMixReport` (business dates, inclusive; default the last 30 days; at most 366) |
+| GET | /sla/cases?view=queue\|all | loan officer, approver, loan operations, supervisor, compliance | `SlaView[]`: the stage clock of each case in the caller's queue (or all it can see) that is in a stage with an SLA |
+| GET | /sla/cases/:id | same, and the case's own visibility (404 outside it) | `CaseSlaView` `{ sla: SlaView \| null, holidayCalendarEnds }` (sla null for a stage without an SLA) |
+| GET | /reports/turnaround?from=&to= | loan officer, approver, compliance, admin | `TurnaroundReport`: business time per stage for visits ending in the period, open cases by SLA state, holidays skipped, `holidayCalendarEnds` (served by the sla/ module's `TurnaroundController`) |
 | GET | /reports/funnel?from=&to= | loan officer, approver, compliance, admin | `OriginationFunnelReport` (same period rules) |
 
 Who sees what (`GET /cases`, `GET /cases/:id`):

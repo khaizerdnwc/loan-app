@@ -47,7 +47,8 @@ this (`pnpm deps:check`, part of the `static` stage).
 - The lending domain is **one Nest module** (`packages/base/src/lending.module.ts`) with
   folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
   hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
-  (booking exceptions, reconciliation), `reports/` (read-only aggregates), `providers/` (the
+  (booking exceptions, reconciliation), `reports/` (read-only aggregates), `sla/` (stage SLAs,
+  business time), `providers/` (the
   decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter) and the pure
   `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
   repository and one transaction runner, so splitting into per-feature modules would only
@@ -55,7 +56,10 @@ this (`pnpm deps:check`, part of the `static` stage).
   escalations stay inside: they are opened in the case's locked transaction. `automation/` is a
   small second aggregate kept inside on purpose: a decision reads it under a share lock inside
   the case's own transaction (docs/ARCHITECTURE.md). `cases/activity.service.ts` may import
-  `audit/` but never `compliance/` (that would be a cycle). It exports only `SessionGuard`,
+  `audit/` but never `compliance/` (that would be a cycle). Folder dependencies stay one-way:
+  `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `reports/` ← `sla/` (sla/ uses
+  the report period rules; reports/ never imports sla/, and the turnaround route, though under
+  /reports, is declared in sla/). It exports only `SessionGuard`,
   `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.

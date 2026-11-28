@@ -77,6 +77,7 @@ describe("the /api/* proxy", () => {
     ["audit", "events"],
     ["operations", "exceptions"],
     ["reports", "funnel"],
+    ["sla", "cases"],
   ])(
     "forwards the compliance, operations and report screens' routes (/%s/%s)",
     async (root, rest) => {

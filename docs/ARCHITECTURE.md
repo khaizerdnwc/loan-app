@@ -25,6 +25,8 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        operations/  booking exceptions; reconciliation against core's
                                     account feed and the payment feed (ports)
                        reports/     decision mix and origination funnel (read-only)
+                       sla/         stage SLAs in Philippine business time, the holiday
+                                    calendar and turnaround (read-only over the history)
                        decisioning/engine/  pure, versioned decide()
                        database/    data source, migrations, transaction runner
                        seed/        synthetic staff, applicants, product
@@ -62,7 +64,7 @@ or a committee adds a real second aggregate.
 (it reads `BookingRequestEntity` and `LoanCaseEntity`, uses `CasesRepository` and the same
 transaction runner), and its `reconciliation_run` table is an insert-only run log, not an
 aggregate of its own. `reports/` owns no state at all: it is read-only aggregate queries over
-the case, decision and activity tables.
+the case, decision and activity tables. `sla/` is the same kind: read-only queries over the activity history, plus a holiday calendar that is reference data, not an aggregate. Folder dependencies stay one-way: `sla/` uses `cases/` (visibility) and `reports/` (period rules and readers), and nothing in `cases/` or `reports/` imports `sla/`; the turnaround report keeps its `/reports/turnaround` URL but its controller is declared in `sla/`.
 
 ## Ports and simulators
 
