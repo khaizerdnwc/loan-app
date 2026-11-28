@@ -1,10 +1,12 @@
 import {
   CaseStatus,
+  Channel,
   CLOSED_CASE_STATUSES,
   type DocumentType,
   type Grade,
   type Money,
   type OverrideReason,
+  Priority,
   type Recommendation,
   type WithdrawReason,
 } from "@loan/core";
@@ -69,6 +71,19 @@ export class LoanCaseEntity {
 
   @Column({ name: "created_by", type: "varchar", length: 40 })
   createdBy!: string;
+
+  // --- routing (PRD WF-002) -----------------------------------------------------------------
+  /** The loan officer who owns the case while it is with loan officers; null = unassigned. */
+  @Index("IDX_loan_case_owner")
+  @Column({ name: "owner_id", type: "varchar", length: 40, nullable: true })
+  ownerId!: string | null;
+
+  /** Where the application came in; BRANCH (staff-assisted) is the only channel today. */
+  @Column({ type: "varchar", length: 20, default: Channel.Branch })
+  channel!: Channel;
+
+  @Column({ type: "varchar", length: 10, default: Priority.Normal })
+  priority!: Priority;
 
   // --- automated decision ---------------------------------------------------------------
   @Column({ name: "decision_id", type: "uuid", nullable: true })

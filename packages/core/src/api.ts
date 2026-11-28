@@ -1,6 +1,7 @@
 import type { AutomationMode } from "./automation";
 import type {
   CaseStatus,
+  Channel,
   CoreBankingSimulationMode,
   DecisionOutcome,
   DeclineReason,
@@ -8,6 +9,7 @@ import type {
   DocumentType,
   Grade,
   OverrideReason,
+  Priority,
   ProviderMode,
   Recommendation,
   Role,
@@ -78,6 +80,11 @@ export interface CaseSummary {
   reasonCount: number;
   grade: Grade | null;
   escalated: boolean;
+  /** The loan officer who owns the case (PRD WF-002); null = unassigned in the team queue. */
+  ownerId: string | null;
+  ownerName: string | null;
+  channel: Channel;
+  priority: Priority;
   createdAt: string;
   updatedAt: string;
 }
@@ -201,7 +208,15 @@ export interface BookingView {
  * can say why — the API is the only place those rules are decided.
  */
 export type ActionAvailability =
-  | { action: CaseAction; enabled: true }
+  | {
+      action: CaseAction;
+      enabled: true;
+      /**
+       * REQUEST_INFO only: the document types the API will accept in a request now (never
+       * asked, or rejected). The dialog offers exactly these.
+       */
+      documentTypes?: DocumentType[];
+    }
   | { action: CaseAction; enabled: false; blockedBy: ProblemCode; detail: string };
 
 /** A recommendation type the loan officer may send now, or why the API refuses it. */
@@ -371,6 +386,9 @@ export type CaseAction =
   | "SUBMIT"
   | "REDECIDE"
   | "REQUEST_INFO"
+  | "PICK"
+  | "REASSIGN"
+  | "SET_PRIORITY"
   | "RECOMMEND"
   | "APPROVE"
   | "DECLINE"
@@ -486,6 +504,62 @@ export interface DocumentReviewRequest {
   decision: "VERIFIED" | "REJECTED";
   /** Required when rejecting: what is wrong, so the borrower can be asked again. */
   reason?: string;
+}
+
+/** Hand a case to another loan officer (PRD WF-002). */
+export interface ReassignRequest {
+  ownerId: string;
+  reason: string;
+}
+
+export interface SetPriorityRequest {
+  priority: Priority;
+}
+
+/** A loan officer a case can be handed to. */
+export interface LoanOfficerView {
+  id: string;
+  fullName: string;
+  /** Open cases (draft, review, information requested) this officer owns now. */
+  openCases: number;
+}
+
+/**
+ * A customer as simulated core banking knows them (PRD INT-002): the facts that pre-fill a
+ * walk-in capture. Labelled with the provider mode; amounts are decimal strings.
+ */
+export interface CoreCustomerView {
+  customerNumber: string;
+  fullName: string;
+  birthDate: string;
+  governmentIdLast4: string;
+  employer: string;
+  employmentMonths: number;
+  /** Salary credits core sees each month: the verified income. */
+  monthlyIncome: string;
+  monthlyObligations: string;
+  relationshipMonths: number;
+  depositAccount: string;
+  providerMode: ProviderMode;
+  /** The applicant already on file for this customer, if any. */
+  applicantId: string | null;
+}
+
+/**
+ * A new applicant captured by a loan officer (PRD INT-005): a walk-in new to the bank, or an
+ * existing customer found in core (`customerNumber`), whose identity, account and relationship
+ * then come from core, not from this body.
+ */
+export interface NewApplicantRequest {
+  customerNumber?: string;
+  fullName: string;
+  birthDate: string;
+  governmentIdLast4: string;
+  employer: string;
+  employmentMonths: number;
+  /** Declared monthly income. */
+  monthlyIncome: string;
+  monthlyObligations: string;
 }
 
 /** The service is in the path; the API answers VALIDATION_FAILED for a mode it does not support. */

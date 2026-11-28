@@ -106,8 +106,16 @@ export class CasesController {
 
   @Get("cases")
   @Roles(...CASE_READERS)
-  list(@CurrentUser() user: SessionUser, @Query("view") view?: string): Promise<CaseList> {
-    return this.cases.list(user, view === "all" ? "all" : "queue");
+  list(
+    @CurrentUser() user: SessionUser,
+    @Query("view") view?: string,
+    @Query("owner") owner?: string,
+  ): Promise<CaseList> {
+    return this.cases.list(
+      user,
+      view === "all" ? "all" : "queue",
+      owner === "me" || owner === "unassigned" ? owner : undefined,
+    );
   }
 
   @Post("cases")

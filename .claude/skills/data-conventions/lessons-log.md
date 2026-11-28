@@ -25,6 +25,23 @@ deterministic alternative: a test that seeds a cache row with another mode and a
 - 2026-11-28 — Lane C batch 2 (bureau reuse, IH-005). `bureau_report_cache` is keyed on
   `applicant_id` only; `report.mode` is stored in the JSON but never compared with the
   gateway's mode on read. Found by the data reviewer.
+## data-20261128-updated-at-is-a-clock
+
+`loan_case.updated_at` is an `@UpdateDateColumn`, and the business rules read it as a clock:
+a draft expires DRAFT_EXPIRY_DAYS after it (product.ts `expiryOf`, the expiry sweep), and the
+loan officers' queue orders "longest waiting" by it. Every `saveCase()` moves it. Why: a write
+that is not a change to the application (pick, reassign, priority, any flag) silently extends
+a draft's life, can revive a draft that is past expiry but not yet swept (the sweep's
+candidate query then skips it), and sends a long-waiting case to the back of the queue. The
+expiry assumption explicitly says only a real change counts. Nearest deterministic gate: an
+integration test per non-business write on a draft aged past expiry (refused, or updated_at
+unchanged and the sweep still expires it); structurally, give expiry and waiting time their
+own columns written only by the events that should move them.
+
+- 2026-11-28 — Queue routing (WF-002). RoutingService.reassign/setPriority accept DRAFT
+  (`withOfficers`) and save the case through `saveCase` (TypeORM save → updated_at = now),
+  with no `expiryRefusal` check. Reassigning an expired, unswept draft resets its 30-day
+  clock. Found by the data reviewer.
 
 ## data-20261128-engine-step-needs-a-version
 

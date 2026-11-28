@@ -62,6 +62,25 @@ function FocusHarness() {
 }
 
 describe("ConfirmDialog", () => {
+  it("disables its confirm button with the reason linked to it while confirmDisabled is set", async () => {
+    const onConfirm = vi.fn();
+    const props = {
+      open: true,
+      title: "Add?",
+      description: "x",
+      confirmLabel: "Add",
+      onConfirm,
+      onCancel: () => {},
+    };
+    const { rerender } = render(<ConfirmDialog {...props} confirmDisabled="Find them first." />);
+    const add = screen.getByRole("button", { name: "Add", hidden: true });
+    expect(add).toBeDisabled();
+    expect(add).toHaveAccessibleDescription("Find them first.");
+    rerender(<ConfirmDialog {...props} confirmDisabled={null} />);
+    expect(screen.getByRole("button", { name: "Add", hidden: true })).toBeEnabled();
+    expect(screen.queryByText("Find them first.")).not.toBeInTheDocument();
+  });
+
   it("ignores Escape while a request is in flight, and closes on it otherwise", () => {
     const onCancel = vi.fn();
     const props = {

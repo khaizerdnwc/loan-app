@@ -15,6 +15,10 @@ const base: CaseSummary = {
   reasonCount: 1,
   grade: "C",
   escalated: false,
+  ownerId: null,
+  ownerName: null,
+  channel: "BRANCH",
+  priority: "NORMAL",
   createdAt: "2026-11-27T02:00:00.000Z",
   updatedAt: "2026-11-27T02:00:00.000Z",
 };
@@ -26,12 +30,13 @@ const cell = (row: number, column: string) => {
 };
 
 describe("the case table", () => {
-  it("has the prototype's columns in order", () => {
+  it("has the prototype's columns in order, with the owner (WF-002)", () => {
     render(<CaseTable cases={[base]} empty="None." />);
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual([
       "Applicant",
       "Product",
       "Amount",
+      "Owner",
       "Stage",
       "Reason",
       "Decision",

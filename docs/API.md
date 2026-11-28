@@ -16,6 +16,8 @@ Proposed repayment (prototype approve dialog): `CaseDetail.proposedRepayment` is
 
 Indicative repayment (INT-004): `CaseDetail.indicativeRepayment` is the `IndicativeRepaymentView` for the requested terms while the case has no decision (a draft), else null. `CaseDetail.approved.regularInstalment` is null when core banking cannot quote it; the case still opens.
 
+Routing (WF-002): `CaseSummary` (and so `CaseDetail`) carries `ownerId`, `ownerName` (null = unassigned in the team queue), `channel` (BRANCH, the one channel in this release), and `priority` (NORMAL or HIGH). A loan officer's `view=queue` can take `owner=me` or `owner=unassigned` and is ordered high priority first, then the longest waiting. Ownership routes work; it does not restrict which loan officer may act on a case. `ActionAvailability` for an enabled REQUEST_INFO also lists `documentTypes`, the types a request may ask for now.
+
 Documents (WF-007, DOC-003): `CaseDetail.infoRequest` is the latest request `{ documents, message, dueOn, requestedBy, requestedByName, requestedAt }` or null; `CaseDetail.documents` is the checklist, one `CaseDocumentView` per requested type `{ type, status: REQUESTED | RECEIVED | VERIFIED | REJECTED, requestedAt, upload (synthetic metadata, labelled SIMULATED) | null, review | null, actions }`, where `actions` lists what the caller may do with it now (SIMULATE_UPLOAD, VERIFY, REJECT). The due date is shown, not enforced.
 
 Consent: `POST /cases` and `PATCH /cases/:id` accept `consent: { creditBureauCheck, dataProcessing, termsVersion }` (current version `CONSENT_TERMS_VERSION`, 1.0). `POST /cases/:id/submit` (and `POST /cases` with `submit: true`) answers 400 on the `consent` field until both consents for the current version are recorded; `CaseDetail.consent` shows the latest record.
@@ -39,7 +41,13 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /products/PL | any signed-in | `ProductView` |
 | GET | /products/PL/quote?amount=&tenorMonths= | loan officer | `IndicativeRepaymentView`: the indicative monthly repayment for the terms at grade C pricing, quoted by core banking (simulated). 400 with field errors for terms outside the product; 200 with `status: "UNAVAILABLE"` and null amounts when core cannot answer. Writes nothing |
 | GET | /applicants | loan officer | `ApplicantView[]` |
-| GET | /cases?view=queue\|all | any signed-in except admin | `CaseList` (queue = the cases waiting on the caller's role; for an approver, only APPROVAL cases within their authority) |
+| POST | /applicants | loan officer | `NewApplicantRequest` → `ApplicantView` (201). A walk-in new to the bank (identity typed in), or an existing customer (`customerNumber`): identity, deposit account, relationship and verified income then come from simulated core, the body's income is kept as declared. 400 with field errors; 409 `DUPLICATE_APPLICATION` when the customer is already on file (unique index); 503 when core cannot answer for a `customerNumber` (nothing stored; a capture without one still works) |
+| GET | /customers/:customerNumber | loan officer | `CoreCustomerView` from simulated core banking's customer file (pre-fill, labelled `providerMode`), with `applicantId` when already on file. 404 unknown, 503 when core cannot answer |
+| GET | /loan-officers | loan officer | `LoanOfficerView[]`: the loan officers with how many open cases each owns (for reassigning) |
+| POST | /cases/:id/pick | loan officer (REVIEW or INFO_REQUESTED, unassigned) | → `CaseDetail`, owned by the caller. 409 when someone owns it or it has left the loan officers |
+| POST | /cases/:id/reassign | loan officer (DRAFT, REVIEW, INFO_REQUESTED) | `ReassignRequest` `{ ownerId, reason }` → `CaseDetail`. 400 for no reason or a target who is not a loan officer; 409 for the current owner or outside those statuses |
+| POST | /cases/:id/priority | loan officer (DRAFT, REVIEW, INFO_REQUESTED) | `SetPriorityRequest` `{ priority: NORMAL \| HIGH }` → `CaseDetail`. 409 for the same priority or outside those statuses |
+| GET | /cases?view=queue\|all[&owner=me\|unassigned] | any signed-in except admin | `CaseList` (queue = the cases waiting on the caller's role; for an approver, only APPROVAL cases within their authority) |
 | POST | /cases | loan officer | `CreateCaseRequest` → `CaseDetail` (submit=true runs the decision) |
 | PATCH | /cases/:id | loan officer (draft only) | `UpdateDraftRequest` → `CaseDetail` |
 | POST | /cases/:id/submit | loan officer (draft only) | → `CaseDetail` |

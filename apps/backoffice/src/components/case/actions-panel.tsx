@@ -8,6 +8,7 @@ import {
   type DeclineReason,
   type DeclineRequest,
   DOCUMENT_TYPE_LABEL,
+  type DocumentType,
   DRAFT_EXPIRY_DAYS,
   OFFER_EXPIRY_DAYS,
   OVERRIDE_REASON_LABEL,
@@ -40,6 +41,7 @@ import {
 import { type ReactNode, useState } from "react";
 import { useShellRefresh } from "@/components/app-shell";
 import { RequestInfoDialog } from "@/components/case/request-info-dialog";
+import { ReassignDialog } from "@/components/case/routing-dialogs";
 import { ApiError, api, errorMessage, fieldErrorsOf } from "@/lib/api";
 import { MAX_AMOUNT, MIN_AMOUNT, toCentavos, toDecimalString } from "@/lib/application-schema";
 import { isOverdue } from "@/lib/info-request";
@@ -61,6 +63,15 @@ const tenorOf = (c: CaseDetail) =>
 
 /** Actions that post with no body. Each states what will happen before it runs. */
 const SIMPLE: Partial<Record<CaseAction, SimpleAction>> = {
+  PICK: {
+    label: "Pick this case",
+    path: (id) => `/cases/${id}/pick`,
+    variant: "primary",
+    title: () => "Take this case on?",
+    describe: (c) =>
+      `${c.applicant.fullName}'s referral is waiting in the team queue. It becomes yours: it moves to Mine in your queue, and the history records that you picked it.`,
+    done: "Picked — the case is yours",
+  },
   SUBMIT: {
     label: "Submit for decision",
     path: (id) => `/cases/${id}/submit`,
@@ -166,7 +177,9 @@ type Open =
   | { kind: "recommend" }
   | { kind: "decline" }
   | { kind: "withdraw" }
-  | { kind: "request-info" }
+  | { kind: "request-info"; offered: DocumentType[] }
+  | { kind: "reassign" }
+  | { kind: "priority" }
   | null;
 
 /**
@@ -256,7 +269,10 @@ export function ActionsPanel({
     else if (a.action === "RECOMMEND") setOpen({ kind: "recommend" });
     else if (a.action === "DECLINE") setOpen({ kind: "decline" });
     else if (a.action === "WITHDRAW") setOpen({ kind: "withdraw" });
-    else if (a.action === "REQUEST_INFO") setOpen({ kind: "request-info" });
+    else if (a.action === "REASSIGN") setOpen({ kind: "reassign" });
+    else if (a.action === "SET_PRIORITY") setOpen({ kind: "priority" });
+    else if (a.action === "REQUEST_INFO")
+      setOpen({ kind: "request-info", offered: (a.enabled && a.documentTypes) || [] });
     else setOpen({ kind: "simple", action: a.action });
   }
 
@@ -335,6 +351,7 @@ export function ActionsPanel({
       {open?.kind === "request-info" && (
         <RequestInfoDialog
           detail={detail}
+          offered={open.offered}
           busy={busy}
           error={error}
           fieldErrors={fieldErrors}
@@ -346,6 +363,42 @@ export function ActionsPanel({
               "Request sent — the case waits for the borrower's documents",
             )
           }
+        />
+      )}
+      {open?.kind === "reassign" && (
+        <ReassignDialog
+          detail={detail}
+          busy={busy}
+          error={error}
+          fieldErrors={fieldErrors}
+          onCancel={() => setOpen(null)}
+          onSubmit={(body) => run(`/cases/${detail.id}/reassign`, body, "Reassigned")}
+        />
+      )}
+      {open?.kind === "priority" && (
+        <ConfirmDialog
+          open
+          title={
+            detail.priority === "HIGH"
+              ? "Set this case back to normal priority?"
+              : "Mark this case high priority?"
+          }
+          description={
+            detail.priority === "HIGH"
+              ? "It takes its place among the other cases again, oldest first."
+              : "It is listed first in the loan officers' queue, ahead of normal cases."
+          }
+          confirmLabel={detail.priority === "HIGH" ? "Set normal priority" : "Mark high priority"}
+          busy={busy}
+          error={error}
+          onConfirm={() =>
+            run(
+              `/cases/${detail.id}/priority`,
+              { priority: detail.priority === "HIGH" ? "NORMAL" : "HIGH" },
+              detail.priority === "HIGH" ? "Set back to normal priority" : "Marked high priority",
+            )
+          }
+          onCancel={() => setOpen(null)}
         />
       )}
       {open?.kind === "withdraw" && (
@@ -373,8 +426,11 @@ function canAttempt(a: ActionAvailability): boolean {
   return !a.enabled && a.action === "APPROVE" && a.blockedBy === ProblemCode.AuthorityLimit;
 }
 
-/** Actions that close the case rather than move it on: shown apart, as the prototype does. */
-const TOOLS = new Set<CaseAction>(["WITHDRAW"]);
+/**
+ * Tools that route or close the case rather than move it on (reassign, priority, withdraw): shown
+ * apart, as the prototype does.
+ */
+const TOOLS = new Set<CaseAction>(["REASSIGN", "SET_PRIORITY", "WITHDRAW"]);
 
 /** Why each disabled action in a group is blocked, under its buttons and linked to them. */
 function BlockedReasons({ actions }: { actions: ActionAvailability[] }) {
@@ -427,12 +483,15 @@ function variantFor(a: ActionAvailability, redecideOffered: boolean): SimpleActi
   if (a.action === "DECLINE") return "danger";
   if (a.action === "REPRODUCE_DECISION") return "secondary";
   if (a.action === "WITHDRAW") return "secondary";
+  if (a.action === "REASSIGN" || a.action === "SET_PRIORITY") return "secondary";
   if (a.action === "REQUEST_INFO") return "secondary";
   if (a.action === "RECOMMEND" && redecideOffered) return "secondary";
   return SIMPLE[a.action]?.variant ?? "primary";
 }
 
 function labelOf(action: CaseAction): string {
+  if (action === "REASSIGN") return "Reassign";
+  if (action === "SET_PRIORITY") return "Change priority";
   if (action === "RECOMMEND") return "Recommend a decision";
   if (action === "DECLINE") return "Decline";
   if (action === "REPRODUCE_DECISION") return "View decision record";

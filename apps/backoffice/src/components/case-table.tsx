@@ -1,8 +1,9 @@
 "use client";
 
-import { type CaseSummary, productLabel } from "@loan/core";
+import { type CaseSummary, CHANNEL_LABEL, productLabel } from "@loan/core";
 import {
   Avatar,
+  Button,
   type Column,
   formatDateTime,
   formatPeso,
@@ -14,6 +15,11 @@ import {
   Table,
 } from "@loan/ui";
 import Link from "next/link";
+
+/** Whether a row offers Pick: a referral in the team queue (the API decides on the click). */
+export function pickable(c: CaseSummary): boolean {
+  return (c.status === "REVIEW" || c.status === "INFO_REQUESTED") && c.ownerId === null;
+}
 
 const COLUMNS: Column<CaseSummary>[] = [
   {
@@ -53,7 +59,16 @@ const COLUMNS: Column<CaseSummary>[] = [
       </div>
     ),
   },
-  { key: "stage", header: "Stage", render: (c) => <StagePill status={c.status} /> },
+  {
+    key: "stage",
+    header: "Stage",
+    render: (c) => (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <StagePill status={c.status} />
+        {c.priority === "HIGH" && <Pill tone="bad">High priority</Pill>}
+      </div>
+    ),
+  },
   {
     key: "reason",
     header: "Reason",
@@ -93,11 +108,60 @@ const COLUMNS: Column<CaseSummary>[] = [
   },
 ];
 
-export function CaseTable({ cases, empty }: { cases: CaseSummary[]; empty: string }) {
+/** Who owns the case (WF-002) and where it came in; Pick for a referral nobody owns yet. */
+function ownerColumn(
+  onPick?: (c: CaseSummary) => void,
+  busyId?: string | null,
+): Column<CaseSummary> {
+  return {
+    key: "owner",
+    header: "Owner",
+    render: (c) => (
+      <div>
+        {c.ownerName ? (
+          <span className="text-ink-900">{c.ownerName}</span>
+        ) : (
+          <span className="text-mist-500">Unassigned</span>
+        )}
+        <p className="text-xs text-mist-500">{CHANNEL_LABEL[c.channel]}</p>
+        {onPick && pickable(c) && (
+          <Button
+            size="sm"
+            variant="secondary"
+            className="mt-1"
+            aria-label={`Pick ${c.applicantName}'s case`}
+            busy={busyId === c.id}
+            disabled={Boolean(busyId)}
+            onClick={() => onPick(c)}
+          >
+            Pick
+          </Button>
+        )}
+      </div>
+    ),
+  };
+}
+
+export function CaseTable({
+  cases,
+  empty,
+  onPick,
+  busyId = null,
+}: {
+  cases: CaseSummary[];
+  empty: string;
+  /** The loan officer's queue: offer Pick on unassigned referrals. */
+  onPick?: (c: CaseSummary) => void;
+  /** The case whose Pick is in flight: its button is busy and every Pick waits for it. */
+  busyId?: string | null;
+}) {
+  // The owner goes after the amount, found by its key (not its position).
+  const at = COLUMNS.findIndex((col) => col.key === "amount") + 1;
+  const columns = [...COLUMNS.slice(0, at), ownerColumn(onPick, busyId), ...COLUMNS.slice(at)];
   return (
     <Table
       caption="Loan applications"
-      columns={COLUMNS}
+      columns={columns}
       rows={cases}
       rowKey={(c) => c.id}
       empty={empty}

@@ -3,21 +3,20 @@
 import {
   type CaseDetail,
   DOCUMENT_TYPE_LABEL,
-  DocumentType,
+  type DocumentType,
   type InfoRequestRequest,
 } from "@loan/core";
 import { Checkbox, ConfirmDialog, Field, FormStack, Select, Textarea } from "@loan/ui";
 import { useState } from "react";
 
-const ALL_TYPES = Object.values(DocumentType);
-
 /**
  * The prototype's "Request information from the borrower" dialog (PRD WF-007): which
- * documents, the message the borrower sees, and when it is due. A verified document cannot be
- * asked for again, so it is not offered; the API decides either way.
+ * documents, the message the borrower sees, and when it is due. It offers exactly the
+ * document types the API lists on the REQUEST_INFO action (one rule, decided by the API).
  */
 export function RequestInfoDialog({
   detail,
+  offered,
   busy,
   error,
   fieldErrors,
@@ -25,16 +24,14 @@ export function RequestInfoDialog({
   onSubmit,
 }: {
   detail: CaseDetail;
+  /** The document types the API will accept now (`documentTypes` on REQUEST_INFO). */
+  offered: DocumentType[];
   busy: boolean;
   error: string | null;
   fieldErrors: Record<string, string>;
   onCancel: () => void;
   onSubmit: (body: InfoRequestRequest) => void;
 }) {
-  const verified = new Set(
-    detail.documents.filter((d) => d.status === "VERIFIED").map((d) => d.type),
-  );
-  const offered = ALL_TYPES.filter((t) => !verified.has(t));
   const [picked, setPicked] = useState<DocumentType[]>(offered.slice(0, 1));
   const firstName = detail.applicant.fullName.split(" ")[0] ?? detail.applicant.fullName;
   const [message, setMessage] = useState(

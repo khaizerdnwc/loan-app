@@ -2,6 +2,7 @@ import {
   type ActionAvailability,
   type CaseAction,
   CaseStatus,
+  type DocumentType,
   Money,
   ProblemCode,
   Recommendation,
@@ -11,10 +12,12 @@ import {
 import type { SessionUser } from "../auth/session";
 import type { StaffEntity } from "../auth/staff.entity";
 import { OPERATIONS_STAGES } from "./cases.repository";
+import { REQUESTABLE_TYPES } from "./documents";
 import type { BookingRequestEntity } from "./entities/booking.entities";
 import type { LoanCaseEntity } from "./entities/loan-case.entity";
 import { canHappen } from "./lifecycle";
 import { expiryRefusal } from "./product";
+import { canPick, withOfficers } from "./routing";
 
 /**
  * Who may see a case (docs/API.md). Outside this, the API answers 404 so the case's
@@ -93,6 +96,9 @@ const ROLE_ACTIONS: Record<Role, CaseAction[]> = {
     "SUBMIT",
     "REDECIDE",
     "REQUEST_INFO",
+    "PICK",
+    "REASSIGN",
+    "SET_PRIORITY",
     "RECOMMEND",
     "WITHDRAW",
     "REPRODUCE_DECISION",
@@ -142,7 +148,12 @@ export function allowedActions(
    * The document checklist's refusals (documents.ts): why REQUEST_INFO cannot be sent now, and
    * why RECOMMEND must wait (a received document is not verified or rejected yet).
    */
-  documents: { request: string | null; recommend: string | null } = {
+  documents: {
+    request: string | null;
+    recommend: string | null;
+    /** The types a request may ask for now (requestableTypes). */
+    requestable?: DocumentType[];
+  } = {
     request: null,
     recommend: null,
   },
@@ -153,6 +164,9 @@ export function allowedActions(
     if (event && !canHappen(event, c.status)) continue;
     if (action === "EDIT_DRAFT" && c.status !== CaseStatus.Draft) continue;
     if (action === "REPRODUCE_DECISION" && !c.decisionId) continue;
+    // Queue routing (WF-002): only while the case is with the loan officers.
+    if (action === "PICK" && !canPick(c)) continue;
+    if ((action === "REASSIGN" || action === "SET_PRIORITY") && !withOfficers(c.status)) continue;
     if (action === "REDECIDE" && !decidedDuringOutage) continue;
     if (action === "REDECIDE" && !consentComplete) {
       out.push({
@@ -279,6 +293,14 @@ export function allowedActions(
         enabled: false,
         blockedBy: ProblemCode.BookingChecklistIncomplete,
         detail: bookingRefusal,
+      });
+      continue;
+    }
+    if (action === "REQUEST_INFO") {
+      out.push({
+        action,
+        enabled: true,
+        documentTypes: documents.requestable ?? [...REQUESTABLE_TYPES],
       });
       continue;
     }

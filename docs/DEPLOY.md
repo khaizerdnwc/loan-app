@@ -94,13 +94,19 @@ WHERE status NOT IN ('DECLINED', 'DISBURSED') GROUP BY 1, 2 HAVING count(*) > 1;
 
 A fresh environment has nothing to check: the seed creates no cases.
 
-Migrations are listed in timestamp order, but lanes merged in a different order: a database
-that already ran 1764300002000 (audit log, AML escalations) and 1764300003000 (automation)
-before 1764300001000 (requests for information, document checklist) existed applies 1000
-afterwards. That is safe: the three touch different tables (1000 adds columns to `loan_case`
-and new tables; 2000 and 3000 neither alter those columns nor the open-application index).
-`migration:revert` undoes migrations in the order they were executed, not by timestamp, so on
-such a database the first revert undoes 1000.
+Migrations are listed in timestamp order, but lanes merged in a different order, so a long-lived
+database can apply an older-numbered migration after newer ones. On a database that already ran
+1764300002000 (audit log, AML escalations), 1764300002001 and 1764300003000 (automation), the
+pending 1764300001000 (requests for information, document checklist) and 1764300001001 (routing
+and walk-ins) apply afterwards. That is safe: 1000 and 1001 add columns to `loan_case` and
+`applicant`, new tables and a `sim.persona_profile` column; 2000, 2001 and 3000 alter none of
+those columns or the open-application index and put no trigger on `loan_case` or `applicant`,
+so the 1001 backfill (`owner_id = created_by` for drafts) gives the same result in any order.
+1001 gives an owner only to drafts: cases already in review or waiting for information land
+unassigned in the team queue, including cases an approver returned before the upgrade (after
+it, a returned case goes back to the officer who recommended it). `migration:revert` undoes
+migrations in the order they were executed, not by timestamp, so on such a database the first
+reverts undo 1001 and then 1000.
 
 ## Backup and restore
 

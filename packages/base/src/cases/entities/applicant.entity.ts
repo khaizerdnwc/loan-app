@@ -1,5 +1,5 @@
 import type { Money } from "@loan/core";
-import { Column, Entity, PrimaryColumn } from "typeorm";
+import { Column, Entity, Index, PrimaryColumn } from "typeorm";
 import { moneyColumn } from "../../database/money.transformer";
 
 /**
@@ -51,4 +51,9 @@ export class ApplicantEntity {
   /** The (simulated) WhiteBank deposit account a loan is disbursed to. */
   @Column({ name: "deposit_account", type: "varchar", length: 40 })
   depositAccount!: string;
+
+  /** Core banking customer number (CIF) when captured from a core lookup; else null. */
+  @Index("UQ_applicant_customer_number", { unique: true, where: '"customer_number" IS NOT NULL' })
+  @Column({ name: "customer_number", type: "varchar", length: 20, nullable: true })
+  customerNumber!: string | null;
 }

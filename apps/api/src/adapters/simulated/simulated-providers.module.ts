@@ -1,6 +1,7 @@
 import {
   CORE_BANKING,
   CREDIT_BUREAU,
+  CUSTOMER_LOOKUP,
   DISBURSEMENT,
   DOCUMENT_INTAKE,
   E_SIGNATURE,
@@ -12,6 +13,7 @@ import { Global, Module } from "@nestjs/common";
 import { env } from "../../config/env";
 import { SimulatedCoreBanking } from "./core-banking/core-banking.simulator";
 import { SimulatedCreditBureau } from "./credit-bureau.simulator";
+import { SimulatedCustomerLookup } from "./customer-lookup.simulator";
 import { SimulatedDisbursement } from "./disbursement.simulator";
 import { SimulatedDocumentIntake } from "./document-intake.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
@@ -43,6 +45,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedESignature,
     SimulatedFraudCheck,
     SimulatedDocumentIntake,
+    SimulatedCustomerLookup,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
     { provide: CORE_BANKING, useExisting: SimulatedCoreBanking },
@@ -50,6 +53,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     { provide: E_SIGNATURE, useExisting: SimulatedESignature },
     { provide: FRAUD_CHECK, useExisting: SimulatedFraudCheck },
     { provide: DOCUMENT_INTAKE, useExisting: SimulatedDocumentIntake },
+    { provide: CUSTOMER_LOOKUP, useExisting: SimulatedCustomerLookup },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
   exports: [
@@ -60,6 +64,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     E_SIGNATURE,
     FRAUD_CHECK,
     DOCUMENT_INTAKE,
+    CUSTOMER_LOOKUP,
     SIMULATION_CONTROL,
   ],
 })

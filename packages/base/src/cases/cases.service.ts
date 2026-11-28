@@ -3,6 +3,7 @@ import {
   type CaseDetail,
   type CaseList,
   CaseStatus,
+  Channel,
   CONSENT_TERMS_VERSION,
   type ConsentInput,
   type CreateCaseRequest,
@@ -34,6 +35,7 @@ import {
   authorityExceeded,
   DomainError,
   invalidState,
+  isUniqueViolation,
   makerChecker,
   notFound,
   overrideReasonRequired,
@@ -48,6 +50,7 @@ import {
   startDraft,
 } from "./lifecycle";
 import { businessDate, expiryRefusal, PERSONAL_LOAN, termErrors } from "./product";
+import { queueOrder } from "./routing";
 
 const OUTCOME_STATUS: Record<DecisionOutcome, CaseStatus> = {
   AUTO_APPROVE: CaseStatus.Offer,
@@ -75,11 +78,25 @@ export class CasesService {
 
   // --- reads -------------------------------------------------------------------------------
 
-  async list(user: SessionUser, view: "queue" | "all"): Promise<CaseList> {
+  /**
+   * The cases a role works on now (`queue`) or may look at (`all`). A loan officer's queue can
+   * be narrowed to their own cases (`owner=me`) or the team's unassigned referrals
+   * (`owner=unassigned`), and is ordered by priority, then the longest-waiting (WF-002).
+   */
+  async list(
+    user: SessionUser,
+    view: "queue" | "all",
+    owner?: "me" | "unassigned",
+  ): Promise<CaseList> {
     let cases = await this.repo.list(user, view);
     if (user.role === Role.Approver && view === "queue") {
       const me = await this.staff.findById(user.id);
       cases = cases.filter((c) => me !== null && authorityProblem(me, c) === null);
+    }
+    if (user.role === Role.LoanOfficer && view === "queue") {
+      if (owner === "me") cases = cases.filter((c) => c.ownerId === user.id);
+      if (owner === "unassigned") cases = cases.filter((c) => c.ownerId === null);
+      cases = [...cases].sort(queueOrder);
     }
     return { items: await this.views.summaries(cases) };
   }
@@ -124,6 +141,9 @@ export class CasesService {
         c.requestedTenorMonths = body.tenorMonths;
         c.purpose = body.purpose.trim();
         startDraft(c);
+        // The draft is the capturing officer's until it is decided (WF-002).
+        c.ownerId = user.id;
+        c.channel = Channel.Branch;
         c.createdBy = user.id;
         const saved = await this.repo.saveCase(m, c);
         await this.activity.record(m, {
@@ -218,6 +238,8 @@ export class CasesService {
       const to = OUTCOME_STATUS[result.outcome];
       this.move(c, "SUBMIT", to);
       if (to === CaseStatus.Offer) c.offeredAt = new Date();
+      // A referral joins the loan officers' team queue unassigned; any officer picks it (WF-002).
+      if (to === CaseStatus.Review) c.ownerId = null;
       c.decisionId = record.id;
       c.grade = result.grade;
       if (result.outcome === DecisionOutcome.Approve && result.monthlyRate) {
@@ -522,6 +544,8 @@ export class CasesService {
       const c = await this.lockOrFail(m, user, id);
       this.transition("RETURN", c.status);
       this.move(c, "RETURN", CaseStatus.Review);
+      // Back to the officer who recommended it (WF-002).
+      c.ownerId = c.recommendedBy ?? c.ownerId;
       c.approvedBy = user.id;
       // A returned case starts its approval afresh: the officer's next recommendation is a new
       // request, so an earlier refusal above authority no longer applies.
@@ -709,12 +733,6 @@ function duplicateApplication(name: string, reference: string): DomainError {
     ProblemCode.DuplicateApplication,
     `${name} already has an open ${PERSONAL_LOAN.name.toLowerCase()} application (${reference}). Continue that one, or withdraw it first.`,
   );
-}
-
-/** A Postgres unique violation (23505) on the named constraint or index. */
-function isUniqueViolation(err: unknown, constraint: string): boolean {
-  const driver = (err as { driverError?: { code?: string; constraint?: string } }).driverError;
-  return driver?.code === "23505" && driver.constraint === constraint;
 }
 
 /** Refuses (409) a write on a draft or offer that has expired but the sweep has not closed yet. */

@@ -8,7 +8,7 @@ The short reference for agents and reviewers. The longer narrative, with diagram
 ```
 packages/core        Money, domain enums and labels, the HTTP contract types, RFC 9457 shape
 packages/contracts   port interfaces: CreditBureau, KycAml, FraudCheck, CoreBanking,
-                     Disbursement, ESignature, DocumentIntake, SimulationControl (each with its
+                     Disbursement, ESignature, DocumentIntake, CustomerLookup, SimulationControl (each with its
                      Nest token)
 packages/base        the lending domain — one Nest module (lending.module.ts):
                        auth/        test sign-in (scrypt), SessionGuard (global, fails closed)

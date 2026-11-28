@@ -1,3 +1,4 @@
+import { identityKey } from "@loan/contracts";
 import { Money } from "@loan/core";
 import type { DataSource } from "typeorm";
 import { hashPassword } from "../auth/password";
@@ -32,6 +33,16 @@ export const SEED_STAFF: StaffSeed[] = [
     id: "STF-PAOLO",
     username: "paolo",
     fullName: "Paolo Tan",
+    role: "LOAN_OFFICER",
+    title: "Loan officer / credit analyst",
+    approvalLimit: null,
+    approvalGrades: null,
+  },
+  // A second loan officer, so a case can be picked from the team queue and reassigned (WF-002).
+  {
+    id: "STF-JOY",
+    username: "joy",
+    fullName: "Joy Dela Cruz",
     role: "LOAN_OFFICER",
     title: "Loan officer / credit analyst",
     approvalLimit: null,
@@ -673,9 +684,10 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
     );
     for (const a of SEED_APPLICANTS) {
       await m.query(
-        `INSERT INTO sim.persona_profile (applicant_id, bureau, screening, fraud) VALUES ($1, $2, $3, $4)
-         ON CONFLICT (applicant_id) DO UPDATE SET bureau = $2, screening = $3, fraud = $4`,
-        [a.id, a.bureau, a.screening, a.fraud ?? null],
+        `INSERT INTO sim.persona_profile (applicant_id, bureau, screening, fraud, identity_key)
+         VALUES ($1, $2, $3, $4, $5)
+         ON CONFLICT (applicant_id) DO UPDATE SET bureau = $2, screening = $3, fraud = $4, identity_key = $5`,
+        [a.id, a.bureau, a.screening, a.fraud ?? null, identityKey(a)],
       );
     }
   });

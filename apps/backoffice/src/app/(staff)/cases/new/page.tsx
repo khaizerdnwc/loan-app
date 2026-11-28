@@ -31,6 +31,7 @@ import { useForm } from "react-hook-form";
 import { PageHeader } from "@/components/app-shell";
 import { IndicativeRepayment } from "@/components/case/indicative-repayment";
 import { LoadState } from "@/components/load-state";
+import { NewApplicantDialog } from "@/components/new-applicant-dialog";
 import { api, errorMessage, fieldErrorsOf } from "@/lib/api";
 import {
   type ApplicationForm,
@@ -58,6 +59,7 @@ export default function NewApplicationPage() {
   const applicants = useApi<ApplicantView[]>(me.role === "LOAN_OFFICER" ? "/applicants" : null);
   const [pending, setPending] = useState<{ intent: Intent; values: ApplicationForm } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [capturing, setCapturing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [consentError, setConsentError] = useState<string | null>(null);
   /** The boxes themselves are at fault (not, say, the terms version). */
@@ -185,6 +187,16 @@ export default function NewApplicationPage() {
                   ))}
                 </Select>
               </Field>
+              <div className="mt-3">
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  type="button"
+                  onClick={() => setCapturing(true)}
+                >
+                  New or walk-in customer
+                </Button>
+              </div>
               {selected && (
                 <KeyValues
                   className="mt-4"
@@ -281,6 +293,21 @@ export default function NewApplicationPage() {
             </Card>
           </div>
         </form>
+      )}
+      {capturing && (
+        <NewApplicantDialog
+          onCancel={() => setCapturing(false)}
+          onChooseExisting={(id) => {
+            setCapturing(false);
+            form.setValue("applicantId", id, { shouldValidate: true });
+          }}
+          onCreated={async (a) => {
+            setCapturing(false);
+            await applicants.reload();
+            form.setValue("applicantId", a.id, { shouldValidate: true });
+            toast(`Added ${a.fullName} as a new applicant`);
+          }}
+        />
       )}
       <ConfirmDialog
         open={pending !== null}

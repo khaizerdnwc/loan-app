@@ -30,7 +30,7 @@ import { allowedActions, recommendationRefusal, recommendationTypes } from "./ca
 import { CasesRepository } from "./cases.repository";
 import { consentComplete } from "./consent";
 import { ageOn, DecisionService } from "./decision.service";
-import { documentActions, requestRefusal, unreviewedRefusal } from "./documents";
+import { documentActions, requestableTypes, requestRefusal, unreviewedRefusal } from "./documents";
 import type { ActivityEventEntity } from "./entities/activity-event.entity";
 import type { ApplicantEntity } from "./entities/applicant.entity";
 import type { BookingRequestEntity } from "./entities/booking.entities";
@@ -54,7 +54,10 @@ export class CaseViews {
     for (const c of cases) {
       if (c.decisionId) outcomes.set(c.id, await this.repo.findDecision(c.decisionId));
     }
-    return cases.map((c) => summary(c, outcomes.get(c.id) ?? null));
+    const names = await this.staff.namesById(
+      cases.map((c) => c.ownerId).filter((x): x is string => Boolean(x)),
+    );
+    return cases.map((c) => summary(c, outcomes.get(c.id) ?? null, names));
   }
 
   async detail(user: SessionUser, c: LoanCaseEntity): Promise<CaseDetail> {
@@ -78,6 +81,7 @@ export class CaseViews {
         booking?.makerId,
         consent?.capturedBy,
         c.infoRequestedBy,
+        c.ownerId,
         ...documents.map((d) => d.reviewedBy),
       ].filter((x): x is string => Boolean(x)),
     );
@@ -103,11 +107,15 @@ export class CaseViews {
       consentComplete(consent),
       checklistRefusal(checklist),
       booking ? await this.compliance.bookingHold(c.id) : null,
-      { request: requestRefusal(documents), recommend: unreviewedRefusal(documents) },
+      {
+        request: requestRefusal(documents),
+        recommend: unreviewedRefusal(documents),
+        requestable: requestableTypes(documents),
+      },
     );
 
     return {
-      ...summary(c, decision),
+      ...summary(c, decision, names),
       applicant: applicantView(c.applicant, today()),
       purpose: c.purpose,
       createdBy: c.createdBy,
@@ -316,7 +324,11 @@ function decisionReasons(decision: DecisionRecordEntity | null): string[] {
     : decision.reasonCodes.map((r) => r.staff);
 }
 
-function summary(c: LoanCaseEntity, decision: DecisionRecordEntity | null): CaseSummary {
+function summary(
+  c: LoanCaseEntity,
+  decision: DecisionRecordEntity | null,
+  names: Map<string, string>,
+): CaseSummary {
   return {
     id: c.id,
     reference: c.reference,
@@ -330,6 +342,10 @@ function summary(c: LoanCaseEntity, decision: DecisionRecordEntity | null): Case
     reasonCount: decisionReasons(decision).length,
     grade: c.grade,
     escalated: c.escalated,
+    ownerId: c.ownerId,
+    ownerName: c.ownerId ? (names.get(c.ownerId) ?? c.ownerId) : null,
+    channel: c.channel,
+    priority: c.priority,
     createdAt: c.createdAt.toISOString(),
     updatedAt: c.updatedAt.toISOString(),
   };

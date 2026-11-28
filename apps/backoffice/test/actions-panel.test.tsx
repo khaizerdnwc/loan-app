@@ -22,6 +22,10 @@ function detail(patch: Partial<CaseDetail>): CaseDetail {
     reasonCount: 1,
     grade: "C",
     escalated: false,
+    ownerId: null,
+    ownerName: null,
+    channel: "BRANCH",
+    priority: "NORMAL",
     createdAt: "2026-11-28T01:00:00.000Z",
     updatedAt: "2026-11-28T01:00:00.000Z",
     applicant: {
