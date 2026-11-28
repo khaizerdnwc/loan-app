@@ -92,7 +92,8 @@ export interface CaseSummary {
 export interface RuleResultView {
   id: string;
   name: string;
-  kind: "KNOCKOUT" | "REFERRAL";
+  /** WARNING (RS-PL-5 on): shown to the reviewer and approver, never changes the outcome. */
+  kind: "KNOCKOUT" | "REFERRAL" | "WARNING";
   result: "PASS" | "FAIL" | "NOT_EVALUATED";
   value: string;
 }

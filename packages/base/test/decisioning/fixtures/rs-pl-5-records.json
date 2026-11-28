@@ -1,0 +1,3338 @@
+{
+  "_note": "FROZEN: RS-PL-5 / SC-PL-2 decisions (warning rules, low model confidence, missing data, policy exception; PRD DEC-002, DEC-006) captured from the engine before RS-PL-5 shipped (28 Nov 2026; recaptured once in review, before any RS-PL-5 record existed, when the policy exception became a bank control under INSTEAD and R27/R28 gained their next steps): warnings with an approval and a decline, near each band edge, too few factors, a full file without a score, an odd tenor, an amount above the income multiple, a knockout, a bureau outage, the external engine alongside, and instead with a policy exception, with standard terms and without a bureau score. Never regenerate or edit: D-22 proves RS-PL-5 records keep reproducing. A change to their behaviour is a new rule-set version.",
+  "records": [
+    {
+      "name": "mariaApproves",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "7a29fa6ae54ed972ca0080fe02f671d7ec2b9dee74c29a167da75567165ed7a8",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_APPROVE",
+      "engineOutcome": "AUTO_APPROVE",
+      "score": 742,
+      "grade": "A",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score 742 (A)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "748 (740 and above)",
+          "points": 200
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "35%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "18 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [],
+      "referralTriggers": [],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0120",
+      "pd": "0.0080",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "carmenWarnsAndDeclines",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "60000.00",
+          "tenorMonths": 12
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 29,
+          "monthlyIncome": "40000.00",
+          "monthlyObligations": "14000.00",
+          "employmentMonths": 8,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 540,
+          "tradeLines": 4,
+          "utilisationPct": 85,
+          "delinquencies12m": 2,
+          "existingDefault": false,
+          "monthsOnFile": 40
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "a67b61ae9e79186be5087fb2a33eaa16d5f9148685cf17fa523fe14ed2a5cf09",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_DECLINE",
+      "engineOutcome": "AUTO_DECLINE",
+      "score": 450,
+      "grade": "E",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 29"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 35.0%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 450 (E)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "FAIL",
+          "value": "85%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "FAIL",
+          "value": "8 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "540 (below 560)",
+          "points": 40
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "30–40%",
+          "points": 30
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "85%",
+          "points": 0
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "2",
+          "points": -60
+        },
+        {
+          "factor": "Employment",
+          "detail": "6–12 months",
+          "points": 10
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R07",
+          "staff": "Score below the minimum for this product",
+          "borrower": "Your application does not meet our credit requirements."
+        },
+        {
+          "code": "R04",
+          "staff": "Recent missed payments on other credit",
+          "borrower": "Your recent repayment history does not meet our requirements."
+        }
+      ],
+      "referralTriggers": [],
+      "debtToIncome": "0.3500",
+      "monthlyRate": "0.0200",
+      "pd": "0.1200",
+      "recommendedAmount": "58000.00"
+    },
+    {
+      "name": "warnedButApproved",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 11,
+          "relationshipMonths": 24
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 81,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "33109cd85e2e9db893496b321cc76988a3acc784311589c198aca5aaa79fd115",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_APPROVE",
+      "engineOutcome": "AUTO_APPROVE",
+      "score": 717,
+      "grade": "B",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score 717 (B)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "FAIL",
+          "value": "81%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "FAIL",
+          "value": "11 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "748 (740 and above)",
+          "points": 200
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "81%",
+          "points": 0
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "6–12 months",
+          "points": 10
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "24 months",
+          "points": 30
+        }
+      ],
+      "reasonCodes": [],
+      "referralTriggers": [],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0140",
+      "pd": "0.0150",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "nearApproveRefers",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 80,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "3e01da2050b875edf44de0d208b2225fdc72a22f576a4dd2bdf795f426f77ef4",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 702,
+      "grade": "B",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score 702 (B)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "702 near 700; 7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "80%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "748 (740 and above)",
+          "points": 200
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "80%",
+          "points": 0
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R27",
+          "staff": "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending"
+      ],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0140",
+      "pd": "0.0150",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "nearDeclineRefers",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 560,
+          "tradeLines": 6,
+          "utilisationPct": 80,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "259f065f18089da82cec348e2fe5350b4a479e39fe1c29f08abd124f26e29782",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 592,
+      "grade": "D",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 592 (D)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "592 near 600; 7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "80%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "560 (560–619)",
+          "points": 90
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "80%",
+          "points": 0
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R27",
+          "staff": "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending",
+          "borrower": "Your application needs a review by our credit team."
+        },
+        {
+          "code": "R07",
+          "staff": "Score below the minimum for this product",
+          "borrower": "Your application does not meet our credit requirements."
+        }
+      ],
+      "referralTriggers": [
+        "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending"
+      ],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0180",
+      "pd": "0.0600",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "ninaFewFactors",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "80000.00",
+          "tenorMonths": 18
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 23,
+          "monthlyIncome": "42000.00",
+          "monthlyObligations": "4000.00",
+          "employmentMonths": 14,
+          "relationshipMonths": 10
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "NO_HIT",
+          "bureauScore": null,
+          "tradeLines": 0,
+          "utilisationPct": 0,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 0
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "2eee1f4a7d0257674b8981709a99ffeaa7dbbed9718b6cf46a3be58c95e322a9",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 537,
+      "grade": "E",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 23"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 9.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "no hit"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "file not full"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 537 (E)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "4 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "NOT_EVALUATED",
+          "value": "no bureau record"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "14 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "no score",
+          "points": 60
+        },
+        {
+          "factor": "Credit file",
+          "detail": "no hit",
+          "points": -20
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "0%",
+          "points": 40
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "10 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R08",
+          "staff": "No record at the credit bureau",
+          "borrower": "We could not confirm enough credit history."
+        },
+        {
+          "code": "R27",
+          "staff": "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending",
+          "borrower": "Your application needs a review by our credit team."
+        },
+        {
+          "code": "R07",
+          "staff": "Score below the minimum for this product",
+          "borrower": "Your application does not meet our credit requirements."
+        }
+      ],
+      "referralTriggers": [
+        "No record at the credit bureau",
+        "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending"
+      ],
+      "debtToIncome": "0.0952",
+      "monthlyRate": "0.0200",
+      "pd": "0.1200",
+      "recommendedAmount": "80000.00"
+    },
+    {
+      "name": "fullFileNoScore",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": null,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "26aaf15310bede9f3c28b4731c9909bab1777432f1b8b742e680ca70571ae997",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 602,
+      "grade": "C",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "no bureau score"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 602 (C)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "6 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "no score",
+          "points": 60
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "35%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "18 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R28",
+          "staff": "Missing data: the bureau returned a full file without a bureau score, so the score rests on a default value: check the bureau file before relying on the score",
+          "borrower": "We need to confirm some of your credit information."
+        },
+        {
+          "code": "R06",
+          "staff": "Score in the referral band",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Missing data: the bureau returned a full file without a bureau score, so the score rests on a default value: check the bureau file before relying on the score",
+        "Score in the referral band"
+      ],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0160",
+      "pd": "0.0300",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "oddTenor",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 20
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "6692ea1212a2a72bad83ea6a3ab55229bf4dd27fb3565564ae4f84b7ef91c082",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 742,
+      "grade": "A",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "20 months"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score 742 (A)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "748 (740 and above)",
+          "points": 200
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "35%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "18 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R29",
+          "staff": "Policy exception: the requested terms are outside the product's standard terms",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Policy exception: the requested terms are outside the product's standard terms"
+      ],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0120",
+      "pd": "0.0080",
+      "recommendedAmount": "150000.00"
+    },
+    {
+      "name": "amountAboveIncomeMultiple",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.01",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "15000.00",
+          "monthlyObligations": "0.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "660d962a4221f4c2833ec6721e44fe344b778554f68a0834b0e0d4db85ce42c2",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 742,
+      "grade": "A",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 0.0%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "amount above the income multiple"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score present"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "score 742 (A)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "748 (740 and above)",
+          "points": 200
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "35%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "18 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R29",
+          "staff": "Policy exception: the requested terms are outside the product's standard terms",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Policy exception: the requested terms are outside the product's standard terms"
+      ],
+      "debtToIncome": "0.0000",
+      "monthlyRate": "0.0120",
+      "pd": "0.0080",
+      "recommendedAmount": "139000.00"
+    },
+    {
+      "name": "ramonKnockout",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "50000.00",
+          "tenorMonths": 12
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 52,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": true,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": 748,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "49dad39152a0db6a7d48d103712c65a5a95c39cbb4fecdebb109fc11bffc603a",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_DECLINE",
+      "engineOutcome": "AUTO_DECLINE",
+      "score": null,
+      "grade": null,
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 52"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "FAIL",
+          "value": "match"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [],
+      "reasonCodes": [
+        {
+          "code": "R11",
+          "staff": "Sanctions or watchlist match",
+          "borrower": "Your application does not meet our lending requirements."
+        }
+      ],
+      "referralTriggers": [],
+      "debtToIncome": "0.1154",
+      "monthlyRate": null,
+      "pd": null,
+      "recommendedAmount": null
+    },
+    {
+      "name": "bureauOutage",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "UNAVAILABLE",
+          "reason": "outage: CREDIT_BUREAU is unavailable (simulated outage)"
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "NONE"
+        }
+      },
+      "inputsHash": "567409e6f55484f5b780a37ff67541b425f50250216b3f017e9af8f001a0476a",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": null,
+      "grade": null,
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "NOT_EVALUATED",
+          "value": "bureau unavailable"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-BUREAU",
+          "name": "Credit bureau answered",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "outage: CREDIT_BUREAU is unavailable (simulated outage)"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "NOT_EVALUATED",
+          "value": "bureau unavailable"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [],
+      "reasonCodes": [
+        {
+          "code": "R10",
+          "staff": "Credit bureau unavailable: routed to manual review instead of declining",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Credit bureau unavailable: routed to manual review instead of declining"
+      ],
+      "debtToIncome": "0.1154",
+      "monthlyRate": null,
+      "pd": null,
+      "recommendedAmount": null
+    },
+    {
+      "name": "joelAlongsideDisagrees",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "200000.00",
+          "tenorMonths": 36
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 27,
+          "monthlyIncome": "56000.00",
+          "monthlyObligations": "11000.00",
+          "employmentMonths": 40,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "THIN",
+          "bureauScore": 640,
+          "tradeLines": 1,
+          "utilisationPct": 42,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 7
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "ALONGSIDE",
+          "status": "OK",
+          "decision": "APPROVE",
+          "reasonCodes": [],
+          "reference": "EXT-0B7E61F3C2D8"
+        }
+      },
+      "inputsHash": "4e831ea54d4f4649473476f8aab1fef9aae75f33f7d4f573709d991e07aad023",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 612,
+      "grade": "C",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 27"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 19.6%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "thin file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "file not full"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 612 (C)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "42%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "40 months"
+        },
+        {
+          "id": "EX-ENGINE",
+          "name": "External decision engine agrees with the built-in engine",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "auto-approve; ref EXT-0B7E61F3C2D8"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "640 (620–679)",
+          "points": 130
+        },
+        {
+          "factor": "Credit file",
+          "detail": "thin",
+          "points": 0
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "42%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "3 years or more",
+          "points": 40
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R23",
+          "staff": "The external decision engine and the built-in engine disagree",
+          "borrower": "Your application needs a review by our credit team."
+        },
+        {
+          "code": "R01",
+          "staff": "Thin bureau file: too little credit history to score with confidence",
+          "borrower": "We could not confirm enough credit history."
+        },
+        {
+          "code": "R06",
+          "staff": "Score in the referral band",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "The external decision engine and the built-in engine disagree (built-in: refer; external: auto-approve)",
+        "Thin bureau file: too little credit history to score with confidence",
+        "Score in the referral band"
+      ],
+      "debtToIncome": "0.1964",
+      "monthlyRate": "0.0160",
+      "pd": "0.0300",
+      "recommendedAmount": "200000.00"
+    },
+    {
+      "name": "joelInsteadPolicyException",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "200000.00",
+          "tenorMonths": 32
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 27,
+          "monthlyIncome": "56000.00",
+          "monthlyObligations": "11000.00",
+          "employmentMonths": 40,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "THIN",
+          "bureauScore": 640,
+          "tradeLines": 1,
+          "utilisationPct": 42,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 7
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "INSTEAD",
+          "status": "OK",
+          "decision": "APPROVE",
+          "reasonCodes": [],
+          "reference": "EXT-4C2A9E61B7D0"
+        }
+      },
+      "inputsHash": "feb43972008bac9a4c4baed0b7eb659a3c8d8b8565cbbf9dd41f7741ce890e70",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "REFER",
+      "engineOutcome": "REFER",
+      "score": 612,
+      "grade": "C",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 27"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 19.6%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "32 months"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "thin file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "file not full"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 612 (C)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "42%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "40 months"
+        },
+        {
+          "id": "EX-ENGINE",
+          "name": "External decision engine approves (used instead of the score)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "auto-approve; ref EXT-4C2A9E61B7D0"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "640 (620–679)",
+          "points": 130
+        },
+        {
+          "factor": "Credit file",
+          "detail": "thin",
+          "points": 0
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "42%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "3 years or more",
+          "points": 40
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [
+        {
+          "code": "R29",
+          "staff": "Policy exception: the requested terms are outside the product's standard terms",
+          "borrower": "Your application needs a review by our credit team."
+        }
+      ],
+      "referralTriggers": [
+        "Policy exception: the requested terms are outside the product's standard terms"
+      ],
+      "debtToIncome": "0.1964",
+      "monthlyRate": "0.0160",
+      "pd": "0.0300",
+      "recommendedAmount": "200000.00"
+    },
+    {
+      "name": "joelInsteadStandardTerms",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "200000.00",
+          "tenorMonths": 36
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 27,
+          "monthlyIncome": "56000.00",
+          "monthlyObligations": "11000.00",
+          "employmentMonths": 40,
+          "relationshipMonths": 0
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "THIN",
+          "bureauScore": 640,
+          "tradeLines": 1,
+          "utilisationPct": 42,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 7
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "INSTEAD",
+          "status": "OK",
+          "decision": "APPROVE",
+          "reasonCodes": [],
+          "reference": "EXT-0B7E61F3C2D8"
+        }
+      },
+      "inputsHash": "e2dab0a2f28d87c62ef2c8f7ec3524ba6bc9505e38bb98fefa62f009174d6ebc",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_APPROVE",
+      "engineOutcome": "AUTO_APPROVE",
+      "score": 612,
+      "grade": "C",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 27"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 19.6%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "thin file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "file not full"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 612 (C)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "7 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "42%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "40 months"
+        },
+        {
+          "id": "EX-ENGINE",
+          "name": "External decision engine approves (used instead of the score)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "auto-approve; ref EXT-0B7E61F3C2D8"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "640 (620–679)",
+          "points": 130
+        },
+        {
+          "factor": "Credit file",
+          "detail": "thin",
+          "points": 0
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "42%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "3 years or more",
+          "points": 40
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "new to bank",
+          "points": 0
+        }
+      ],
+      "reasonCodes": [],
+      "referralTriggers": [],
+      "debtToIncome": "0.1964",
+      "monthlyRate": "0.0160",
+      "pd": "0.0300",
+      "recommendedAmount": "200000.00"
+    },
+    {
+      "name": "noScoreInsteadApproves",
+      "inputs": {
+        "asOfDate": "2026-11-28",
+        "application": {
+          "productCode": "PL",
+          "amount": "150000.00",
+          "tenorMonths": 24
+        },
+        "applicant": {
+          "declaredMonthlyIncome": null,
+          "relatedParty": false,
+          "ageYears": 31,
+          "monthlyIncome": "78000.00",
+          "monthlyObligations": "9000.00",
+          "employmentMonths": 30,
+          "relationshipMonths": 18
+        },
+        "screening": {
+          "status": "OK",
+          "sanctionsMatch": false,
+          "kycVerified": true
+        },
+        "bureau": {
+          "status": "OK",
+          "fileDepth": "FULL",
+          "bureauScore": null,
+          "tradeLines": 6,
+          "utilisationPct": 35,
+          "delinquencies12m": 0,
+          "existingDefault": false,
+          "monthsOnFile": 96
+        },
+        "fraud": {
+          "status": "OK",
+          "flagged": false,
+          "signals": []
+        },
+        "automation": {
+          "mode": "LIVE",
+          "killSwitch": false
+        },
+        "external": {
+          "role": "INSTEAD",
+          "status": "OK",
+          "decision": "APPROVE",
+          "reasonCodes": [],
+          "reference": "EXT-7E3B05D9A1C4"
+        }
+      },
+      "inputsHash": "5d1187c9e03297ca9b32c66d6f80364468246e756871871c8156e81784fc8302",
+      "ruleSetVersion": "RS-PL-5",
+      "scorecardVersion": "SC-PL-2",
+      "outcome": "AUTO_APPROVE",
+      "engineOutcome": "AUTO_APPROVE",
+      "score": 602,
+      "grade": "C",
+      "ruleResults": [
+        {
+          "id": "KO-AGE",
+          "name": "Applicant age 21–65",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "age 31"
+        },
+        {
+          "id": "KO-SANCTIONS",
+          "name": "No sanctions or watchlist match",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "KO-KYC",
+          "name": "Identity verified",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "verified"
+        },
+        {
+          "id": "KO-DEFAULT",
+          "name": "No existing default",
+          "kind": "KNOCKOUT",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-AMOUNT",
+          "name": "Amount within the automatic approval limit",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "limit 300000.00"
+        },
+        {
+          "id": "RF-DTI",
+          "name": "Debt-to-income at or below 40.0%",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "DTI 11.5%"
+        },
+        {
+          "id": "RF-INCOME",
+          "name": "Declared and verified income within 15.0%",
+          "kind": "REFERRAL",
+          "result": "NOT_EVALUATED",
+          "value": "no separate declaration"
+        },
+        {
+          "id": "RF-RELATED",
+          "name": "Not a related party or insider",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "none"
+        },
+        {
+          "id": "RF-FRAUD",
+          "name": "No fraud or identity flag",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "clear"
+        },
+        {
+          "id": "RF-POLICY",
+          "name": "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "standard"
+        },
+        {
+          "id": "RF-FILE",
+          "name": "Bureau file sufficient",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "full file"
+        },
+        {
+          "id": "RF-DATA",
+          "name": "Bureau score present on a full file",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "no bureau score"
+        },
+        {
+          "id": "SC-BAND",
+          "name": "Score band (decline below 600, approve from 700)",
+          "kind": "REFERRAL",
+          "result": "FAIL",
+          "value": "score 602 (C)"
+        },
+        {
+          "id": "RF-CONFIDENCE",
+          "name": "Score not within 10 points of an automatic band edge, and at least 6 factors read from data",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "6 of 7 factors from data"
+        },
+        {
+          "id": "WN-UTILISATION",
+          "name": "Credit utilisation at most 80%",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "35%"
+        },
+        {
+          "id": "WN-EMPLOYMENT",
+          "name": "Employed 12 months or more",
+          "kind": "WARNING",
+          "result": "PASS",
+          "value": "30 months"
+        },
+        {
+          "id": "EX-ENGINE",
+          "name": "External decision engine approves (used instead of the score)",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "auto-approve; ref EXT-7E3B05D9A1C4"
+        },
+        {
+          "id": "AU-MODE",
+          "name": "Automated decisions live for this product",
+          "kind": "REFERRAL",
+          "result": "PASS",
+          "value": "live"
+        }
+      ],
+      "scoreContributions": [
+        {
+          "factor": "Base points",
+          "detail": "SC-PL-2",
+          "points": 307
+        },
+        {
+          "factor": "Bureau score",
+          "detail": "no score",
+          "points": 60
+        },
+        {
+          "factor": "Credit file",
+          "detail": "full",
+          "points": 60
+        },
+        {
+          "factor": "Debt-to-income",
+          "detail": "under 20%",
+          "points": 80
+        },
+        {
+          "factor": "Credit utilisation",
+          "detail": "35%",
+          "points": 25
+        },
+        {
+          "factor": "Missed payments (12 months)",
+          "detail": "0",
+          "points": 30
+        },
+        {
+          "factor": "Employment",
+          "detail": "1–3 years",
+          "points": 25
+        },
+        {
+          "factor": "WhiteBank relationship",
+          "detail": "18 months",
+          "points": 15
+        }
+      ],
+      "reasonCodes": [],
+      "referralTriggers": [],
+      "debtToIncome": "0.1154",
+      "monthlyRate": "0.0160",
+      "pd": "0.0300",
+      "recommendedAmount": "150000.00"
+    }
+  ]
+}

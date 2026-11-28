@@ -49,6 +49,8 @@ export function decide(inputs: DecisionInputs, versions: DecisionVersions): Deci
   const sc = scorecard(versions.scorecard);
   const withEstimates: DecisionResult = {
     ...byRules,
+    // Warnings (RS-PL-5 on) are recorded whatever the outcome and change nothing.
+    ruleResults: [...byRules.ruleResults, ...warningRules(inputs, rs)],
     engineOutcome: byRules.outcome,
     ...estimates(byRules.grade, inputs, rs, sc),
   };
@@ -299,6 +301,28 @@ function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): Rule
     add(reason);
   }
 
+  // --- Missing data (RS-PL-5 on): a full file without a score is not left to a default ---
+  // (A thin file or no hit already refers above.)
+  if (rs.missingDataReferral) {
+    const missing = bureau.fileDepth === "FULL" && bureau.bureauScore === null;
+    rules.push({
+      id: "RF-DATA",
+      name: "Bureau score present on a full file",
+      kind: "REFERRAL",
+      result: bureau.fileDepth !== "FULL" ? "NOT_EVALUATED" : missing ? "FAIL" : "PASS",
+      value:
+        bureau.fileDepth !== "FULL"
+          ? "file not full"
+          : missing
+            ? "no bureau score"
+            : "score present",
+    });
+    if (missing) {
+      triggers.push(REASONS.missingData.staff);
+      add(REASONS.missingData);
+    }
+  }
+
   // --- Score and band -------------------------------------------------------------------
   const scored = score(sc, bureau, applicant, { obligations, income });
   const band = bandFor(scored.score, rs);
@@ -309,6 +333,26 @@ function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): Rule
     result: band === "APPROVE" ? "PASS" : "FAIL",
     value: `score ${scored.score} (${scored.grade})`,
   });
+
+  // --- Low model confidence (RS-PL-5 on): before the band decides automatically ---------
+  if (rs.lowConfidence) {
+    const { bandMargin, minScoredFactors } = rs.lowConfidence;
+    const factors = factorsFromData(bureau, income);
+    const nearApprove = band === "APPROVE" && scored.score < rs.approveFrom + bandMargin;
+    const nearDecline = band === "DECLINE" && scored.score >= rs.declineBelow - bandMargin;
+    const fewFactors = factors < minScoredFactors;
+    rules.push({
+      id: "RF-CONFIDENCE",
+      name: `Score not within ${bandMargin} points of an automatic band edge, and at least ${minScoredFactors} factors read from data`,
+      kind: "REFERRAL",
+      result: nearApprove || nearDecline || fewFactors ? "FAIL" : "PASS",
+      value: `${nearApprove ? `${scored.score} near ${rs.approveFrom}; ` : nearDecline ? `${scored.score} near ${rs.declineBelow}; ` : ""}${factors} of ${TOTAL_FACTORS} factors from data`,
+    });
+    if (nearApprove || nearDecline || fewFactors) {
+      triggers.push(REASONS.lowConfidence.staff);
+      add(REASONS.lowConfidence);
+    }
+  }
 
   // A referral trigger sends the case to a person "regardless of score" (PRD glossary), so
   // a low score declines automatically only when nothing else asks for review; otherwise
@@ -438,7 +482,86 @@ function laterTriggers(
       fired.push(REASONS.fraudUnavailable);
     }
   }
+
+  // RS-PL-5: terms the product allows but outside its standard terms need an exception.
+  if (rs.policyException) {
+    const { standardTenorStep, maxAmountToIncome } = rs.policyException;
+    const tenor = inputs.application.tenorMonths;
+    const oddTenor = tenor % standardTenorStep !== 0;
+    // Exact: amount > income × multiple (no income: any amount is above it).
+    const largeAmount = Money.of(inputs.application.amount).greaterThan(
+      income.times(maxAmountToIncome),
+    );
+    rules.push({
+      id: "RF-POLICY",
+      name: `Standard terms (tenor in ${standardTenorStep}-month steps, amount at most ${maxAmountToIncome} × monthly income)`,
+      kind: "REFERRAL",
+      result: oddTenor || largeAmount ? "FAIL" : "PASS",
+      value:
+        [
+          oddTenor ? `${tenor} months` : null,
+          largeAmount ? "amount above the income multiple" : null,
+        ]
+          .filter((v) => v !== null)
+          .join("; ") || "standard",
+    });
+    if (oddTenor || largeAmount) fired.push(REASONS.policyException);
+  }
   return fired;
+}
+
+/** The scorecard factors (SC-PL-1/2 read seven) and how many were read from data, not a default. */
+const TOTAL_FACTORS = 7;
+
+/**
+ * Factors read from data: the bureau score (when there is one), file depth, utilisation and
+ * missed payments (only from a file with a record: no hit leaves them at defaults),
+ * debt-to-income (only with income), employment and relationship.
+ */
+function factorsFromData(
+  bureau: Extract<DecisionInputs["bureau"], { status: "OK" }>,
+  income: Money,
+): number {
+  let n = 3; // file depth, employment, relationship
+  if (bureau.bureauScore !== null) n += 1;
+  if (bureau.fileDepth !== "NO_HIT") n += 2;
+  if (!income.isZero()) n += 1;
+  return n;
+}
+
+/**
+ * Warning rules (PRD DEC-002, RS-PL-5 on): high utilisation and short employment. Recorded
+ * with the decision and shown to the reviewer and approver; they never refer or decline.
+ */
+function warningRules(inputs: DecisionInputs, rs: RuleSet): RuleResult[] {
+  if (!rs.warnings) return [];
+  const { maxUtilisationPct, minEmploymentMonths } = rs.warnings;
+  const { bureau, applicant } = inputs;
+  const months = applicant.employmentMonths;
+  return [
+    bureau.status === "OK" && bureau.fileDepth !== "NO_HIT"
+      ? {
+          id: "WN-UTILISATION",
+          name: `Credit utilisation at most ${maxUtilisationPct}%`,
+          kind: "WARNING",
+          result: bureau.utilisationPct > maxUtilisationPct ? "FAIL" : "PASS",
+          value: `${bureau.utilisationPct}%`,
+        }
+      : {
+          id: "WN-UTILISATION",
+          name: `Credit utilisation at most ${maxUtilisationPct}%`,
+          kind: "WARNING",
+          result: "NOT_EVALUATED",
+          value: bureau.status === "OK" ? "no bureau record" : "bureau unavailable",
+        },
+    {
+      id: "WN-EMPLOYMENT",
+      name: `Employed ${minEmploymentMonths} months or more`,
+      kind: "WARNING",
+      result: months < minEmploymentMonths ? "FAIL" : "PASS",
+      value: `${months} months`,
+    },
+  ];
 }
 
 const MODE_WORDS: Record<AutomationMode, string> = {
@@ -470,6 +593,9 @@ function bankControls(result: DecisionResult, inputs: DecisionInputs): ReasonCod
   for (const r of result.ruleResults) {
     if (r.id === "RF-AMOUNT" && r.result === "FAIL") controls.push(REASONS.amountAboveAutoLimit);
     if (r.id === "RF-RELATED" && r.result === "FAIL") controls.push(REASONS.relatedParty);
+    // RS-PL-5: a policy exception is the bank's terms policy, not a model judgement. (Low
+    // confidence and missing data are about the built-in score, which "instead" replaces.)
+    if (r.id === "RF-POLICY" && r.result === "FAIL") controls.push(REASONS.policyException);
     if (r.id === "RF-FRAUD" && r.result === "FAIL") controls.push(REASONS.fraudFlag);
     if (r.id === "RF-FRAUD" && r.result === "NOT_EVALUATED") {
       controls.push(REASONS.fraudUnavailable);
@@ -495,7 +621,8 @@ function bankOutages(inputs: DecisionInputs): ReasonCode[] {
  * - A knockout declines whatever the external engine says: knockouts are the bank's policy.
  * - ALONGSIDE: the two outcomes agree, it stands; they disagree, a person decides.
  * - INSTEAD: the external outcome replaces the score and the credit rules. An external
- *   approval still refers when a bank control fired (`bankControls`), or when there is no
+ *   approval still refers when a bank control fired (`bankControls`, including RS-PL-5's
+ *   policy exception), or when there is no
  *   built-in grade to price the loan; an external decline refers when the bank's bureau,
  *   screening or fraud check did not answer (`bankOutages`, NFR-005).
  * - Either role: an engine that could not answer refers, never declines (NFR-005).

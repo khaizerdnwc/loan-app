@@ -30,6 +30,9 @@ const RESULT: Record<
 export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
   // The record's own rule set's band edges, from the API: no version table to fall behind.
   const bands = decision.scoreBand;
+  // Warning rules (RS-PL-5 on) are listed on their own: they never decide the outcome.
+  const warnings = decision.ruleResults.filter((r) => r.kind === "WARNING");
+  const policyRules = decision.ruleResults.filter((r) => r.kind !== "WARNING");
   return (
     <Card
       title="Decision summary"
@@ -167,13 +170,40 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         </Callout>
       )}
 
+      {warnings.length > 0 && (
+        <div className="mt-5">
+          <h3 className="text-2xs font-bold tracking-wider text-mist-500 uppercase">Warnings</h3>
+          <p className="mt-1 text-xs text-mist-500">
+            For the reviewer and approver to weigh. A warning does not refer or decline the
+            application on its own.
+          </p>
+          <ul aria-label="Warnings" className="mt-2 flex flex-col divide-y divide-line">
+            {warnings.map((w) => (
+              <li key={w.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                <span className="flex items-center gap-2">
+                  <Pill tone={w.result === "FAIL" ? "warn" : "neutral"}>
+                    {w.result === "FAIL"
+                      ? "Warning"
+                      : w.result === "PASS"
+                        ? "No warning"
+                        : "Not evaluated"}
+                  </Pill>
+                  <span>{w.name}</span>
+                </span>
+                <span className="text-right text-xs text-mist-500 tabular-nums">{w.value}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       <div className="mt-5 grid gap-5 min-[1100px]:grid-cols-2">
         <div>
           <h3 className="text-2xs font-bold tracking-wider text-mist-500 uppercase">
             Policy rules
           </h3>
           <ul className="mt-2 flex flex-col divide-y divide-line">
-            {decision.ruleResults.map((rule) => {
+            {policyRules.map((rule) => {
               const r = RESULT[rule.result];
               return (
                 <li key={rule.id} className="flex items-center justify-between gap-3 py-2 text-sm">
@@ -242,6 +272,13 @@ function whoDecided(decision: DecisionRecordView): string {
     return "The client's decision engine (simulated) could not answer, so a person decides this case.";
   }
   if (ext.role === "INSTEAD") {
+    // The combined outcome says whether the client's answer stood: a bank control (an
+    // approval) or a bank-provider outage (a decline) can still send the case to a person.
+    if (ext.outcome !== decision.engineOutcome && decision.engineOutcome === "REFER") {
+      return ext.outcome === "AUTO_APPROVE"
+        ? "The client's decision engine (simulated) approved, instead of the score, but a bank control still refers it (see Referred because); the built-in score and grade are shown for pricing."
+        : "The client's decision engine (simulated) declined, instead of the score, but a bank provider did not answer, so a person decides (see Referred because).";
+    }
     return "Decided by the client's decision engine (simulated), instead of the score; the built-in score and grade are shown for pricing.";
   }
   return `Checked alongside the client's decision engine (simulated): ${ext.agreed ? "agreed" : "disagreed"}.`;

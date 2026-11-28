@@ -54,6 +54,32 @@ export interface RuleSet {
    * referrals (amount limit, related party, fraud, screening unavailable) still apply.
    */
   externalEngine?: boolean;
+  /**
+   * Warning rules (PRD DEC-002): recorded and shown to the reviewer and approver, never a
+   * referral or a decline. Utilisation above `maxUtilisationPct`; employment under
+   * `minEmploymentMonths`.
+   */
+  warnings?: { maxUtilisationPct: number; minEmploymentMonths: number };
+  /**
+   * Low model confidence refers (PRD DEC-006): an approve-band score under approveFrom +
+   * `bandMargin`, a decline-band score at or above declineBelow − `bandMargin`, or fewer than
+   * `minScoredFactors` of the scorecard's factors read from data (the rest fell to a default).
+   * About the built-in score, so when an external engine decides "instead" it is replaced
+   * with the score (not a bank control).
+   */
+  lowConfidence?: { bandMargin: number; minScoredFactors: number };
+  /**
+   * Missing data refers (DEC-006): a full bureau file with no bureau score is not scored as a
+   * default and left at that. Also about the built-in score: replaced under "instead".
+   */
+  missingDataReferral?: boolean;
+  /**
+   * A policy exception refers (DEC-006): a tenor that is not a multiple of
+   * `standardTenorStep` months, or an amount above `maxAmountToIncome` × monthly income. The
+   * bank's terms policy, not a model judgement: a bank control that still refers an external
+   * approval under "instead".
+   */
+  policyException?: { standardTenorStep: number; maxAmountToIncome: number };
 }
 
 const RS_PL_1: RuleSet = {
@@ -86,18 +112,33 @@ const RS_PL_3: RuleSet = {
   recommendedAmount: { maxDebtServiceRatio: "0.50", roundDownTo: 1000 },
 };
 
+/**
+ * RS-PL-3 plus the external decision engine step (PRD DEC-008). With the product's role NONE
+ * every outcome is RS-PL-3's.
+ */
+const RS_PL_4: RuleSet = { ...RS_PL_3, version: "RS-PL-4", externalEngine: true };
+
 export const RULE_SETS: Readonly<Record<string, RuleSet>> = {
   "RS-PL-1": RS_PL_1,
   "RS-PL-2": RS_PL_2,
   "RS-PL-3": RS_PL_3,
+  "RS-PL-4": RS_PL_4,
   /**
-   * RS-PL-3 plus the external decision engine step (PRD DEC-008). With the product's role
-   * NONE every outcome is RS-PL-3's.
+   * RS-PL-4 plus warning rules (PRD DEC-002: shown, never referring) and three referral
+   * triggers (DEC-006): low model confidence, missing data and policy exception. Values:
+   * docs/ASSUMPTIONS.md.
    */
-  "RS-PL-4": { ...RS_PL_3, version: "RS-PL-4", externalEngine: true },
+  "RS-PL-5": {
+    ...RS_PL_4,
+    version: "RS-PL-5",
+    warnings: { maxUtilisationPct: 80, minEmploymentMonths: 12 },
+    lowConfidence: { bandMargin: 10, minScoredFactors: 6 },
+    missingDataReferral: true,
+    policyException: { standardTenorStep: 6, maxAmountToIncome: 10 },
+  },
 };
 
-export const CURRENT_RULE_SET = "RS-PL-4";
+export const CURRENT_RULE_SET = "RS-PL-5";
 
 export function ruleSet(version: string): RuleSet {
   const rs = RULE_SETS[version];

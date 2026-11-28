@@ -133,4 +133,21 @@ export const REASONS = {
       "The external decision engine approved, but there is no built-in grade (not scored) to price the loan: a person sets the terms",
     borrower: "Your application needs a review by our credit team.",
   },
+  lowConfidence: {
+    code: "R27",
+    staff:
+      "Low model confidence: the score is too close to a band edge, or too few factors could be read from data, to decide automatically: review the factors in the score breakdown before recommending",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  missingData: {
+    code: "R28",
+    staff:
+      "Missing data: the bureau returned a full file without a bureau score, so the score rests on a default value: check the bureau file before relying on the score",
+    borrower: "We need to confirm some of your credit information.",
+  },
+  policyException: {
+    code: "R29",
+    staff: "Policy exception: the requested terms are outside the product's standard terms",
+    borrower: "Your application needs a review by our credit team.",
+  },
 } as const satisfies Record<string, ReasonCode>;

@@ -45,7 +45,8 @@ describe("MG-2 the model registry lists every version, its use and the prohibite
       ["RS-PL-1", false],
       ["RS-PL-2", false],
       ["RS-PL-3", false],
-      ["RS-PL-4", true],
+      ["RS-PL-4", false],
+      ["RS-PL-5", true],
     ]);
     expect(r.prohibitedFeatures).toEqual(
       expect.arrayContaining(["applicant.gender", "applicant.ageYears"]),

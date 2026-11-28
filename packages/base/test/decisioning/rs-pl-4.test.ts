@@ -1,5 +1,4 @@
 import {
-  CURRENT_RULE_SET,
   CURRENT_SCORECARD,
   canonicalJson,
   type DecisionInputs,
@@ -19,7 +18,8 @@ import {
   RAMON_SANCTIONS,
 } from "./personas";
 
-const V = { ruleSet: CURRENT_RULE_SET, scorecard: CURRENT_SCORECARD };
+// RS-PL-4's own behaviour, pinned to its version (RS-PL-5 adds rules on top of it).
+const V = { ruleSet: "RS-PL-4", scorecard: CURRENT_SCORECARD };
 const codes = (r: DecisionResult) => r.reasonCodes.map((c) => c.code);
 const exRule = (r: DecisionResult) => r.ruleResults.find((x) => x.id === "EX-ENGINE");
 
