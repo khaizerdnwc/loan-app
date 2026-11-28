@@ -1,4 +1,10 @@
-export { bandFor, canonicalJson, decide, hashInputs } from "./decide";
+export { affordableAmount, bandFor, canonicalJson, decide, hashInputs } from "./decide";
+export {
+  type PreCheckInputs,
+  type PreCheckOutcome,
+  type PreCheckResult,
+  preCheck,
+} from "./pre-check";
 export { REASONS } from "./reason-codes";
 export { CURRENT_RULE_SET, RULE_SETS, type RuleSet, ruleSet } from "./rule-sets";
 export {

@@ -18,6 +18,10 @@ describe("where each role lands and what its sidebar offers", () => {
   it("only the loan officer can start a new application", () => {
     expect(hrefs("LOAN_OFFICER")).toContain("/cases/new");
     expect(hrefs("APPROVER")).not.toContain("/cases/new");
+    // The eligibility pre-check is the loan officer's (PC-008).
+    expect(hrefs("LOAN_OFFICER")).toContain("/eligibility");
+    expect(hrefs("APPROVER")).not.toContain("/eligibility");
+    expect(hrefs("COMPLIANCE")).not.toContain("/eligibility");
   });
 
   it("admin has no case screens and compliance has no queue", () => {
@@ -99,6 +103,7 @@ describe("breadcrumb and page icons", () => {
   it.each([
     ["LOAN_OFFICER", "/queue", "My work", "Work queue", "inbox"],
     ["LOAN_OFFICER", "/cases/new", "My work", "New application", "plus"],
+    ["LOAN_OFFICER", "/eligibility", "My work", "Eligibility pre-check", "check"],
     ["LOAN_OFFICER", "/cases", "My work", "All applications", "file"],
     ["APPROVER", "/queue", "My work", "Approvals", "check"],
     ["LOAN_OPERATIONS", "/queue", "My work", "Booking", "book"],

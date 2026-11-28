@@ -2,6 +2,7 @@ export * from "./api";
 export * from "./automation";
 export * from "./compliance";
 export * from "./domain";
+export * from "./eligibility";
 export * from "./governance";
 export * from "./intake";
 export * from "./money";
