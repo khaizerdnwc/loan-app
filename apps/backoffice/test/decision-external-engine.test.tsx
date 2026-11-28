@@ -112,6 +112,44 @@ describe("DecisionPanel with the client's decision engine (EX-3)", () => {
     expect(screen.getByText("Referred because:")).toBeInTheDocument();
   });
 
+  it("instead: a client approval with no built-in grade (R26) says a person sets the terms, not a bank control", () => {
+    render(
+      <DecisionPanel
+        decision={decision({
+          outcome: "REFER",
+          engineOutcome: "REFER",
+          score: null,
+          grade: null,
+          monthlyRate: null,
+          pd: null,
+          recommendedAmount: null,
+          ruleResults: [],
+          reasonCodes: [
+            {
+              code: "R26",
+              staff:
+                "The external decision engine approved, but there is no built-in grade (not scored) to price the loan: a person sets the terms",
+              borrower: "Your application needs a review by our credit team.",
+            },
+          ],
+          externalEngine: {
+            role: "INSTEAD",
+            outcome: "AUTO_APPROVE",
+            reference: "EXT-6D0A3E9C7B21",
+            agreed: null,
+          },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "The client's decision engine (simulated) approved, instead of the score, but there is no built-in grade to price the loan, so a person sets the terms (see Referred because).",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/bank control still refers it/)).toBeNull();
+    expect(screen.queryByText(/score and grade are shown for pricing/)).toBeNull();
+  });
+
   it("instead: a client decline turned into a referral by a bank-provider outage says a person decides", () => {
     render(
       <DecisionPanel

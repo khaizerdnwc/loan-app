@@ -276,9 +276,14 @@ function whoDecided(decision: DecisionRecordView): string {
     // The combined outcome says whether the client's answer stood: a bank control (an
     // approval) or a bank-provider outage (a decline) can still send the case to a person.
     if (ext.outcome !== decision.engineOutcome && decision.engineOutcome === "REFER") {
-      return ext.outcome === "AUTO_APPROVE"
-        ? "The client's decision engine (simulated) approved, instead of the score, but a bank control still refers it (see Referred because); the built-in score and grade are shown for pricing."
-        : "The client's decision engine (simulated) declined, instead of the score, but a bank provider did not answer, so a person decides (see Referred because).";
+      if (ext.outcome !== "AUTO_APPROVE") {
+        return "The client's decision engine (simulated) declined, instead of the score, but a bank provider did not answer, so a person decides (see Referred because).";
+      }
+      // No built-in grade (not scored): not a bank control, but nothing to price the loan from.
+      if (decision.grade === null) {
+        return "The client's decision engine (simulated) approved, instead of the score, but there is no built-in grade to price the loan, so a person sets the terms (see Referred because).";
+      }
+      return "The client's decision engine (simulated) approved, instead of the score, but a bank control still refers it (see Referred because); the built-in score and grade are shown for pricing.";
     }
     return "Decided by the client's decision engine (simulated), instead of the score; the built-in score and grade are shown for pricing.";
   }
