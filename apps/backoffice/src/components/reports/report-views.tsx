@@ -96,7 +96,7 @@ export function DecisionMixView({ report: r }: { report: DecisionMixReport }) {
         />
       </div>
       <div className="grid gap-4 min-[1100px]:grid-cols-2">
-        <Card title="Decision mix">
+        <Card region title="Decision mix">
           {r.decisions ? (
             <BarList label="Decision mix" bars={mix} />
           ) : (
@@ -179,7 +179,7 @@ export function FunnelView({ report: r }: { report: OriginationFunnelReport }) {
         })}
       </div>
       <div className="grid gap-4 min-[1100px]:grid-cols-2">
-        <Card title="Funnel">
+        <Card region title="Funnel">
           {started ? (
             <BarList
               label="Funnel"
@@ -252,7 +252,7 @@ export function TurnaroundView({ report: r }: { report: TurnaroundReport }) {
         />
         <StatCard label="Open on track" value={formatNumber(r.openNow.onTrack)} />
       </div>
-      <Card title="Time per stage">
+      <Card region title="Time per stage">
         <p className="mb-3 text-sm text-mist-500">
           Business time: Monday to Friday, {r.businessDay.start}–{r.businessDay.end} Manila, less
           holidays. Stage visits that ended {periodLine(r.period)}.

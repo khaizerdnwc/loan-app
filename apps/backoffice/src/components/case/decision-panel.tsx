@@ -32,6 +32,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
   const bands = decision.scoreBand;
   return (
     <Card
+      region
       title="Decision summary"
       aside={
         <span className="flex items-center gap-2">

@@ -24,7 +24,7 @@ export function BorrowerMessages({ caseId, version }: { caseId: string; version:
     void reload();
   }, [version, reload]);
   return (
-    <Card title="Messages to the borrower" aside={<SimulatedLabel what="email and SMS" />}>
+    <Card region title="Messages to the borrower" aside={<SimulatedLabel what="email and SMS" />}>
       <LoadState
         loading={messages.loading && !messages.data}
         error={messages.error}

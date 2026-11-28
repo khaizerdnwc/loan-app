@@ -174,7 +174,12 @@ describe("messages to the borrower on the case (NTF-1, NTF-3)", () => {
     const [line] = within(
       await screen.findByRole("list", { name: "Messages to the borrower" }),
     ).getAllByRole("listitem");
-    expect(screen.getByText(/Simulated/)).toBeInTheDocument();
+    // The card is a region named by its title (the journey finds the label through it).
+    expect(
+      within(screen.getByRole("region", { name: "Messages to the borrower" })).getByText(
+        /Simulated/,
+      ),
+    ).toBeInTheDocument();
     expect(line).toHaveTextContent("Sent");
     expect(line).toHaveTextContent("Email · Applicant, email on file");
     expect(line).toHaveTextContent("MSG-00000001");

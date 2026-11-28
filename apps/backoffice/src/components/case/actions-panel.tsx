@@ -282,7 +282,7 @@ export function ActionsPanel({
   const steps = actions.filter((a) => !TOOLS.has(a.action));
 
   return (
-    <Card title="Next action">
+    <Card region title="Next action">
       <p className="text-sm">{waitingFor(detail)}</p>
       {/* The prototype's next-action card: the case's actions inline (the step forward is the
           one primary button), why any of them is blocked underneath, and tools that close
