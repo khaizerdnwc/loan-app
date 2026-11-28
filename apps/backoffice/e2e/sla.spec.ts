@@ -36,6 +36,10 @@ test("SLA-1/TAT-1 a referred case's review clock shows in the queue and on the c
   await expect(stages).toBeVisible();
   await signIn(page, "marco");
   await expect(page.getByRole("link", { name: "Turnaround and SLA" })).toHaveCount(0);
+  // SLA-3: a case in review is outside loan operations' view, and so is its clock.
   await page.goto(path);
-  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expect(
+    page.getByRole("alert").filter({ hasText: "No such case, or it is not visible to your role." }),
+  ).toBeVisible();
+  await expect(page.getByText(/On track · /)).toHaveCount(0);
 });
