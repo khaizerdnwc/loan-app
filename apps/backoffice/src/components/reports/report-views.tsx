@@ -13,12 +13,13 @@ import {
   BarList,
   type BarTone,
   Card,
+  EmptyState,
   formatDate,
   formatNumber,
   formatPeso,
   StatCard,
 } from "@loan/ui";
-import { percent } from "@/lib/reports";
+import { PERIODS, percent } from "@/lib/reports";
 
 const OUTCOME: Record<string, { label: string; tone: BarTone }> = {
   AUTO_APPROVE: { label: "Auto-approve", tone: "ok" },
@@ -37,8 +38,26 @@ function periodLine(p: { from: string; to: string }): string {
   return `${formatDate(p.from)} – ${formatDate(p.to)}`;
 }
 
-function Empty({ children }: { children: string }) {
-  return <p className="text-sm text-mist-500">{children}</p>;
+const DAY_MS = 86_400_000;
+/** The longest period the screens offer, in days. */
+const LONGEST = Math.max(...PERIODS.map((p) => Number(p.value)));
+
+/** How many days a report covers, both ends included ("2026-11-22" to "2026-11-28" is 7). */
+export function periodDays(p: { from: string; to: string }): number {
+  return Math.round((Date.parse(p.to) - Date.parse(p.from)) / DAY_MS) + 1;
+}
+
+/**
+ * No data for the period: the shared empty state. The hint to widen the period shows only
+ * when a longer one exists; at the longest it would point nowhere.
+ */
+function Empty({ children, period }: { children: string; period: { from: string; to: string } }) {
+  return (
+    <EmptyState
+      title={children}
+      hint={periodDays(period) < LONGEST ? "Choose a longer period to see more." : undefined}
+    />
+  );
 }
 
 /** RPT-003: the decision mix, from stored decision records. */
@@ -74,7 +93,7 @@ export function DecisionMixView({ report: r }: { report: DecisionMixReport }) {
           {r.decisions ? (
             <BarList label="Decision mix" bars={mix} />
           ) : (
-            <Empty>No decisions in this period.</Empty>
+            <Empty period={r.period}>No decisions in this period.</Empty>
           )}
         </Card>
         <Card title="Referral triggers">
@@ -89,7 +108,7 @@ export function DecisionMixView({ report: r }: { report: DecisionMixReport }) {
               }))}
             />
           ) : (
-            <Empty>No referrals in this period.</Empty>
+            <Empty period={r.period}>No referrals in this period.</Empty>
           )}
         </Card>
         <Card title="Reason codes">
@@ -103,7 +122,7 @@ export function DecisionMixView({ report: r }: { report: DecisionMixReport }) {
               }))}
             />
           ) : (
-            <Empty>No reason codes in this period.</Empty>
+            <Empty period={r.period}>No reason codes in this period.</Empty>
           )}
         </Card>
         <Card title="Overrides by reason">
@@ -120,7 +139,7 @@ export function DecisionMixView({ report: r }: { report: DecisionMixReport }) {
               }))}
             />
           ) : (
-            <Empty>No overrides in this period.</Empty>
+            <Empty period={r.period}>No overrides in this period.</Empty>
           )}
         </Card>
       </div>
@@ -165,7 +184,7 @@ export function FunnelView({ report: r }: { report: OriginationFunnelReport }) {
               }))}
             />
           ) : (
-            <Empty>No applications started in this period.</Empty>
+            <Empty period={r.period}>No applications started in this period.</Empty>
           )}
         </Card>
         <Card title="Where they are now">
@@ -180,7 +199,7 @@ export function FunnelView({ report: r }: { report: OriginationFunnelReport }) {
               }))}
             />
           ) : (
-            <Empty>No applications started in this period.</Empty>
+            <Empty period={r.period}>No applications started in this period.</Empty>
           )}
         </Card>
       </div>

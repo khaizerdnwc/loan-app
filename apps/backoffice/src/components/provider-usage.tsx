@@ -4,9 +4,12 @@ import type { CircuitState, DecisionLatencyView, ProviderUsageView, ServiceName 
 import {
   Card,
   type Column,
+  EmptyState,
   formatDateTime,
+  formatNumber,
   formatPeso,
   formatSeconds,
+  KeyValues,
   Pill,
   SimulatedLabel,
   Table,
@@ -93,7 +96,10 @@ export function ProviderUsage() {
           onRetry={latency.reload}
         />
         {latency.data && latency.data.decisions === 0 && (
-          <p className="text-sm text-mist-500">No decision has been measured in this window yet.</p>
+          <EmptyState
+            title="No decisions measured yet"
+            hint="Decisions made in the last 30 days appear here."
+          />
         )}
         {latency.data && latency.data.decisions > 0 && latency.data.p95Ms !== null && (
           <p className="mb-3">
@@ -105,18 +111,15 @@ export function ProviderUsage() {
           </p>
         )}
         {latency.data && latency.data.decisions > 0 && (
-          <dl className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-            <dt className="text-mist-500">Decisions measured</dt>
-            <dd className="text-right tabular-nums">{latency.data.decisions}</dd>
-            <dt className="text-mist-500">Median</dt>
-            <dd className="text-right tabular-nums">{formatSeconds(latency.data.p50Ms)}</dd>
-            <dt className="text-mist-500">95th percentile</dt>
-            <dd className="text-right tabular-nums">{formatSeconds(latency.data.p95Ms)}</dd>
-            <dt className="text-mist-500">Slowest</dt>
-            <dd className="text-right tabular-nums">{formatSeconds(latency.data.maxMs)}</dd>
-            <dt className="text-mist-500">Target (95th percentile)</dt>
-            <dd className="text-right tabular-nums">{formatSeconds(latency.data.targetP95Ms)}</dd>
-          </dl>
+          <KeyValues
+            items={[
+              { label: "Decisions measured", value: formatNumber(latency.data.decisions) },
+              { label: "Median", value: formatSeconds(latency.data.p50Ms) },
+              { label: "95th percentile", value: formatSeconds(latency.data.p95Ms) },
+              { label: "Slowest", value: formatSeconds(latency.data.maxMs) },
+              { label: "Target (95th percentile)", value: formatSeconds(latency.data.targetP95Ms) },
+            ]}
+          />
         )}
       </Card>
     </div>

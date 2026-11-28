@@ -14,6 +14,10 @@ test("F1 Maria is auto-approved, signed, booked by a different checker and disbu
   await expect(page.getByText("Auto-approved.")).toBeVisible();
   await expect(page.locator('[aria-label="Grade A"]')).toBeVisible();
   await expect(page.locator('[aria-label^="Score 742 "]')).toBeVisible();
+  // D-16: the engine's affordable amount, capped at the amount asked, through formatPeso.
+  await expect(
+    page.getByText("Affordable amount (engine)", { exact: true }).locator(".."),
+  ).toContainText("₱150,000.00");
 
   // The stored decision record reproduces to the same result.
   await page.getByRole("button", { name: "Decision record", exact: true }).click();

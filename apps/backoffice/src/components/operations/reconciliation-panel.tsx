@@ -13,11 +13,13 @@ import {
   Callout,
   Card,
   type Column,
+  formatAmountsInText,
   formatDateTime,
   formatNumber,
   formatPeso,
   KeyValues,
   Pill,
+  ROW_LINK,
   SimulatedLabel,
   Table,
 } from "@loan/ui";
@@ -52,6 +54,7 @@ const COLUMNS: Column<ReconciliationFinding>[] = [
     render: (f) =>
       f.caseId && f.caseReference ? (
         <Link
+          {...ROW_LINK}
           href={`/cases/${f.caseId}`}
           className="font-mono text-xs underline-offset-2 hover:underline"
         >
@@ -81,7 +84,11 @@ const COLUMNS: Column<ReconciliationFinding>[] = [
     numeric: true,
     render: (f) => amounts(f.coreAmount, f.lendingAmount),
   },
-  { key: "detail", header: "What it means", render: (f) => <span>{f.detail}</span> },
+  {
+    key: "detail",
+    header: "What it means",
+    render: (f) => <span>{formatAmountsInText(f.detail)}</span>,
+  },
 ];
 
 /**
@@ -151,6 +158,8 @@ export function ReconciliationPanel({
                 rows={run.findings}
                 rowKey={(f) => `${f.kind}:${f.idempotencyKey}`}
                 empty="Every booking reconciled with core banking and the payment rail."
+                clickableRows
+                rowClickable={(f) => Boolean(f.caseId && f.caseReference)}
               />
             </>
           ) : (
