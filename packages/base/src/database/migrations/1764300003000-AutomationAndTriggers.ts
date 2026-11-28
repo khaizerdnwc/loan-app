@@ -95,6 +95,19 @@ export class AutomationAndTriggers1764300003000 implements MigrationInterface {
   }
 
   async down(q: QueryRunner): Promise<void> {
+    // Forward-only once used (ADR 0022 amendment): reverting would drop the mode and engine
+    // outcome of RS-PL-2+ records (which then fail the CHECK on the way back up) and the
+    // automation history. Refuse instead of losing them. The applicant columns this drops
+    // (declared income, related party) and the simulated fraud profiles are restored by the seed.
+    const [{ records, events }] = (await q.query(
+      `SELECT (SELECT count(*)::int FROM "decision_record" WHERE "rule_set_version" <> 'RS-PL-1') AS records,
+              (SELECT count(*)::int FROM "automation_event") AS events`,
+    )) as [{ records: number; events: number }];
+    if (records > 0 || events > 0) {
+      throw new Error(
+        `Cannot revert AutomationAndTriggers: ${records} decision record(s) made after RS-PL-1 and ${events} automation event(s) would lose data. Reset the demo database instead.`,
+      );
+    }
     await q.query("ALTER TABLE sim.persona_profile DROP COLUMN fraud");
     await q.query(`ALTER TABLE "applicant" DROP COLUMN "related_party"`);
     await q.query(`ALTER TABLE "applicant" DROP COLUMN "declared_monthly_income"`);

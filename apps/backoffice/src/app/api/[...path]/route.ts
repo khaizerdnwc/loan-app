@@ -21,6 +21,7 @@ export const ALLOWED_ROOTS: ReadonlySet<string> = new Set([
   "operations",
   "reports",
   "providers",
+  "models",
 ]);
 
 /** How long the API may take before the browser is told it is not answering. */

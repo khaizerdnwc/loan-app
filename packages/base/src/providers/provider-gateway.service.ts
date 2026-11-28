@@ -103,7 +103,9 @@ export class ProviderGateway {
     );
     await this.repo.cacheReport({
       applicantId: subject.applicantId,
-      mode: report.mode,
+      // Stored under the gateway's own mode: the one the lookup filters on and the decision
+      // record states, whatever the reply claims.
+      mode: this.mode,
       retrievedAt: new Date(report.retrievedAt),
       report: {
         provider: report.provider,

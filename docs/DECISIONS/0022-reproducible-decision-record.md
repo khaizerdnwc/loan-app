@@ -59,9 +59,9 @@ which point rule sets would be stored as published, immutable data.
   database CHECK refuses a record after RS-PL-1 without its engine outcome.
 - **Rollback is forward-only for RS-PL-2 records.** Code from before this amendment has no
   RS-PL-2 and cannot replay them; roll forward instead of back once RS-PL-2 decisions exist.
-  The migration's down() drops the mode columns of RS-PL-2 records too, and migrating up over
-  such records is then refused by the CHECK (rehearsed): the revert is for databases with no
-  RS-PL-2 decisions.
+  The migration's down() would drop the mode columns of RS-PL-2 records (which then fail the
+  CHECK on the way back up), so it refuses while any record after RS-PL-1 or any automation
+  event exists (migration 1764300003000, tested): the revert is for databases with none.
 - **Records from before the amendment** have no `inputs.automation`: the engine leaves them
   untouched, and the migration backfills their columns as LIVE and off without rewriting a row
   (a column default, then dropped). `engine_outcome` stays null on them and reads as `outcome`.
@@ -81,6 +81,10 @@ which point rule sets would be stored as published, immutable data.
   carries `retrievedAt` and `fromCache` (a report reused within 30 days); the engine ignores
   them, the hash covers them.
 - **Latency is a measurement, not a result.** `latency_ms` is stored on the record and never
-  compared by reproduce. Rolling the migration back drops it, and the estimates, from records
-  made since: forward-only, as with RS-PL-2.
+  compared by reproduce. Rolling the migration back would drop it, the estimates and the
+  provider-call counter, so its down() refuses while any of them exists (migration
+  1764300003001, tested): forward-only, as with RS-PL-2.
+- **A record naming an unknown rule set** (from a newer deployment, or a damaged row) is still
+  shown: its view carries no score band and the API logs a warning, instead of failing the
+  case view.
 

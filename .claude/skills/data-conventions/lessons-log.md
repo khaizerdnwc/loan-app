@@ -12,6 +12,20 @@ reported as a finding, or reported as an orphan. It never drops a record through
 the rail's payment under that key. A payout with no account behind it, which is exactly what
 reconciliation exists to catch, would leave no trace, and the summary would still add up.
 Pin it with a unit property: matched + findings referencing each feed record = feed length.
+## data-20261128-history-joins-the-record-it-acted-on
+
+An activity event that acts on a specific decision (a recommendation, an override, an
+approval) records that decision's id in its details, and any report over history joins on that
+id, not on `loan_case.decision_id`. Why: the case's pointer moves on a re-decision
+(RETURN → REVIEW → REDECIDE), so a join through it attributes every earlier action to the
+latest decision, and override and agreement rates count against an outcome nobody saw.
+Nearest deterministic alternative: an integration test that recommends, returns, re-decides
+to a different engine outcome, and asserts the earlier recommendation keeps its outcome.
+
+- 2026-11-28 — Lane C batch 3 (model governance, #26). `GovernanceRepository.recommendations`
+  joins `activity_event → loan_case → decision_record ON d.id = c.decision_id`; the RECOMMENDED
+  event's details carry no decisionId. Found by the data reviewer.
+
 ## data-20261128-input-cache-keyed-on-provenance
 
 A cache whose entries become decision inputs must be keyed (or filtered) on every attribute

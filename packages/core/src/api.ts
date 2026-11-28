@@ -136,8 +136,9 @@ export interface DecisionRecordView {
   /**
    * The score band edges of the record's own rule set: decline below `declineBelow`, approve
    * from `approveFrom`, refer between. Sent with every record so no screen keeps its own table.
+   * Null only if the record names a rule set this API does not know (it is shown without a band).
    */
-  scoreBand: { declineBelow: number; approveFrom: number };
+  scoreBand: { declineBelow: number; approveFrom: number } | null;
 }
 
 export interface ReproduceResult {

@@ -77,6 +77,9 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /audit/events?actor=&action=&from=&to=&case=&before=&limit= | compliance, admin | `AuditLogPage` (newest first; `from`/`to` are business dates, inclusive; `before` pages by seq; limit 1–200, default 50). `case` is Compliance only (403 for admin). On a case entry the admin gets `caseHidden: true` and `caseId`, `caseReference`, `summary` and `details` null |
 | GET | /audit/actions | compliance, admin | `string[]`: the action codes in the log |
 | GET | /audit/verify | compliance, admin | `AuditChainVerification`: recomputes every hash from entry 1 |
+| GET | /models | admin, compliance | `ModelRegistryView`: every scorecard and rule set, the current ones, their decisions and dates, each scorecard's features, PD and prohibited-features check, and the prohibited list |
+| GET | /models/overrides?days= | admin, compliance | `OverrideMonitorView`: recommendations, overrides, overrides by reason, the engine-versus-officer matrix and not-live agreement (default 30 days) |
+| GET | /models/drift?recentDays=&baselineDays= | admin, compliance | `DriftView`: grade shares in the recent window (default 30 days) and the baseline before it (default 90), the PSI (null with fewer than 30 scored decisions in a window) and a status |
 | GET | /providers/usage?days= | admin, compliance | `ProviderUsageView`: per decision service (bureau, KYC/AML, fraud) the attempts, failures, calls not made (open circuit), reused bureau reports, simulated cost and circuit state, over `days` (1–366, default 30) |
 | GET | /decisions/latency?days= | admin, compliance | `DecisionLatencyView`: decisions measured, p50, p95 and max milliseconds, against the 60 s target |
 | GET | /automation | admin, compliance | `AutomationView[]`: each product's mode (OFF, SHADOW, LIVE), kill switch, the change waiting for approval, and the caller's `allowedActions` (none for compliance) |
@@ -109,7 +112,8 @@ A case outside the caller's view answers 404, not 403, so its existence is not r
 An approver's `view=all` shows every APPROVAL case, including ones above their authority.
 
 Decision records carry `scoreBand` (`{ declineBelow, approveFrom }`), the band edges of the
-record's own rule set, so the score band is drawn from the API for every version.
+record's own rule set, so the score band is drawn from the API for every version; null (and
+logged) only if the record names a rule set this API does not know.
 Decision records also carry `pd` and `recommendedAmount` (null before SC-PL-2 / RS-PL-3 or
 without a grade) and `latencyMs` (null on older records; not compared by reproduce).
 

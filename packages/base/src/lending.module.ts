@@ -31,6 +31,9 @@ import { ComplianceController } from "./compliance/compliance.controller";
 import { ComplianceRepository } from "./compliance/compliance.repository";
 import { ComplianceService } from "./compliance/compliance.service";
 import { TransactionRunner } from "./database/transaction-runner";
+import { GovernanceController } from "./governance/governance.controller";
+import { GovernanceRepository } from "./governance/governance.repository";
+import { GovernanceService } from "./governance/governance.service";
 import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
 import { OperationsController } from "./operations/operations.controller";
 import { OperationsRepository } from "./operations/operations.repository";
@@ -77,6 +80,7 @@ export class LendingModule {
         OperationsController,
         ReportsController,
         ProvidersController,
+        GovernanceController,
       ],
       providers: [
         { provide: LENDING_OPTIONS, useValue: options },
@@ -105,6 +109,8 @@ export class LendingModule {
         ReportsService,
         ProvidersRepository,
         ProviderGateway,
+        GovernanceRepository,
+        GovernanceService,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
       exports: [SessionGuard, JwtModule, ExpiryService],

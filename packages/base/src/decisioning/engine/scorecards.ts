@@ -38,10 +38,60 @@ export interface Scorecard {
    * records carry no PD; a change to it is a new scorecard version.
    */
   pdByGrade?: Record<Grade, string>;
+  /**
+   * The applicant and bureau attributes the points read (PRD AIS-012): checked against
+   * PROHIBITED_FEATURES on every decision, and listed in the model registry.
+   */
+  features: readonly ScoringFeature[];
+}
+
+/** An attribute a scorecard may read, named as in the decision inputs. */
+export type ScoringFeature =
+  | "bureau.bureauScore"
+  | "bureau.fileDepth"
+  | "bureau.utilisationPct"
+  | "bureau.delinquencies12m"
+  | "applicant.debtToIncome"
+  | "applicant.employmentMonths"
+  | "applicant.relationshipMonths"
+  | ProhibitedFeature;
+
+/**
+ * Attributes no score may use (PRD AIS-012, CMP-007 fair lending): protected characteristics
+ * and close proxies. Age is a policy knockout (21–65), never a score factor. A scorecard that
+ * lists one of these is refused when it scores (decide), and fails its unit test.
+ */
+export const PROHIBITED_FEATURES = [
+  "applicant.sex",
+  "applicant.gender",
+  "applicant.civilStatus",
+  "applicant.religion",
+  "applicant.ethnicity",
+  "applicant.disability",
+  "applicant.politicalAffiliation",
+  "applicant.ageYears",
+  "applicant.birthPlace",
+] as const;
+export type ProhibitedFeature = (typeof PROHIBITED_FEATURES)[number];
+
+/** The prohibited attributes a scorecard reads; empty when it is clean. */
+export function prohibitedFeaturesIn(sc: Pick<Scorecard, "features">): ProhibitedFeature[] {
+  return sc.features.filter((f): f is ProhibitedFeature =>
+    (PROHIBITED_FEATURES as readonly string[]).includes(f),
+  );
 }
 
 const SC_PL_1: Scorecard = {
   version: "SC-PL-1",
+  features: [
+    "bureau.bureauScore",
+    "bureau.fileDepth",
+    "applicant.debtToIncome",
+    "bureau.utilisationPct",
+    "bureau.delinquencies12m",
+    "applicant.employmentMonths",
+    "applicant.relationshipMonths",
+  ],
   basePoints: 307,
   min: 450,
   max: 820,

@@ -48,7 +48,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
   hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
   (booking exceptions, reconciliation), `reports/` (read-only aggregates), `providers/` (the
-  decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter) and the pure
+  decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
+  (model registry, override and drift monitoring, read-only) and the pure
   `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
   repository and one transaction runner, so splitting into per-feature modules would only
   re-export that repository. Split when a second aggregate stands alone (e.g. collections). AML

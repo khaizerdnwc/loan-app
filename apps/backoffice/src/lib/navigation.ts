@@ -67,7 +67,11 @@ export function navFor(role: Role): NavGroup[] {
   const system: NavItem[] = [{ href: "/simulation", label: "Simulated services", icon: "sliders" }];
   // Automation controls (PRD §7.5): administrators change them, compliance reads them.
   if (role === "ADMIN" || role === "COMPLIANCE")
-    system.push({ href: "/automation", label: "Automation controls", icon: "sliders" });
+    system.push(
+      { href: "/automation", label: "Automation controls", icon: "sliders" },
+      // Model governance (PRD AIS-008..012): read by administrators and compliance.
+      { href: "/models", label: "Model governance", icon: "chart" },
+    );
   groups.push({ heading: "System", items: system });
   return groups;
 }
