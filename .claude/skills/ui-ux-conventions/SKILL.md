@@ -33,7 +33,7 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 |---|---|
 | `PageHeader` (app shell) | Every page: icon tile, title, description, actions on the right |
 | `useShellCrumb(reference)` (app shell) | A detail page names its record in the top bar's breadcrumb ("… / All applications / APP-1002") |
-| `Card` (`title`, `aside`, `flush`) | Every panel: header bar over a divider, then the body; `flush` for a table or list edge to edge |
+| `Card` (`title`, `aside`, `flush`) | Every panel: header bar over a divider, then the body. `flush` drops the body padding for a table or list edge to edge (the prototype's `.bd.np`); a `Table` in a `Card flush` passes `framed={false}`, so there is one border, the card's |
 | `Table` (`clickableRows`) + `ROW_LINK` | Every list of records. A list of records the user opens sets `clickableRows` and puts `{...ROW_LINK}` on the row's one real `<Link>`: the whole row opens it, hover and focus tint the row, Tab and Enter use the link. When only some rows have a record to open, `rowClickable(row)` keeps the others plain |
 | `EmptyState` | Nothing to show: a bold line and an optional hint (a string `empty` on Table becomes one) |
 | `Button` / `buttonClass` | `primary` (dark ink; at most one per card or dialog), `secondary` (every other action), `danger` (decline, refuse, failure modes), `ghost` (low emphasis); `size="sm"` for row actions and card headers. `accent` is the same look as primary — use `primary`. Links that look like buttons use `buttonClass` |
@@ -100,6 +100,14 @@ Formatters (`packages/ui/src/lib/format.ts`): `formatPeso` (amounts), `formatAmo
 - `eslint-plugin-jsx-a11y` (recommended) runs on every .tsx; plus the ported nxlvl rules
   `no-title-on-disabled-control`, `require-label-in-name`, `no-ring-color-without-width`,
   `text-size-before-leading`. Visible focus, labels on every input, keyboard-reachable dialogs.
+- A field error the API can return is shown even when its input is not rendered in the
+  current form branch: next to its field when there is one, otherwise spelled out in the
+  dialog's error callout (lesson `ui-ux-20261128-field-error-needs-its-field`).
+- An engine figure (affordable amount, PD, indicative repayment) is named as the engine's —
+  "Affordable amount (engine)", never a staff word such as "Recommended" — says it is
+  indicative and not an offer, and puts its edge value in words ("Nothing is affordable…",
+  never ₱0.00). This applies on every screen, not only the case page (lesson
+  `ui-ux-20261128-engine-figure-says-basis`).
 - A statistic computed on fewer cases than its minimum is not shown as a figure beside its
   thresholds: under an "insufficient data" status it reads "not computed" with the counts
   (lesson `ui-ux-20261128-no-figure-below-minimum`).

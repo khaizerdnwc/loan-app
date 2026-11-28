@@ -121,10 +121,24 @@ The rules that came out of this, and the component list, are in
 | 66 | Walk-in dialog | The existing applicant's id was in the body font; the "new to the bank cannot be booked" consequence was a small grey note | **fixed** — the id in monospace; the consequence as an info `Callout` ("Not bookable yet.") |
 | 67 | Walk-in dialog | Prototype's new-application screen takes the customer inline (a core-customer select); ours opens a dialog with an Existing / New toggle (`SegmentedFilter` used as a mode switch) | **kept** — the toggle is the shared control; the dialog keeps the application form short |
 | 68 | Turnaround report | The holiday calendar's limit was gold text | **fixed** — a warning `Callout` |
-| 69 | Turnaround report, reconciliation, loan account | A `Table` inside a `Card` draws its own border inside the card's (the prototype's `.bd.np` card has none) | **later** — a `flush` table variant in `packages/ui`, applied everywhere at once |
+| 69 | Turnaround report, reconciliation, loan account | A `Table` inside a `Card` draws its own border inside the card's (the prototype's `.bd.np` card has none) | **partly fixed** — `Table framed={false}` drops the table's own frame inside a `Card flush` (the intake drafts card uses it); the cards that keep body padding around a table (turnaround, reconciliation, loan account, governance) keep the inset frame for now — **later**, as one pass |
 | 70 | Model governance | Counts printed raw (`1200`) | **fixed** — through `formatNumber` |
 | 71 | Model governance | The drift table showed the grade as a plain letter | **fixed** — `GradeTile`, as everywhere else a grade appears |
 | 72 | Model governance | Percentages are computed on the page (`toFixed`), not through a shared formatter; PSI below the minimum reads "not computed" with the counts | **later** (percentages: a `formatPercent` in `packages/ui`); the PSI wording already follows the no-figure-below-minimum lesson |
+
+## Email and file intake, extracted data, eligibility pre-check (lanes D and C)
+
+| # | Screen | Difference | Status |
+|---|---|---|---|
+| 73 | Email and file intake | The drafts table drew its own border inside the `Card flush` | **fixed** — `Table framed={false}`: one border, the card's |
+| 74 | Email and file intake | A confirmed draft opened its case only from the reference link | **fixed** — its whole row opens the case (`rowClickable`); drafts still to review keep their Review button and stay plain rows. The To review / All filter already counts from one list and lives in the URL |
+| 75 | Review draft dialog | "Create application draft" and "Discard draft" only disabled while working | **fixed** — `busy`, so the button says "Working…" (one request, and the user sees it) |
+| 76 | Review draft dialog | A field error with no input in this dialog (e.g. the government ID when OCR read it) is spelled out in the error callout | matches the field-error-needs-its-field lesson; no change |
+| 77 | Eligibility pre-check | The rate range and affordable amounts were a two-column list | **fixed** — `KeyValues`; the engine wording ("Affordable amount (engine)", nothing affordable in words) is unchanged |
+| 78 | Eligibility pre-check | Before a check the result card showed a muted sentence; check rows used the card-border divider | **fixed** — `EmptyState` ("No check yet"); the soft divider |
+| 79 | Eligibility pre-check | The rule-set version in the caveat was in the body font | **fixed** — monospace (an identifier) |
+| 80 | Eligibility pre-check | Policy checks show Pass / Review pills, while the decision panel and booking checklist use tinted circle marks | **kept** — a pre-check result is a likelihood, and the pill's word ("Review") carries it; the circle marks stay for decided rule results |
+| 81 | Extracted data (OCR) card | Prototype's statement analysis is a `dl.kv`; ours is `KeyValues`, with flags in a warning callout and readings referenced in monospace | matches the shared parts; no change |
 
 ## States checked on every screen
 

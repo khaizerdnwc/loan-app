@@ -18,6 +18,7 @@ import {
   formatNumber,
   formatPeso,
   Pill,
+  ROW_LINK,
   SegmentedFilter,
   SimulatedLabel,
   Table,
@@ -165,6 +166,7 @@ function Intake() {
       render: (d) =>
         d.case ? (
           <Link
+            {...ROW_LINK}
             href={`/cases/${d.case.id}`}
             className="font-mono text-xs underline-offset-2 hover:underline"
           >
@@ -239,6 +241,10 @@ function Intake() {
             columns={columns}
             rows={rows}
             rowKey={(d) => d.id}
+            framed={false}
+            // A confirmed draft has its application draft: its whole row opens that case.
+            clickableRows
+            rowClickable={(d) => d.case !== null}
             empty={
               view === "pending"
                 ? "No drafts waiting for review. Upload a spreadsheet or email bundle to start."

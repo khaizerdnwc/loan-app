@@ -29,6 +29,11 @@ export interface TableProps<T> {
    * entry with no case) stays a plain row, with no pointer and no hover.
    */
   rowClickable?: (row: T) => boolean;
+  /**
+   * Draw the table's own border, radius and shadow (the default). Inside a `Card flush` the
+   * card is the frame, so pass `framed={false}`: one border, as the prototype's `.bd.np` card.
+   */
+  framed?: boolean;
 }
 
 /** Spread onto the one link in a row that the whole row should open: `<Link {...ROW_LINK}>`. */
@@ -65,16 +70,26 @@ export function Table<T>({
   footer,
   clickableRows = false,
   rowClickable,
+  framed = true,
 }: TableProps<T>) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-card border border-dashed border-line bg-white">
+      <div
+        data-framed={framed || undefined}
+        className={framed ? "rounded-card border border-dashed border-line bg-white" : undefined}
+      >
         {typeof empty === "string" ? <EmptyState title={empty} /> : empty}
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-card border border-line bg-white shadow-card">
+    <div
+      data-framed={framed || undefined}
+      className={cn(
+        "overflow-x-auto",
+        framed && "rounded-card border border-line bg-white shadow-card",
+      )}
+    >
       <table className="w-full border-collapse text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead>

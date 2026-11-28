@@ -5,12 +5,14 @@ import {
   Button,
   Callout,
   Card,
+  EmptyState,
   Field,
   FormGrid,
   formatAmountsInText,
   formatMonthlyRate,
   formatPeso,
   Input,
+  KeyValues,
   Pill,
   type Tone,
 } from "@loan/ui";
@@ -200,14 +202,14 @@ export function PreCheckForm() {
         aside={outcome ? <Pill tone={outcome.tone}>{outcome.label}</Pill> : undefined}
       >
         {!result || !outcome ? (
-          <p className="text-sm text-mist-500">
-            Enter the applicant&apos;s figures and check them against the policy. Nothing is stored
-            and no bureau is checked.
-          </p>
+          <EmptyState
+            title="No check yet"
+            hint="Enter the applicant's figures and check them against the policy. Nothing is stored and no bureau is checked."
+          />
         ) : (
           <div className="flex flex-col gap-4 text-sm">
             <p>{outcome.meaning}</p>
-            <ul aria-label="Policy checks" className="flex flex-col divide-y divide-line">
+            <ul aria-label="Policy checks" className="flex flex-col divide-y divide-line-soft">
               {result.checks.map((c) => (
                 <li key={c.id} className="flex items-center justify-between gap-3 py-2">
                   <span className="flex items-center gap-2">
@@ -220,21 +222,26 @@ export function PreCheckForm() {
                 </li>
               ))}
             </ul>
-            <dl className="grid grid-cols-2 gap-x-6 gap-y-1">
-              <dt className="text-mist-500">Monthly rate, by grade</dt>
-              <dd className="text-right">
-                {formatMonthlyRate(result.monthlyRateRange.from)} to{" "}
-                {formatMonthlyRate(result.monthlyRateRange.to)}
-              </dd>
-              {result.affordable && (
-                <>
-                  <dt className="text-mist-500">Affordable amount (engine), best grade rate</dt>
-                  <dd className="text-right">{affordableText(result.affordable.atBestRate)}</dd>
-                  <dt className="text-mist-500">Affordable amount (engine), highest grade rate</dt>
-                  <dd className="text-right">{affordableText(result.affordable.atWorstRate)}</dd>
-                </>
-              )}
-            </dl>
+            <KeyValues
+              items={[
+                {
+                  label: "Monthly rate, by grade",
+                  value: `${formatMonthlyRate(result.monthlyRateRange.from)} to ${formatMonthlyRate(result.monthlyRateRange.to)}`,
+                },
+                ...(result.affordable
+                  ? [
+                      {
+                        label: "Affordable amount (engine), best grade rate",
+                        value: affordableText(result.affordable.atBestRate),
+                      },
+                      {
+                        label: "Affordable amount (engine), highest grade rate",
+                        value: affordableText(result.affordable.atWorstRate),
+                      },
+                    ]
+                  : []),
+              ]}
+            />
             {result.affordable && (
               <p className="text-xs text-mist-500">
                 {result.affordable.atBestRate === "0.00"
@@ -243,7 +250,8 @@ export function PreCheckForm() {
               </p>
             )}
             <Callout tone="info" lead="Indicative.">
-              {result.caveat} Policy {result.ruleSetVersion}.
+              {result.caveat} Policy{" "}
+              <span className="font-mono text-xs">{result.ruleSetVersion}</span>.
             </Callout>
           </div>
         )}
