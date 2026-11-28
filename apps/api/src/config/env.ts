@@ -48,6 +48,11 @@ const schema = z
       .default("false")
       .transform((v) => v === "true"),
     /**
+     * Seconds between notification sweeps: borrower messages handed to the (simulated) gateway,
+     * and SLA-breach alerts raised (PRD NTF-001/002, WF-003). 0 turns the sweep off.
+     */
+    NOTIFICATION_SWEEP_SECONDS: z.coerce.number().int().min(0).max(86_400).default(30),
+    /**
      * Serve the Swagger UI at /docs and the OpenAPI document at /docs-json. An explicit
      * opt-in, off when unset or blank: a deployment that forgets a variable publishes nothing.
      */

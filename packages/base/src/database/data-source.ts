@@ -25,6 +25,10 @@ import {
   IntakeBatchEntity,
   IntakeDraftEntity,
 } from "../intake/intake.entities";
+import {
+  NotificationDeliveryEntity,
+  StaffNotificationEntity,
+} from "../notifications/entities/notification.entities";
 import { ReconciliationRunEntity } from "../operations/entities/reconciliation-run.entity";
 import { BureauReportCacheEntity, ProviderCallEntity } from "../providers/providers.entities";
 import { BusinessHolidayEntity } from "../sla/entities/business-holiday.entity";
@@ -51,6 +55,8 @@ export const ENTITIES = [
   CaseDocumentEntity,
   ReconciliationRunEntity,
   BusinessHolidayEntity,
+  StaffNotificationEntity,
+  NotificationDeliveryEntity,
   ProviderCallEntity,
   BureauReportCacheEntity,
   IntakeBatchEntity,

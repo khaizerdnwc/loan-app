@@ -19,6 +19,7 @@ const LABELS: Record<ServiceName, string> = {
   FRAUD: "Fraud signals (simulated)",
   DOCUMENT_INTAKE: "Document upload (simulated)",
   CUSTOMER_LOOKUP: "Core customer lookup (simulated)",
+  NOTIFICATIONS: "Email and SMS gateway (simulated)",
   DOCUMENT_EXTRACTION: "OCR and statement analysis (simulated)",
 };
 

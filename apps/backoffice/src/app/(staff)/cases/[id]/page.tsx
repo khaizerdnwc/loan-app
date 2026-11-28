@@ -31,6 +31,7 @@ import { ActionsPanel } from "@/components/case/actions-panel";
 import { ActivityTimeline } from "@/components/case/activity-timeline";
 import { ApprovedTermsNote } from "@/components/case/approved-terms-note";
 import { BookingChecklistPanel } from "@/components/case/booking-checklist-panel";
+import { BorrowerMessages } from "@/components/case/borrower-messages";
 import { ConsentPanel } from "@/components/case/consent-panel";
 import { DecisionPanel } from "@/components/case/decision-panel";
 import { DecisionRecordDialog } from "@/components/case/decision-record-dialog";
@@ -167,6 +168,7 @@ export default function CasePage() {
             }}
           />
           <ApplicantPanel detail={c} />
+          <BorrowerMessages caseId={c.id} version={version} />
           <ActivityTimeline caseId={c.id} version={version} />
         </div>
       </div>

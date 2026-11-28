@@ -88,6 +88,27 @@ describe("AppShell", () => {
     expect(screen.getByRole("status")).toHaveTextContent("Credit bureau — outage");
   });
 
+  it("shows the unread alert count on Notifications, and refreshes it when a screen asks (NTF-2)", async () => {
+    let unread = 2;
+    const base = fetchMock.getMockImplementation() as (url: string) => Promise<Response>;
+    fetchMock.mockImplementation(async (url: string) =>
+      url.includes("/notifications")
+        ? new Response(JSON.stringify({ items: [], unread }), { status: 200 })
+        : base(url),
+    );
+    renderShell();
+    // The sidebar is a closed drawer at this width (inert), hence hidden: true.
+    const link = (await screen.findAllByRole("link", { hidden: true })).find(
+      (l) => l.getAttribute("href") === "/notifications",
+    ) as HTMLElement;
+    // The badge reads "2 unread" to a screen reader (visually "2").
+    expect(await within(link).findByTestId("unread-badge")).toHaveTextContent("2 unread");
+    unread = 0;
+    await userEvent.click(screen.getByRole("button", { name: "Do something" }));
+    await vi.waitFor(() => expect(within(link).queryByTestId("unread-badge")).toBeNull());
+    expect(link).toHaveAccessibleName("Notifications");
+  });
+
   it("shows the persona and sign-out at the sidebar foot, and a Section / Page breadcrumb", async () => {
     renderShell();
     await screen.findByText("Paolo Tan");

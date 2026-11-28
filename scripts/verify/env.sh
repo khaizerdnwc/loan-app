@@ -58,6 +58,8 @@ export SIMULATION_AUTO_RESET_MINUTES=15
 export SIMULATION_TIMEOUT_MS=20
 export MIGRATE_ON_BOOT=false
 export EXPIRY_SWEEP_SECONDS=0
+# No notification sweep in the gate: borrower messages stay "Waiting to send", deterministically.
+export NOTIFICATION_SWEEP_SECONDS=0
 export TRUST_PROXY_HOPS=0
 export WEB_TRUST_PROXY_HOPS=0
 export PORT="$VERIFY_API_PORT"

@@ -8,6 +8,7 @@ import {
   E_SIGNATURE,
   FRAUD_CHECK,
   KYC_AML,
+  NOTIFICATIONS,
   SIMULATION_CONTROL,
 } from "@loan/contracts";
 import { Global, Module } from "@nestjs/common";
@@ -21,6 +22,7 @@ import { SimulatedDocumentIntake } from "./document-intake.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
 import { SimulatedFraudCheck } from "./fraud-check.simulator";
 import { SimulatedKycAml } from "./kyc-aml.simulator";
+import { SimulatedNotifications } from "./notifications.simulator";
 import { SimulationModesService } from "./simulation-modes.service";
 import { SIMULATION_OPTIONS } from "./simulation-options";
 
@@ -48,6 +50,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedFraudCheck,
     SimulatedDocumentIntake,
     SimulatedCustomerLookup,
+    SimulatedNotifications,
     SimulatedDocumentExtraction,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
@@ -57,6 +60,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     { provide: FRAUD_CHECK, useExisting: SimulatedFraudCheck },
     { provide: DOCUMENT_INTAKE, useExisting: SimulatedDocumentIntake },
     { provide: CUSTOMER_LOOKUP, useExisting: SimulatedCustomerLookup },
+    { provide: NOTIFICATIONS, useExisting: SimulatedNotifications },
     { provide: DOCUMENT_EXTRACTION, useExisting: SimulatedDocumentExtraction },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
@@ -69,6 +73,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     FRAUD_CHECK,
     DOCUMENT_INTAKE,
     CUSTOMER_LOOKUP,
+    NOTIFICATIONS,
     DOCUMENT_EXTRACTION,
     SIMULATION_CONTROL,
   ],

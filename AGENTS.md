@@ -44,6 +44,7 @@ and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
 | Booking exceptions and reconciliation; decision-mix and funnel reports | `packages/base/src/operations/`, `packages/base/src/reports/` (same module) |
 | Email and file intake (OCR drafts) and OCR readings of case documents | `packages/base/src/intake/` (same module; uses `cases/`, never imported by it) |
 | Stage SLAs, Philippine business time and the turnaround report | `packages/base/src/sla/` (same module) |
+| Staff alerts, borrower messages (outbox written in the case transaction, sent outside it), SLA-breach alerts | `packages/base/src/notifications/` (same module); the API's sweep `apps/api/src/notification-sweep.ts` |
 | Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |
 | Decision engine, rule sets, scorecard | `packages/base/src/decisioning/engine/` |
 | Migrations, data source, transaction runner | `packages/base/src/database/` |

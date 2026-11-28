@@ -1,6 +1,11 @@
 "use client";
 
-import { type CaseList, ROLE_LABEL, type SimulationServiceView } from "@loan/core";
+import {
+  type CaseList,
+  ROLE_LABEL,
+  type SimulationServiceView,
+  type StaffNotificationList,
+} from "@loan/core";
 import { Avatar, buttonClass, cn, Icon, type IconName, useToast } from "@loan/ui";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -70,13 +75,17 @@ export function AppShell({ children }: { children: ReactNode }) {
     me.role === "ADMIN" || me.role === "COMPLIANCE" ? null : "/cases?view=queue",
   );
   const services = useApi<SimulationServiceView[]>("/simulation/services");
+  const alerts = useApi<StaffNotificationList>("/notifications");
+  const unread = alerts.data?.unread ?? 0;
   const degraded = services.data?.filter((s) => s.mode !== "OK") ?? [];
   const reloadQueue = queue.reload;
   const reloadServices = services.reload;
+  const reloadAlerts = alerts.reload;
   const refresh = useCallback(() => {
     void reloadQueue();
     void reloadServices();
-  }, [reloadQueue, reloadServices]);
+    void reloadAlerts();
+  }, [reloadQueue, reloadServices, reloadAlerts]);
 
   // useApi loads on mount; after that, refetch whenever the route changes.
   const firstRoute = useRef(pathname);
@@ -168,6 +177,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                     {item.count && queue.data && queue.data.items.length > 0 && (
                       <span className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-gold-500 px-1.5 text-2xs font-extrabold text-ink-900 tabular-nums">
                         {queue.data.items.length}
+                      </span>
+                    )}
+                    {item.unread && unread > 0 && (
+                      <span
+                        data-testid="unread-badge"
+                        className="grid h-5.5 min-w-5.5 place-items-center rounded-full bg-gold-500 px-1.5 text-2xs font-extrabold text-ink-900 tabular-nums"
+                      >
+                        {unread}
+                        <span className="sr-only"> unread</span>
                       </span>
                     )}
                   </Link>

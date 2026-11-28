@@ -176,6 +176,50 @@ describe("foreign keys on the child tables (H-7)", () => {
     expect(rows).toHaveLength(11);
   });
 
+  it("every case_id column, read from the catalogue, is a NO ACTION foreign key to loan_case", async () => {
+    // A new table cannot escape the rule by missing from a named list (lesson
+    // data-20261128-case-id-column-needs-fk).
+    const columns = (await h.ds.query(
+      `SELECT c.table_name AS tbl,
+              EXISTS (
+                SELECT 1 FROM pg_constraint k
+                  JOIN pg_attribute a ON a.attrelid = k.conrelid AND a.attnum = ANY (k.conkey)
+                 WHERE k.contype = 'f' AND k.convalidated AND k.confdeltype = 'a'
+                   AND k.confupdtype = 'a' AND k.confrelid = 'public.loan_case'::regclass
+                   AND k.conrelid = format('public.%I', c.table_name)::regclass
+                   AND a.attname = 'case_id' AND cardinality(k.conkey) = 1
+              ) AS keyed
+         FROM information_schema.columns c
+        WHERE c.table_schema = 'public' AND c.column_name = 'case_id'
+        ORDER BY c.table_name`,
+    )) as { tbl: string; keyed: boolean }[];
+    expect(columns.map((c) => c.tbl)).toEqual(
+      expect.arrayContaining(["notification_delivery", "staff_notification", "activity_event"]),
+    );
+    // The one exception, named: the audit log is the record that outlives a case (it is never
+    // emptied, the harness truncates loan_case under it, and it also holds events with no case),
+    // so its case_id is a plain column next to the reference it copies (case_reference).
+    expect(columns.filter((c) => !c.keyed).map((c) => c.tbl)).toEqual(["audit_event"]);
+  });
+
+  it("refuses a borrower message or a staff alert for a case that does not exist", async () => {
+    expect(
+      await failure(
+        `INSERT INTO staff_notification (recipient_role, case_id, kind, title)
+         VALUES ('APPROVER', $1, 'APPROVAL_WAITING', 'x')`,
+        [randomUUID()],
+      ),
+    ).toBe("23503");
+    expect(
+      await failure(
+        `INSERT INTO notification_delivery (case_id, channel, template, recipient_label, subject,
+           body, idempotency_key, status)
+         VALUES ($1, 'EMAIL', 'DECLINED', 'x', 'x', 'x', $2, 'PENDING')`,
+        [randomUUID(), `msg-${randomUUID()}`],
+      ),
+    ).toBe("23503");
+  });
+
   it("refuses history for a case that does not exist", async () => {
     const c = await submitCase(h, { applicantId: "APL-MARIA" });
     const before = await count(h.ds, "SELECT count(*) AS n FROM activity_event");

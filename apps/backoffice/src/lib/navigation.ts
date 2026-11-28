@@ -7,6 +7,8 @@ export interface NavItem {
   icon: IconName;
   /** Show the role's queue count next to it. */
   count?: boolean;
+  /** Show the caller's unread alert count next to it. */
+  unread?: boolean;
 }
 
 export interface NavGroup {
@@ -40,6 +42,8 @@ export function navFor(role: Role): NavGroup[] {
   if (role === "LOAN_OPERATIONS" || role === "LOAN_OPERATIONS_SUPERVISOR") {
     work.push({ href: "/operations/exceptions", label: "Booking exceptions", icon: "alert" });
   }
+  // Staff alerts (PRD NTF-002): everyone has some (assignments, work for the role, SLA).
+  work.push({ href: "/notifications", label: "Notifications", icon: "bell", unread: true });
 
   const groups: NavGroup[] = [];
   if (work.length) groups.push({ heading: "My work", items: work });

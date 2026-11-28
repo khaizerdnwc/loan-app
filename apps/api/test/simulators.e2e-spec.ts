@@ -17,6 +17,8 @@ import {
   type FraudCheck,
   KYC_AML,
   type KycAml,
+  NOTIFICATIONS,
+  type Notifications,
   ProviderUnavailableError,
 } from "@loan/contracts";
 import { Money, type SimulationServiceView } from "@loan/core";
@@ -226,6 +228,65 @@ describe("simulated providers conform to their ports", () => {
         .catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ProviderUnavailableError);
       expect((err as ProviderUnavailableError).service).toBe("DOCUMENT_INTAKE");
+    },
+  );
+
+  it("the email and SMS gateway accepts a message, labelled simulated, idempotent on the key, and keeps no words", async () => {
+    const gateway = h.app.get<Notifications>(NOTIFICATIONS);
+    const msg = {
+      idempotencyKey: "conf-msg-1",
+      channel: "SMS" as const,
+      recipientRef: "applicant:APL-MARIA",
+      template: "OFFER_READY",
+      subject: "Your WhiteBank loan offer is ready",
+      body: "Your application WB-1 is approved.",
+    };
+    const first = await gateway.send(msg);
+    expect(first).toMatchObject({
+      provider: "Email and SMS gateway (simulated)",
+      mode: "SIMULATED",
+      channel: "SMS",
+      idempotencyKey: "conf-msg-1",
+    });
+    expect(first.reference).toMatch(/^MSG-\d{8}$/);
+    const replay = await gateway.send(msg);
+    expect(replay.reference).toBe(first.reference);
+    expect(replay.acceptedAt).toBe(first.acceptedAt);
+    expect((await gateway.send({ ...msg, idempotencyKey: "conf-msg-2" })).reference).not.toBe(
+      first.reference,
+    );
+    // The simulator's statement holds the template and a reference to the person, not the words.
+    const columns = (await h.ds.query(
+      `SELECT column_name FROM information_schema.columns
+        WHERE table_schema = 'sim' AND table_name = 'notification' ORDER BY column_name`,
+    )) as { column_name: string }[];
+    expect(columns.map((c) => c.column_name)).toEqual([
+      "accepted_at",
+      "channel",
+      "idempotency_key",
+      "recipient_ref",
+      "reference",
+      "template",
+    ]);
+  });
+
+  it.each(["OUTAGE", "TIMEOUT", "MALFORMED"])(
+    "the email and SMS gateway in %s fails with ProviderUnavailableError, never a wrong answer",
+    async (mode) => {
+      await setMode(h, "NOTIFICATIONS", mode);
+      const err = await h.app
+        .get<Notifications>(NOTIFICATIONS)
+        .send({
+          idempotencyKey: `f-msg-${mode}`,
+          channel: "EMAIL",
+          recipientRef: "applicant:APL-MARIA",
+          template: "DECLINED",
+          subject: "s",
+          body: "b",
+        })
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProviderUnavailableError);
+      expect((err as ProviderUnavailableError).service).toBe("NOTIFICATIONS");
     },
   );
 
@@ -443,6 +504,7 @@ describe("simulation controls", () => {
       "E_SIGNATURE",
       "FRAUD",
       "KYC_AML",
+      "NOTIFICATIONS",
     ]);
     for (const s of list) {
       expect(s.mode).toBe("OK");

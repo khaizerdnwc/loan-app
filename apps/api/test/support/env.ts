@@ -25,6 +25,8 @@ process.env.SIMULATION_AUTO_RESET_MINUTES = "15";
 process.env.MIGRATE_ON_BOOT = "false";
 // The tests run the expiry sweep by hand (ExpiryService.expireStale), never on a timer.
 process.env.EXPIRY_SWEEP_SECONDS = "0";
+// Tests dispatch borrower messages and raise SLA alerts by hand.
+process.env.NOTIFICATION_SWEEP_SECONDS = "0";
 // Unset, so the app runs with the default (Swagger off), as a deployment that omits it would.
 delete process.env.SWAGGER_ENABLED;
 // Unset too: GET /metrics runs with its default (off) unless a test switches it on.

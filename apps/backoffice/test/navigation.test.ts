@@ -26,6 +26,7 @@ describe("where each role lands and what its sidebar offers", () => {
 
   it("admin has no case screens and compliance has no queue", () => {
     expect(hrefs("ADMIN")).toEqual([
+      "/notifications",
       "/audit",
       "/reports/funnel",
       "/reports/decisions",
@@ -38,6 +39,7 @@ describe("where each role lands and what its sidebar offers", () => {
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
       "/intake",
+      "/notifications",
       "/compliance/escalations",
       "/audit",
       "/operations/exceptions",
@@ -52,6 +54,23 @@ describe("where each role lands and what its sidebar offers", () => {
     expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
     expect(hrefs("LOAN_OFFICER")).not.toContain("/models");
     expect(hrefs("APPROVER")).not.toContain("/models");
+  });
+
+  it("every role has its notifications (PRD NTF-002)", () => {
+    for (const role of [
+      "LOAN_OFFICER",
+      "APPROVER",
+      "LOAN_OPERATIONS",
+      "LOAN_OPERATIONS_SUPERVISOR",
+      "COMPLIANCE",
+      "ADMIN",
+    ] as Role[]) {
+      expect(hrefs(role)).toContain("/notifications");
+      expect(breadcrumbFor(role, "/notifications")).toEqual({
+        section: "My work",
+        page: "Notifications",
+      });
+    }
   });
 
   it("booking exceptions for loan operations and Compliance; reports for the roles that read decisions", () => {
