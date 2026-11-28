@@ -39,13 +39,20 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 | `Button` / `buttonClass` | `primary` (dark ink; at most one per card or dialog), `secondary` (every other action), `danger` (decline, refuse, failure modes), `ghost` (low emphasis); `size="sm"` for row actions and card headers. `accent` is the same look as primary — use `primary`. Links that look like buttons use `buttonClass` |
 | `Field` + `Input` / `Select` / `Textarea`, `Checkbox`, `FormGrid`, `FormStack` | Every form control |
 | `Pill`, `StagePill`, `OutcomePill` | Every status, stage, outcome or flag — one shape, five tones |
-| `Callout` (`tone`, `lead`, `alert`) | Outcome banners, referral reasons, waiting states and errors: a bordered tinted box with a bold lead-in; `alert` for a failure the user just caused |
-| `KeyValues` | A record's facts: label over value in auto-fill columns; `mono` only for identifiers |
-| `StatCard`, `SegmentedFilter` | Queue figures; filtering a list |
+| `Callout` (`tone`, `lead`, `alert`) | Outcome banners, referral reasons, waiting states and errors: a bordered tinted box with a bold lead-in; `alert` for a failure the user just caused. Tones follow the Pill's: `ok` approved, `warn` referred or waiting, `bad` declined or failed, `info` automation and system notes, `neutral` closed (withdrawn, expired) and plain notes |
+| `KeyValues` | A record's facts: label over value in auto-fill columns; `mono` only for identifiers. Also the figures on a card (latency, reconciliation summary, decision estimates) — never a hand-made two-column `<dl>` |
+| `StatCard` | Queue and report figures (KPI cards), in the prototype's grid: one a row on a phone, two, then four |
+| `SegmentedFilter` (`label`, `options` with `count`) | Narrowing a list or report (stage, scope, period): toggle buttons with counts where the list knows them. Keep the choice in the URL (`?scope=`, `?view=`, `?days=`) so Back and a shared link restore it; a page reading `useSearchParams` wraps its body in `<Suspense>` |
+| `BarList` (`bars`, `max`, `label`, tones `ink` / `gold` / `ok` / `bad`) | Report breakdowns (the prototype's `.hbar`): label, bar, figure; figures in the body font, labels wrap |
 | `StageBar`, `ScoreBand`, `GradeTile`, `Avatar`, `Icon`, `SimulatedLabel` | As named |
-| `Modal`, `ConfirmDialog` | Every dialog; footer buttons secondary first, the confirming one last |
+| `Modal`, `ConfirmDialog` | Every dialog; footer buttons secondary first, the confirming one last. Coming with lane A batch 3: `confirmDisabled`, for a dialog whose confirm must wait for a valid choice (say why next to the control, never in a tooltip) |
 | `useToast` | The result of an action, top right |
 | `LoadState` (backoffice) | Loading and error-with-retry for every fetching screen |
+
+Formatters (`packages/ui/src/lib/format.ts`): `formatPeso` (amounts), `formatAmountsInText`
+(amounts inside sentences the API wrote), `formatNumber` (counts), `formatRatioPercent`,
+`formatMonthlyRate`, `formatSeconds` (durations from milliseconds, "1.2 s"), `formatDate`,
+`formatDateTime`. Nothing on screen formats a number or a date any other way.
 
 ## Clarity of outcomes
 
@@ -62,7 +69,14 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
   booking, retry, change a failure mode — opens a confirmation dialog that states what will
   happen (amount, tenor, who is affected) before it runs.
 - API errors are RFC 9457 problem details; show `detail` in words a loan officer understands,
-  inline where the action was, never a raw status code or JSON.
+  inline where the action was, never a raw status code or JSON. Branch on a refusal's code
+  only through `ProblemCode` from `@loan/core`, never a string literal
+  (`house/problem-code-through-constant`).
+- The screen mirrors what the API says about the case; it never re-derives a rule. No
+  branching on reason-code literals such as "R10" (`house/no-reason-code-literal`: use the
+  case's own fields, e.g. `decidedDuringOutage`), and no behaviour keyed on a rule-set or
+  scorecard version such as "RS-PL-1" (`house/no-engine-version-literal`: use what the
+  decision view carries, e.g. its score-band edges).
 - Loading, empty and error states exist for every screen that fetches.
 
 ## Money and accessibility
@@ -70,8 +84,10 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 - Amounts are shown only through `formatPeso()` (`house/money-through-formatter`), in the body
   font. A sentence the API wrote (activity summaries, rule values, problem details, toasts) is
   shown through `formatAmountsInText()`, so "₱20000.00" reads "₱20,000.00" like everything
-  else; `errorMessage()`, `ConfirmDialog` errors and toasts already do it. Values stacked in a column (tables, score contributions, the schedule) are
-  right-aligned with `tabular-nums`; a single value in a `<dl>` keeps proportional figures.
+  else; `errorMessage()`, `ConfirmDialog` errors and toasts already do it. Values stacked in a
+  column (tables, score contributions, the schedule) are right-aligned with `tabular-nums`: a
+  table column that renders `formatPeso()` declares `numeric: true`
+  (`house/money-column-numeric`). A single value in a facts block keeps proportional figures.
   Monospace is only for identifiers: references, IDs, account numbers, booking keys, reason
   codes and rule-set versions.
 - Text sizes come only from the type scale in `globals.css` `@theme`: `text-2xs` (11px
