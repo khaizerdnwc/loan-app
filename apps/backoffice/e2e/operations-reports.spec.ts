@@ -85,8 +85,9 @@ test("RPT-1/RPT-2/RPT-4 the reports show counts for a period; Compliance reads t
   await signIn(page, "rina");
   await page.getByRole("link", { name: "Decisioning" }).click();
   await expect(page.getByRole("heading", { name: "Decisioning", level: 1 })).toBeVisible();
-  await page.getByRole("button", { name: "7 days" }).click();
-  await expect(page.getByRole("button", { name: "7 days" })).toHaveAttribute(
+  // Exact: "Download CSV · 7 days" also contains "7 days".
+  await page.getByRole("button", { name: "7 days", exact: true }).click();
+  await expect(page.getByRole("button", { name: "7 days", exact: true })).toHaveAttribute(
     "aria-pressed",
     "true",
   );
