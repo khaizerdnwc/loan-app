@@ -62,7 +62,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   small second aggregate kept inside on purpose: a decision reads it under a share lock inside
   the case's own transaction (docs/ARCHITECTURE.md). `cases/activity.service.ts` may import
   `audit/` but never `compliance/` (that would be a cycle). Folder dependencies stay one-way:
-  `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `reports/` ← `sla/` (sla/ uses
+  `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `audit/` ← `reports/` (its CSV
+  downloads are audited); `reports/` ← `sla/` (sla/ uses
   the report period rules; reports/ never imports sla/, and the turnaround route, though under
   /reports, is declared in sla/); `cases/` ← `intake/` (intake/ uses cases/; nothing in cases/
   imports intake/). `notifications/` (staff alerts, the borrower-message outbox

@@ -72,6 +72,35 @@ export async function api<T>(
   return body as T;
 }
 
+/**
+ * Fetch a file the API hands over as an attachment (a report CSV): its bytes and the file
+ * name from Content-Disposition. A refusal becomes an ApiError, as with `api`.
+ */
+export async function apiFile(path: string): Promise<{ blob: Blob; fileName: string }> {
+  let response: Response;
+  try {
+    response = await fetch(`/api${path}`, { credentials: "same-origin", cache: "no-store" });
+  } catch {
+    throw new ApiError(
+      0,
+      "NETWORK",
+      "You appear to be offline. Check your connection and try again.",
+    );
+  }
+  if (!response.ok) {
+    let body: unknown = null;
+    try {
+      body = JSON.parse(await response.text());
+    } catch {
+      body = null;
+    }
+    throw toApiError(response.status, body);
+  }
+  const disposition = response.headers.get("content-disposition") ?? "";
+  const fileName = /filename="([^"]+)"/.exec(disposition)?.[1] ?? "download";
+  return { blob: await response.blob(), fileName };
+}
+
 export function errorMessage(error: unknown): string {
   // A refusal may quote amounts ("₱120000.00 is above your approval limit"): format them.
   return error instanceof ApiError

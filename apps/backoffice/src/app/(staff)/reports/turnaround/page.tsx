@@ -11,6 +11,7 @@ export default function TurnaroundPage() {
       title="Turnaround and SLA"
       description="Business time spent in each stage, against its SLA, and the open cases past or near their SLA now."
       path="/reports/turnaround"
+      csv="/reports/turnaround.csv"
       render={(r) => <TurnaroundView report={r} />}
     />
   );

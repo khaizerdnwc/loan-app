@@ -55,6 +55,7 @@ import { OperationsService } from "./operations/operations.service";
 import { ProviderGateway } from "./providers/provider-gateway.service";
 import { ProvidersController } from "./providers/providers.controller";
 import { ProvidersRepository } from "./providers/providers.repository";
+import { ReportExportService } from "./reports/report-export.service";
 import { ReportsController } from "./reports/reports.controller";
 import { ReportsRepository } from "./reports/reports.repository";
 import { ReportsService } from "./reports/reports.service";
@@ -133,6 +134,7 @@ export class LendingModule {
         OperationsService,
         ReportsRepository,
         ReportsService,
+        ReportExportService,
         SlaRepository,
         SlaService,
         NotificationRepository,

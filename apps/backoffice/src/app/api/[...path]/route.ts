@@ -115,6 +115,11 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
     const out = new Headers();
     const contentType = upstream.headers.get("content-type");
     if (contentType) out.set("content-type", contentType);
+    // A report download (RPT-006): its file name, and that no cache keeps the file.
+    for (const name of ["content-disposition", "cache-control"]) {
+      const value = upstream.headers.get(name);
+      if (value) out.set(name, value);
+    }
     for (const cookie of upstream.headers.getSetCookie()) out.append("set-cookie", cookie);
     out.set(REQUEST_ID, requestIdOf(upstream.headers.get(REQUEST_ID), requestId));
     const body = upstream.status === 204 ? null : await upstream.arrayBuffer();

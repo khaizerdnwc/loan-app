@@ -117,6 +117,7 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   SIGN_IN_FAILED: "Sign-in refused",
   SIGNED_OUT: "Signed out",
   SIMULATION_MODE_CHANGED: "Simulation mode changed",
+  REPORT_EXPORTED: "Report downloaded",
   CASE_CREATED: "Application created",
   DRAFT_UPDATED: "Draft updated",
   CONSENT_RECORDED: "Consent recorded",

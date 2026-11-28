@@ -1,9 +1,19 @@
 import { type CaseSlaView, Role, type SlaView, type TurnaroundReport } from "@loan/core";
-import { Controller, Get, Param, ParseUUIDPipe, Query } from "@nestjs/common";
+import {
+  Controller,
+  Get,
+  Header,
+  Param,
+  ParseUUIDPipe,
+  Query,
+  type StreamableFile,
+} from "@nestjs/common";
 import { ApiPropertyOptional, ApiTags } from "@nestjs/swagger";
 import { IsIn, IsOptional } from "class-validator";
 import { CurrentUser, Roles } from "../auth/auth.decorators";
 import type { SessionUser } from "../auth/session";
+import { turnaroundRows } from "../reports/csv";
+import { ReportExportService } from "../reports/report-export.service";
 import { REPORT_READERS, ReportPeriodQueryDto } from "../reports/reports.controller";
 import { SlaService } from "./sla.service";
 
@@ -54,12 +64,27 @@ export class SlaController {
 @ApiTags("reports")
 @Controller("reports")
 export class TurnaroundController {
-  constructor(private readonly sla: SlaService) {}
+  constructor(
+    private readonly sla: SlaService,
+    private readonly exports: ReportExportService,
+  ) {}
 
   /** Business time per stage, and the open cases by SLA state. */
   @Get("turnaround")
   @Roles(...REPORT_READERS)
   turnaround(@Query() q: ReportPeriodQueryDto): Promise<TurnaroundReport> {
     return this.sla.turnaround(q.from, q.to);
+  }
+
+  /** The turnaround report as a CSV file (RPT-006); the download is audited. */
+  @Get("turnaround.csv")
+  @Roles(...REPORT_READERS)
+  @Header("Cache-Control", "no-store")
+  async turnaroundCsv(
+    @CurrentUser() user: SessionUser,
+    @Query() q: ReportPeriodQueryDto,
+  ): Promise<StreamableFile> {
+    const r = await this.sla.turnaround(q.from, q.to);
+    return this.exports.download(user, "TURNAROUND", r.period, turnaroundRows(r));
   }
 }

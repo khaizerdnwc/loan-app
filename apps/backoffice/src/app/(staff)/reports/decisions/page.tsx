@@ -11,6 +11,7 @@ export default function DecisionsPage() {
       title="Decisioning"
       description="Straight-through processing, decision mix, reason codes and overrides for the decisions made in the period."
       path="/reports/decision-mix"
+      csv="/reports/decision-mix.csv"
       render={(r) => <DecisionMixView report={r} />}
     />
   );

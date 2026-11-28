@@ -11,6 +11,7 @@ export default function FunnelPage() {
       title="Origination funnel"
       description="Applications started in the period and how far they got. Drop-off between stages shows where applications stall."
       path="/reports/funnel"
+      csv="/reports/funnel.csv"
       render={(r) => <FunnelView report={r} />}
     />
   );
