@@ -277,7 +277,7 @@ describe("New or walk-in customer (WI-1)", () => {
       "This customer is already on file: choose them instead.",
     );
     await userEvent.click(choose);
-    expect(onChooseExisting).toHaveBeenCalledWith("APL-W0000000001");
+    expect(onChooseExisting).toHaveBeenCalledWith("APL-W0000000001", "Lorna Bautista");
   });
 
   it("Add applicant waits until a customer is found, and is open by hand; no account can be typed", async () => {

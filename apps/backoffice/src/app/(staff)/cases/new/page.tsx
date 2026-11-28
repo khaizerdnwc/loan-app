@@ -26,7 +26,7 @@ import {
   useToast,
 } from "@loan/ui";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useLayoutEffect, useMemo, useState } from "react";
 import { useForm } from "react-hook-form";
 import { PageHeader } from "@/components/app-shell";
 import { IndicativeRepayment } from "@/components/case/indicative-repayment";
@@ -60,6 +60,16 @@ export default function NewApplicationPage() {
   const [pending, setPending] = useState<{ intent: Intent; values: ApplicationForm } | null>(null);
   const [busy, setBusy] = useState(false);
   const [capturing, setCapturing] = useState(false);
+  /** Applicants captured on this page: listed at once, before the refetched list arrives. */
+  const [added, setAdded] = useState<ApplicantView[]>([]);
+  /**
+   * An applicant to select once its option is in the list (a select cannot pick a missing one).
+   * `settled` once the list has been refreshed for it: if it is still missing then, the officer
+   * is told and nothing is selected later behind their back.
+   */
+  const [toSelect, setToSelect] = useState<{ id: string; name: string; settled: boolean } | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
   const [consentError, setConsentError] = useState<string | null>(null);
   /** The boxes themselves are at fault (not, say, the terms version). */
@@ -76,7 +86,23 @@ export default function NewApplicationPage() {
     },
   });
   const errors = form.formState.errors;
-  const selected = applicants.data?.find((a) => a.id === form.watch("applicantId"));
+  const options = useMemo(() => {
+    const listed = applicants.data ?? [];
+    return [...listed, ...added.filter((a) => !listed.some((l) => l.id === a.id))];
+  }, [applicants.data, added]);
+  const selected = options.find((a) => a.id === form.watch("applicantId"));
+  // After the render that put the option in the select (so the value sticks) but before the
+  // browser paints, so the select never shows "Choose an applicant" in between.
+  useLayoutEffect(() => {
+    if (!toSelect) return;
+    if (options.some((a) => a.id === toSelect.id)) {
+      form.setValue("applicantId", toSelect.id, { shouldValidate: true });
+      setToSelect(null);
+    } else if (toSelect.settled) {
+      setToSelect(null);
+      toast(`Could not load ${toSelect.name} into the list; try again or reload the page.`, "warn");
+    }
+  }, [toSelect, options, form, toast]);
   const indicative = useIndicativeRepayment(form.watch("amount"), form.watch("tenorMonths"));
 
   if (me.role !== "LOAN_OFFICER") {
@@ -178,9 +204,14 @@ export default function NewApplicationPage() {
           <div className="flex flex-col gap-5">
             <Card title="1 · Applicant">
               <Field label="Applicant" error={errors.applicantId?.message}>
-                <Select {...form.register("applicantId")}>
+                <Select
+                  {...form.register("applicantId", {
+                    // The officer's own choice wins over a selection still waiting for the list.
+                    onChange: () => setToSelect(null),
+                  })}
+                >
                   <option value="">Choose an applicant</option>
-                  {applicants.data.map((a) => (
+                  {options.map((a) => (
                     <option key={a.id} value={a.id}>
                       {a.fullName} · {a.employer}
                     </option>
@@ -297,14 +328,19 @@ export default function NewApplicationPage() {
       {capturing && (
         <NewApplicantDialog
           onCancel={() => setCapturing(false)}
-          onChooseExisting={(id) => {
+          onChooseExisting={(id, name) => {
             setCapturing(false);
-            form.setValue("applicantId", id, { shouldValidate: true });
+            // On file, but perhaps captured after this page loaded: refresh, then select.
+            setToSelect({ id, name, settled: false });
+            void applicants
+              .reload()
+              .then(() => setToSelect((t) => (t?.id === id ? { ...t, settled: true } : t)));
           }}
-          onCreated={async (a) => {
+          onCreated={(a) => {
             setCapturing(false);
-            await applicants.reload();
-            form.setValue("applicantId", a.id, { shouldValidate: true });
+            setAdded((list) => [...list, a]);
+            setToSelect({ id: a.id, name: a.fullName, settled: true });
+            void applicants.reload();
             toast(`Added ${a.fullName} as a new applicant`);
           }}
         />

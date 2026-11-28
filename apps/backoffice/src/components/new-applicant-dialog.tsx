@@ -55,7 +55,7 @@ export function NewApplicantDialog({
   onCancel: () => void;
   onCreated: (a: ApplicantView) => void;
   /** The customer is already on file as this applicant: choose them instead. */
-  onChooseExisting: (applicantId: string) => void;
+  onChooseExisting: (applicantId: string, fullName: string) => void;
 }) {
   const [mode, setMode] = useState<Mode>("CORE");
   const [cif, setCif] = useState("");
@@ -210,7 +210,9 @@ export function NewApplicantDialog({
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => onChooseExisting(customer.applicantId as string)}
+                      onClick={() =>
+                        onChooseExisting(customer.applicantId as string, customer.fullName)
+                      }
                     >
                       Choose them
                     </Button>
