@@ -241,7 +241,7 @@ export class ApplicantsService {
         caseId: c.id,
         actor: user,
         action: "APPLICANT_LINKED_TO_CORE",
-        summary: `The applicant was linked to core customer ${walkIn.customerNumber}: identity, payout account and verified income now come from core (simulated).`,
+        summary: `The applicant was linked to core customer ${walkIn.customerNumber}: customer number, payout account and verified income now come from core (simulated).`,
         details: {
           applicantId: walkIn.id,
           customerNumber: walkIn.customerNumber,
