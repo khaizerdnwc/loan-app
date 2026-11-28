@@ -35,6 +35,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/automation",
       "/models",
       "/approval-matrix",
+      "/features",
     ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
@@ -161,6 +162,46 @@ describe("breadcrumb and page icons", () => {
     ];
     for (const role of roles) {
       for (const item of navFor(role).flatMap((g) => g.items)) expect(item.icon).toBeTruthy();
+    }
+  });
+});
+
+describe("a module the bank switched off leaves the sidebar (FF-5, PRD PLT-006)", () => {
+  const hrefsWith = (role: Role, features?: Parameters<typeof navFor>[1]) =>
+    navFor(role, features).flatMap((g) => g.items.map((i) => i.href));
+
+  it("hides the eligibility pre-check and email intake when they are off", () => {
+    const off = { ELIGIBILITY_PRECHECK: false, EMAIL_INTAKE: false };
+    expect(hrefsWith("LOAN_OFFICER", off)).not.toContain("/eligibility");
+    expect(hrefsWith("LOAN_OFFICER", off)).not.toContain("/intake");
+    expect(hrefsWith("COMPLIANCE", off)).not.toContain("/intake");
+    // Everything else stays.
+    expect(hrefsWith("LOAN_OFFICER", off)).toContain("/cases/new");
+  });
+
+  it("shows them when on, and while the state is still loading (unknown is not off)", () => {
+    for (const features of [
+      undefined,
+      null,
+      {},
+      { ELIGIBILITY_PRECHECK: true, EMAIL_INTAKE: true },
+    ]) {
+      expect(hrefsWith("LOAN_OFFICER", features)).toEqual(
+        expect.arrayContaining(["/eligibility", "/intake"]),
+      );
+    }
+  });
+
+  it("switches each module separately", () => {
+    const hrefs = hrefsWith("LOAN_OFFICER", { ELIGIBILITY_PRECHECK: true, EMAIL_INTAKE: false });
+    expect(hrefs).toContain("/eligibility");
+    expect(hrefs).not.toContain("/intake");
+  });
+
+  it("only administrators get the Feature flags screen", () => {
+    expect(hrefsWith("ADMIN")).toContain("/features");
+    for (const role of ["LOAN_OFFICER", "APPROVER", "COMPLIANCE", "LOAN_OPERATIONS"] as Role[]) {
+      expect(hrefsWith(role)).not.toContain("/features");
     }
   });
 });

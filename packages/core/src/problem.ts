@@ -35,6 +35,8 @@ export const ProblemCode = {
   ProviderUnavailable: "PROVIDER_UNAVAILABLE",
   ScheduleMismatch: "SCHEDULE_DOES_NOT_RECONCILE",
   RateLimited: "RATE_LIMITED",
+  /** A module the bank has switched off (feature flags, PRD PLT-006). */
+  FeatureDisabled: "FEATURE_DISABLED",
   /** Screening before disbursement matched a watchlist: nothing booked, escalated. */
   ScreeningMatch: "SCREENING_MATCH",
   /** A booking held by an AML escalation that Compliance has not cleared. */

@@ -1,13 +1,15 @@
-import type {
-  EligibilityPreCheckRequest,
-  EligibilityPreCheckView,
-  FieldError,
-  Money,
+import {
+  type EligibilityPreCheckRequest,
+  type EligibilityPreCheckView,
+  FeatureFlag,
+  type FieldError,
+  type Money,
 } from "@loan/core";
 import { Injectable } from "@nestjs/common";
 import { validation } from "../cases/domain-error";
 import { PERSONAL_LOAN, parseRequestAmount, termErrors } from "../cases/product";
 import { CURRENT_RULE_SET, preCheck } from "../decisioning/engine";
+import { FeaturesService } from "../features/features.service";
 
 export const PRE_CHECK_CAVEAT =
   "Indicative only, from the figures given: not a decision or an offer. The decision also depends on the credit bureau, KYC/AML screening and the fraud check (run only after consent) and on verified income.";
@@ -15,11 +17,15 @@ export const PRE_CHECK_CAVEAT =
 /**
  * The eligibility pre-check (PRD PC-008). It reads no provider and no database and writes
  * nothing: the engine's pure pre-check over stated figures, against the current rule set and
- * the product's limits. Nothing personal is sent, so it needs no consent.
+ * the product's limits. Nothing personal is sent, so it needs no consent. It is a module the
+ * bank can switch off (feature flag ELIGIBILITY_PRECHECK, PRD PLT-006).
  */
 @Injectable()
 export class EligibilityService {
-  preCheck(body: EligibilityPreCheckRequest): EligibilityPreCheckView {
+  constructor(private readonly features: FeaturesService) {}
+
+  async preCheck(body: EligibilityPreCheckRequest): Promise<EligibilityPreCheckView> {
+    await this.features.assertEnabled(FeatureFlag.EligibilityPrecheck);
     const amount = parseRequestAmount(body.amount);
     const errors: FieldError[] = termErrors(amount, body.tenorMonths);
     const income = money(body.monthlyIncome, "monthlyIncome", errors);

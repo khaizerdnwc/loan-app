@@ -18,6 +18,7 @@ import { ExternalDecisionEngine1764300003002 } from "./1764300003002-ExternalDec
 import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtraction";
 import { IntakeCapturedApplicant1764300004001 } from "./1764300004001-IntakeCapturedApplicant";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
+import { FeatureFlags1764300009001 } from "./1764300009001-FeatureFlags";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -46,4 +47,5 @@ export const MIGRATIONS = [
   IntakeAndExtraction1764300004000,
   IntakeCapturedApplicant1764300004001,
   ForeignKeysAndTruncateGuards1764300009000,
+  FeatureFlags1764300009001,
 ];

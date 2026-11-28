@@ -17,7 +17,7 @@ export class EligibilityController {
   @Post("pre-check")
   @HttpCode(200)
   @Roles(Role.LoanOfficer)
-  preCheck(@Body() body: EligibilityPreCheckDto): EligibilityPreCheckView {
+  preCheck(@Body() body: EligibilityPreCheckDto): Promise<EligibilityPreCheckView> {
     return this.eligibility.preCheck(body);
   }
 }

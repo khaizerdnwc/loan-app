@@ -34,7 +34,9 @@ import { Suspense, useState } from "react";
 import { PageHeader, useShellRefresh } from "@/components/app-shell";
 import { ReviewDraftDialog } from "@/components/intake/review-draft-dialog";
 import { LoadState } from "@/components/load-state";
+import { ModuleOff } from "@/components/module-off";
 import { api, errorMessage } from "@/lib/api";
+import { useFeature } from "@/lib/features";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
 
@@ -67,6 +69,18 @@ const isPending = (d: IntakeDraftView) => d.status === "PENDING_REVIEW";
  * submits from the case. Compliance reads the list. The filter lives in the URL (`?view=all`).
  */
 export default function IntakePage() {
+  // A module the bank can switch off (PRD PLT-006): then nothing here is fetched or offered.
+  if (useFeature("EMAIL_INTAKE") === false) {
+    return (
+      <>
+        <PageHeader
+          title="Email and file intake"
+          description="Emailed document bundles and partner spreadsheets, read by simulated OCR into drafts for a loan officer to review."
+        />
+        <ModuleOff flag="EMAIL_INTAKE" kept="Drafts already captured are kept." />
+      </>
+    );
+  }
   return (
     <Suspense fallback={null}>
       <Intake />
@@ -247,7 +261,12 @@ function Intake() {
           onChange={setView}
         />
       </div>
-      <LoadState loading={list.loading && !list.data} error={list.error} onRetry={list.reload} />
+      <LoadState
+        loading={list.loading && !list.data}
+        error={list.error}
+        code={list.errorCode}
+        onRetry={list.reload}
+      />
       {list.data && (
         <Card title="Drafts" aside={<SimulatedLabel what="OCR" />} flush>
           <Table
