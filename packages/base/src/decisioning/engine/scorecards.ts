@@ -153,7 +153,8 @@ export const SCORECARDS: Readonly<Record<string, Scorecard>> = {
 export const CURRENT_SCORECARD = "SC-PL-2";
 
 export function scorecard(version: string): Scorecard {
-  const sc = SCORECARDS[version];
+  // Own keys only: "constructor" or "__proto__" must not resolve through Object.prototype.
+  const sc = Object.hasOwn(SCORECARDS, version) ? SCORECARDS[version] : undefined;
   if (!sc) throw new Error(`Unknown scorecard version ${version}`);
   return sc;
 }

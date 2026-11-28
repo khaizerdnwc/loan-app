@@ -96,3 +96,54 @@ export const FEATURE_LABEL: Readonly<Record<string, string>> = {
 export function featureLabel(feature: string): string {
   return FEATURE_LABEL[feature] ?? feature;
 }
+
+/**
+ * The rule-set test harness (PRD DEC-004, F8 step 1): stored decisions replayed under a
+ * candidate rule set and a baseline (the live version by default), compared. Read-only: it
+ * compares, it never publishes, writes a decision or calls a provider. Counts and case
+ * references only.
+ */
+export interface HarnessRunRequest {
+  candidate: string;
+  /** Default: the live (current) rule set. */
+  baseline?: string;
+  /** Business dates, inclusive (default the last 30 days; at most 366). */
+  from?: string;
+  to?: string;
+}
+
+/** One decision the harness replayed: its case reference and what changed. */
+export interface HarnessRow {
+  caseReference: string;
+  baselineOutcome: DecisionOutcome;
+  candidateOutcome: DecisionOutcome;
+  /**
+   * Reason codes the candidate gives that the baseline does not, and the reverse, each with its
+   * staff wording from the engine (so the screen keeps no code table).
+   */
+  reasonsAdded: { code: string; staff: string }[];
+  reasonsRemoved: { code: string; staff: string }[];
+  /** Inputs the snapshot lacked, filled with a stated neutral default for a version. */
+  defaults: string[];
+}
+
+export interface HarnessRunView {
+  candidate: string;
+  baseline: string;
+  period: { from: string; to: string };
+  /** At most this many decisions are replayed (each case's latest in the period, newest first). */
+  cap: number;
+  /** Cases with a decision in the period; more than `cap` means only the newest `cap` ran. */
+  decisionsInPeriod: number;
+  compared: number;
+  /** Snapshots that could not be replayed under a version, never guessed. */
+  notComparable: { caseReference: string; reason: string }[];
+  /** Outcomes (before any automation mode) under each version. */
+  outcomes: { outcome: DecisionOutcome; baseline: number; candidate: number }[];
+  /** How many compared decisions went from each baseline outcome to each candidate outcome. */
+  movement: { from: DecisionOutcome; to: DecisionOutcome; count: number }[];
+  /** Compared decisions whose outcome or reason codes differ. */
+  changed: HarnessRow[];
+  /** Compared decisions that used a default for a missing input (changed or not). */
+  withDefaults: HarnessRow[];
+}

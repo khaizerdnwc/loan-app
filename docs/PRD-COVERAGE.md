@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 41 built, 42 partly built, 56 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
+Summary: 42 built, 41 partly built, 56 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
 (F1, F2, F4, F6) and 4 are not built.
 
 ## 1. Coverage table
@@ -41,7 +41,7 @@ Summary: 41 built, 42 partly built, 56 not built (139 IDs, counted from the tabl
 | F5 | Home loan through committee | not built | — | No secured product, collateral, LTV, committee or minutes. |
 | F6 | Auto-decline and compliance escalation (Ramon Cruz) | partly built | `packages/base/test/decisioning/decide.test.ts` (D-2), CMP-1..CMP-3, `apps/backoffice/e2e/compliance.spec.ts` | The sanctions knockout declines with no score, opens an AML escalation in the same transaction, and Compliance acknowledges and closes it with notes (AML escalations list and detail). Reason codes have borrower-safe wording (`reason-codes.ts`). Missing: the borrower-facing decline view (borrower app, **OOR**) and export to the bank's AML system. |
 | F7 | Delinquent loan through restructuring | not built | — | No collections module. |
-| F8 | Configuration and model change | not built | AU-1..AU-3 | Rule sets are versioned in code (`rule-sets.ts`; RS-PL-2 added beside RS-PL-1, which still replays). Per-product shadow mode and kill switch are built, with maker-checker on mode changes. There is no rules editor, test harness or maker-checker publish of a rule set. |
+| F8 | Configuration and model change | not built | AU-1..AU-3 | Rule sets are versioned in code (`rule-sets.ts`; RS-PL-2 added beside RS-PL-1, which still replays). Per-product shadow mode and kill switch are built, with maker-checker on mode changes. A test harness replays stored decisions under a candidate and a baseline rule set (DEC-004, HX-1..HX-3). There is no rules editor or maker-checker publish of a rule set. |
 
 ### 6.1 Product configurator (PC)
 
@@ -188,7 +188,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | DEC-001 | No-code rules editor | not built | — | Rules are code (ADR 0022 says to reconsider when this is needed). |
 | DEC-002 | Rule types | partly built | `decide.ts`, `rule-sets.ts`, D-18 | Knockout, referral trigger, derived variable (DTI), grade-based pricing and (RS-PL-5) warning rules, recorded and shown, never referring. Missing: pricing-adjustment rules, deferred because they change the offer rate, the quote and booking (ADR 0019, 0020). |
 | DEC-003 | Versioned rule sets, maker-checker, effective dates | partly built | `rule-sets.ts` | Versioned and immutable. No maker-checker or effective dates. |
-| DEC-004 | Test harness draft vs live | partly built | `POST /decisions/:id/reproduce`, D-8 | Replays one stored decision on its own version. No comparison of draft against live over a set of cases. |
+| DEC-004 | Test harness draft vs live | built | `POST /models/harness`, `decisioning/engine/harness.ts`, HX-1..HX-3, plus `POST /decisions/:id/reproduce` (D-8) | Any rule-set version in the code (a candidate not yet live included) replayed against the live one, or another, over each case's latest stored decision in a period (capped at 300): outcome mix, movement, changed decisions; missing inputs defaulted and listed, non-adaptable snapshots counted as not comparable; one audit entry per run. It compares, never publishes. A draft kept as data and published under maker-checker is #20. |
 | DEC-005 | Decision bands, max auto-approval amount | built | `rule-sets.ts` (approveFrom, declineBelow, autoApprovalLimit), D-4, D-6 | Defined in code per product, not configurable from a screen. |
 | DEC-006 | Configurable referral triggers | partly built | `decide.ts`, D-5, D-6, D-9, B-7, D-10..D-12, TR-1 | Grey zone, over limit, thin file or no hit, DTI, bureau unavailable, KYC/AML unavailable, and (RS-PL-2) declared vs verified income mismatch, fraud or identity flag, fraud check unavailable, related party, and (RS-PL-5, D-19..D-21) low model confidence, missing data and policy exception: every trigger the PRD names. Missing: configuration: a change is a new rule-set version in code (#20). |
 | DEC-007 | Borrower-safe decline reason codes | built | `reason-codes.ts` (staff and borrower wording), D-7 | |
@@ -305,7 +305,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 17 | Credit memo generated from the case, editable by the analyst, stored with versions | WF-008 | M | Part of F2 review in the PRD. |
 | 18 | Disclosure statement generated from approved terms and acknowledged before the simulated signature; templates | CMP-002, DOC-004, SS-002 (staff side) | M | Truth in Lending requirement for the PH release. Needs a fee model (PC-002). |
 | 19 | ✅ Done (AM-1; read-only matrix, set by migration). Configurable approval matrix (product, exception type, delegated levels) as data | WF-004 | M | Generalises the amount-and-grade authority already built. |
-| 20 | Rule sets as published data with draft, review and publish under maker-checker, effective dates, and a draft-vs-live test harness over stored decisions | DEC-001, DEC-003, DEC-004, PC-005, PC-006, F8 | L | Needed for F8 and the "product setup in under 2 weeks" metric. Must keep ADR 0022 replay (published versions immutable). Deferred from lane C batch 3 in favour of #26: storing rule sets as data changes ADR 0022 R4 (versions are code), every replay path and the editor screen, more than one batch. |
+| 20 | Rule sets as published data with draft, review and publish under maker-checker, effective dates, and a draft-vs-live test harness over stored decisions (the harness ✅ done for versions in code: HX-1..HX-3, lane C batch 7) | DEC-001, DEC-003, DEC-004, PC-005, PC-006, F8 | L | Needed for F8 and the "product setup in under 2 weeks" metric. Must keep ADR 0022 replay (published versions immutable). Deferred from lane C batch 3 in favour of #26: storing rule sets as data changes ADR 0022 R4 (versions are code), every replay path and the editor screen, more than one batch. |
 | 21 | Product configuration (core product reference, ranges, pricing grids, fees, form fields, document checklists) | PC-001..PC-004, PC-002 fees | L | Follows #20. Fees unblock #18. |
 | 22 | Credit committee: circulation, votes, quorum, conditions, minutes | WF-010 | L | F5 and above-authority cases. Replaces today's "escalated" flag. |
 | 23 | ✅ Done (NTF-1..NTF-3; email and SMS, no push; reminders CLX-003 wait for collections). Notifications through a simulated SMS/email/push port: staff alerts, borrower templates, delivery log | NTF-001..003, CLX-003 | M | Needed by WF-007 and collections. |

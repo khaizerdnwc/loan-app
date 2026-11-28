@@ -24,7 +24,13 @@ import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
-import { CURRENT_RULE_SET, EXTERNAL_OUTCOME, RULE_SETS, ruleSet } from "../decisioning/engine";
+import {
+  CURRENT_RULE_SET,
+  EXTERNAL_OUTCOME,
+  isRuleSetVersion,
+  RULE_SETS,
+  ruleSet,
+} from "../decisioning/engine";
 import { caseExceptions, coveringLevel } from "./approval-matrix";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions, recommendationRefusal, recommendationTypes } from "./case-access";
@@ -380,7 +386,7 @@ const bandLogger = new Logger("CaseViews");
 
 /** The band edges of a stored record's own rule set (every stored version is kept, ADR 0022 R4). */
 function scoreBandOf(version: string): DecisionRecordView["scoreBand"] {
-  const rs = RULE_SETS[version];
+  const rs = isRuleSetVersion(version) ? RULE_SETS[version] : undefined;
   if (!rs) {
     // Every stored version is kept in code (ADR 0022 R4), so this means a record from a newer
     // deployment or a damaged row: show the case without a band rather than fail the view.

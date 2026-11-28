@@ -4,20 +4,28 @@ import {
   type DriftView,
   GRADES,
   type Grade,
+  type HarnessRunRequest,
+  type HarnessRunView,
   type ModelRegistryView,
   type OverrideMonitorView,
   type OverrideReason,
   type Recommendation,
 } from "@loan/core";
 import { Injectable } from "@nestjs/common";
+import { AuditService } from "../audit/audit.service";
+import type { SessionUser } from "../auth/session";
+import { validation } from "../cases/domain-error";
 import {
   CURRENT_RULE_SET,
   CURRENT_SCORECARD,
+  isRuleSetVersion,
   PROHIBITED_FEATURES,
   prohibitedFeaturesIn,
   RULE_SETS,
+  runHarness,
   SCORECARDS,
 } from "../decisioning/engine";
+import { reportPeriod } from "../reports/period";
 import {
   GovernanceRepository,
   type GradeCount,
@@ -30,13 +38,80 @@ const DAY = 86_400_000;
 /** Each drift window needs this many scored decisions before a status is given. */
 export const DRIFT_MINIMUM = 30;
 
+/** The most decisions one harness run replays (each case's latest in the period, newest first). */
+export const HARNESS_CAP = 300;
+
 /**
  * Model governance (PRD AIS-008 registry, AIS-009 drift, AIS-011 overrides, AIS-012 prohibited
  * features; CMP-008). Read-only: it reports on stored decisions and the case history.
  */
 @Injectable()
 export class GovernanceService {
-  constructor(private readonly repo: GovernanceRepository) {}
+  constructor(
+    private readonly repo: GovernanceRepository,
+    private readonly audit: AuditService,
+  ) {}
+
+  /**
+   * The rule-set test harness (PRD DEC-004, F8 step 1): each case's latest decision in the
+   * period (newest first, at most HARNESS_CAP) replayed under the candidate and the baseline
+   * (the live version by default) and compared. It compares, it never publishes: nothing about a
+   * case or a rule set changes and no provider is called. One audit entry per run records who
+   * ran what over which period, with counts only.
+   */
+  async harness(
+    user: SessionUser,
+    request: HarnessRunRequest,
+    // The API always runs with HARNESS_CAP; a lower cap is for tests of the cut-off only.
+    cap = HARNESS_CAP,
+  ): Promise<HarnessRunView> {
+    const baseline = request.baseline ?? CURRENT_RULE_SET;
+    // Own keys only (isRuleSetVersion, the check ruleSet() uses): "constructor" is not a version.
+    const unknown = [
+      ["candidate", request.candidate],
+      ["baseline", baseline],
+    ].filter(([, v]) => !isRuleSetVersion(v as string));
+    if (unknown.length > 0) {
+      throw validation(
+        "Choose rule sets this system knows.",
+        unknown.map(([field]) => ({ field: field as string, message: "Choose a known rule set." })),
+      );
+    }
+    if (request.candidate === baseline) {
+      throw validation("Compare two different rule sets.", [
+        { field: "candidate", message: "Choose a rule set other than the baseline." },
+      ]);
+    }
+    const { period, window } = reportPeriod(request.from, request.to);
+    const { total, rows } = await this.repo.harnessSnapshots(window.from, window.until, cap);
+    const result = runHarness(rows, request.candidate, baseline);
+    const view: HarnessRunView = {
+      candidate: request.candidate,
+      baseline,
+      period,
+      cap,
+      decisionsInPeriod: total,
+      ...result,
+    };
+    await this.audit.record({
+      actor: user,
+      action: "HARNESS_RUN",
+      summary: `Ran the rule-set test harness: ${request.candidate} against ${baseline}, ${period.from} to ${period.to}; ${result.compared} compared, ${result.changed.length} changed, ${result.notComparable.length} not comparable.`,
+      // Counts only: no case reference or applicant data in the audit log.
+      details: {
+        candidate: request.candidate,
+        baseline,
+        period,
+        cap,
+        decisionsInPeriod: total,
+        compared: result.compared,
+        changed: result.changed.length,
+        notComparable: result.notComparable.length,
+        withDefaults: result.withDefaults.length,
+      },
+    });
+    return view;
+  }
 
   async registry(): Promise<ModelRegistryView> {
     const [scorecardUse, ruleSetUse] = await Promise.all([

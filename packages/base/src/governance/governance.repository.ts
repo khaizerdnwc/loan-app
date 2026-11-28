@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
+import type { DecisionInputs, HarnessSnapshot } from "../decisioning/engine";
 
 export interface VersionUsage {
   version: string;
@@ -80,6 +81,44 @@ export class GovernanceRepository {
       overrideReason: r.override_reason,
       isOverride: r.action === "RECOMMENDED_WITH_OVERRIDE",
     }));
+  }
+
+  /**
+   * Each case's latest decision in [from, until), newest first, at most `cap` (the window and
+   * the per-case choice are in SQL, before the limit), and how many cases had one.
+   */
+  async harnessSnapshots(
+    from: Date,
+    until: Date,
+    cap: number,
+  ): Promise<{ total: number; rows: HarnessSnapshot[] }> {
+    const [rows, totals] = await Promise.all([
+      this.ds.query(
+        // Ties on created_at are broken by id, inside (which decision is a case's latest) and
+        // outside (which cases fall under the cap), so the selection never varies run to run.
+        `SELECT reference, inputs, scorecard_version FROM (
+           SELECT DISTINCT ON (d.case_id) c.reference, d.inputs, d.scorecard_version,
+                  d.created_at, d.id
+           FROM decision_record d JOIN loan_case c ON c.id = d.case_id
+           WHERE d.created_at >= $1 AND d.created_at < $2
+           ORDER BY d.case_id, d.created_at DESC, d.id DESC
+         ) latest ORDER BY created_at DESC, id DESC LIMIT $3`,
+        [from, until, cap],
+      ) as Promise<{ reference: string; inputs: DecisionInputs; scorecard_version: string }[]>,
+      this.ds.query(
+        `SELECT count(DISTINCT case_id) AS n FROM decision_record
+         WHERE created_at >= $1 AND created_at < $2`,
+        [from, until],
+      ) as Promise<{ n: string }[]>,
+    ]);
+    return {
+      total: Number(totals[0]?.n ?? 0),
+      rows: rows.map((r) => ({
+        caseReference: r.reference,
+        inputs: r.inputs,
+        scorecardVersion: r.scorecard_version,
+      })),
+    };
   }
 
   /** Scored decisions per grade in [from, to). */

@@ -109,3 +109,28 @@ usernames from one address that must eventually get 429.
 - The rule: a field the officer completes is accepted only where the extracted value is null. Otherwise refuse it (400), or ignore it.
 - Not lint-shaped: it depends on how the request field relates to stored draft data.
 - Nearest gate: an e2e test that confirms a draft with a read ID while sending other digits (with `newCustomer`, then with a customer number), and asserts a 400 and no applicant, case or audit row.
+
+## security-20261128-registry-lookup-own-key-only
+
+- DEC-004 (lane C) accepts `candidate` and `baseline` from the request body: strings of 1 to 20 characters, with no pattern.
+- `GovernanceService.harness` checks them with `!RULE_SETS[v]`, and `ruleSet()` (rule-sets.ts) and `scorecard()` (scorecards.ts) use the same truthiness test.
+- `RULE_SETS` is a plain object literal. So `"constructor"`, `"__proto__"`, `"toString"` and `"hasOwnProperty"` find inherited members, pass as "known", and reach `runHarness` with a function or `Object.prototype` as the rule set.
+- What happens then: every row comes back "not comparable", the run answers 200, and an audit entry names a rule set that does not exist.
+- No data leaks and no control is bypassed. But the registry is the thing that decides which policy a decision runs under, so it must not accept names it does not hold.
+- Fix: `Object.hasOwn(RULE_SETS, v)` in `ruleSet()` and `scorecard()`, and callers use those functions; or a `Map`, or a null-prototype object. A DTO pattern such as `^RS-[A-Z]+-\d+$` adds a second guard.
+- Nearest gate: a house rule against computed `RULE_SETS[...]` / `SCORECARDS[...]` access with a non-literal key outside a function guarded by `Object.hasOwn`, plus an e2e case where `candidate: "constructor"` gets 400.
+
+## security-20261128-caught-engine-message-not-in-response
+
+- DEC-004 round 2 wrapped each harness replay in try/catch. It returns `err.message` as the snapshot's `notComparable.reason`, next to its case reference, and the comment says engine messages "never" carry applicant data.
+- Several do carry it:
+  - scorecards.ts `band()` (`no band for ${value}`: bureau score or employment months);
+  - `no utilisation band for ${bureau.utilisationPct}`;
+  - `no delinquency band for ${bureau.delinquencies12m}`;
+  - ratio.ts (`"${ratio}"`);
+  - core `MoneyError` (`"${input}" is not an amount`: income, obligations, amount).
+- The harness is open to administrators, who cannot view cases (`canView` → false). So any of these, if reached, hands an admin one applicant's figure tied to a case reference.
+- With well-formed snapshots they are unreachable today. That makes it latent, not live, and the comment's guarantee rests on nobody adding an interpolated throw.
+- Rule: map caught errors to a fixed vocabulary (e.g. "the engine refused this snapshot under RS-PL-5"). Keep the raw message out of the response; if it is needed, log a data-free summary.
+- Not lint-shaped in general: whether a message carries data depends on the throw sites, across files.
+- Nearest gate: a unit test that feeds a snapshot hitting a band error and asserts the reason is from the fixed list and contains no digits from the inputs.

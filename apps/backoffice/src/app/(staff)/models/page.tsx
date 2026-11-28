@@ -3,6 +3,7 @@
 import type { DriftView, ModelRegistryView, OverrideMonitorView } from "@loan/core";
 import { PageHeader } from "@/components/app-shell";
 import { LoadState } from "@/components/load-state";
+import { HarnessCard } from "@/components/models/harness-card";
 import { DriftMonitor, ModelRegistry, OverrideMonitor } from "@/components/models/model-governance";
 import { useApi } from "@/lib/use-api";
 
@@ -27,6 +28,7 @@ export default function ModelsPage() {
           onRetry={registry.reload}
         />
         {registry.data && <ModelRegistry registry={registry.data} />}
+        {registry.data && <HarnessCard registry={registry.data} />}
         <div className="grid gap-4 min-[1100px]:grid-cols-2">
           <div>
             <LoadState
