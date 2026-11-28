@@ -281,6 +281,33 @@ describe("the /api/* proxy", () => {
     expect(res.headers.get("x-powered-by")).toBeNull();
   });
 
+  it("passes a report download's file name and no-store back, with its bytes unchanged (RPT-006)", async () => {
+    const csv = "﻿Report,Origination funnel\r\nFrom,2026-11-01\r\n";
+    fetchMock.mockResolvedValueOnce(
+      new Response(csv, {
+        status: 200,
+        headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition":
+            'attachment; filename="origination-funnel-2026-11-01-to-2026-11-30.csv"',
+          "cache-control": "no-store",
+          "x-powered-by": "x",
+        },
+      }),
+    );
+    const res = await call(GET, ["reports", "funnel.csv"], {
+      url: "http://office.test/api/reports/funnel.csv?from=2026-11-01&to=2026-11-30",
+    });
+    expect(sent().url).toBe(`${API}/reports/funnel.csv?from=2026-11-01&to=2026-11-30`);
+    expect(res.headers.get("content-type")).toBe("text/csv; charset=utf-8");
+    expect(res.headers.get("content-disposition")).toBe(
+      'attachment; filename="origination-funnel-2026-11-01-to-2026-11-30.csv"',
+    );
+    expect(res.headers.get("cache-control")).toBe("no-store");
+    expect(res.headers.get("x-powered-by")).toBeNull();
+    expect(new Uint8Array(await res.arrayBuffer())).toEqual(new TextEncoder().encode(csv));
+  });
+
   it("answers 204 with no body", async () => {
     fetchMock.mockResolvedValueOnce(new Response(null, { status: 204 }));
     const res = await call(POST, ["auth", "logout"], { method: "POST" });

@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { expect, test } from "@playwright/test";
 import {
   act,
@@ -92,6 +93,23 @@ test("RPT-1/RPT-2/RPT-4 the reports show counts for a period; Compliance reads t
   await expect(page.getByText("Straight-through rate")).toBeVisible();
   await expect(page.getByText("Decisions", { exact: true }).locator("..")).toContainText(/\d/);
   await expect(page.getByRole("list", { name: "Decision mix" })).toContainText("Auto-approve");
+
+  // EXP-1: the same period (7 days) downloads as a CSV file, named for the report and its dates.
+  const [download] = await Promise.all([
+    page.waitForEvent("download"),
+    page.getByRole("button", { name: "Download CSV · 7 days" }).click(),
+  ]);
+  const name = /^decision-mix-(\d{4}-\d{2}-\d{2})-to-(\d{4}-\d{2}-\d{2})\.csv$/.exec(
+    download.suggestedFilename(),
+  );
+  expect(name).not.toBeNull();
+  const [, fromDate, toDate] = name as RegExpExecArray;
+  // Seven days, today included: the first and last dates are 6 days apart.
+  expect((Date.parse(toDate as string) - Date.parse(fromDate as string)) / 86_400_000).toBe(6);
+  const file = await download.path();
+  const text = (await readFile(file, "utf8")).replace(/^﻿/, "");
+  expect(text.startsWith("Report,Decision mix\r\n")).toBe(true);
+  expect(text).toContain("Straight-through rate,");
 
   await signIn(page, "diane");
   await page.getByRole("link", { name: "Origination funnel" }).click();

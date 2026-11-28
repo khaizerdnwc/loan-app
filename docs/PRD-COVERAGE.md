@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 40 built, 42 partly built, 57 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
+Summary: 40 built, 43 partly built, 56 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
 (F1, F2, F4, F6) and 4 are not built.
 
 ## 1. Coverage table
@@ -157,10 +157,10 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | RPT-001 | Origination funnel | built | RPT-2..RPT-4, `/reports/funnel` | Started, submitted, approved, disbursed with conversions, disbursed principal and current status, by business-date period. One product and one channel, so no product or channel split. |
 | RPT-002 | Turnaround and SLA | built | TAT-1, TAT-2, `/reports/turnaround` | Business time per stage (median, 90th percentile, share within SLA) for visits ending in the period, and open cases by SLA state. No team or branch split (one team). |
 | RPT-003 | Decision mix with reason codes | built | RPT-1, RPT-3, RPT-4, `/reports/decisions` | Outcome mix, straight-through rate, reason codes, referral triggers, override rate and override reasons, by business-date period. No model or product split (one scorecard, one product). |
-| RPT-004 | Portfolio quality | not built | — | Needs repayment history (simulated core only). |
-| RPT-005 | Collections performance | not built | — | Depends on CLX. |
-| RPT-006 | Scheduled exports, warehouse feed | not built | — | |
-| RPT-007 | Regulatory extracts | not built | — | |
+| RPT-004 | Portfolio quality | not built | — | Deferred to collections (#31): vintage curves, roll rates and the non-performing loan ratio need repayment and arrears data (ASSUMPTIONS). |
+| RPT-005 | Collections performance | not built | — | Deferred to collections (#31). |
+| RPT-006 | Scheduled exports, warehouse feed | partly built | EXP-1, EXP-2, `/reports/*.csv` | CSV downloads of the funnel, decision-mix and turnaround reports for the period on screen, formula-safe, each download audited. Missing: scheduled exports and a warehouse feed. |
+| RPT-007 | Regulatory extracts | not built | — | Deferred until a jurisdiction's template is named (ASSUMPTIONS). |
 
 ### 6.10 Notifications (NTF)
 
@@ -241,7 +241,7 @@ These are PRD sections, not requirement IDs.
 |---|---|---|---|---|
 | CMP-001 | Granular, versioned, revocable consents | not built | — | |
 | CMP-002 | Disclosure statement before signing | not built | — | Deferred as a stretch item (ACCEPTANCE). |
-| CMP-003 | Bureau submission files | not built | — | A file in a documented format can be generated from synthetic data. Submitting it needs a real bureau. |
+| CMP-003 | Bureau submission files | not built | — | Deferred to collections (#31): the periodic file reports loan performance (payment status), which needs repayment data. Submitting it would need a real bureau. |
 | CMP-004 | Data privacy | partly built | `applicant.entity.ts` (only the last 4 digits of the government ID), masked IDs in views | Data minimisation and no applicant data in logs. No access, correction, retention or deletion workflow. |
 | CMP-005 | AML at onboarding and pre-disbursement, escalation, export | partly built | `kyc-aml.port.ts`, D-2, R13, CMP-1..CMP-10 | Screened at submission and again before disbursement (a match holds the booking; an outage holds it for a retry, never declines). Matches escalate to Compliance, who acknowledge and close them; a false positive releases the held booking, a confirmed match keeps it blocked. Missing: export to the bank's AML system, and real list screening (simulated only, **OOR**). |
 | CMP-006 | Related-party controls | partly built | D-12, TR-1 | A related-party flag on the applicant (seeded) and mandatory referral (RS-PL-2, R18). Missing: where the flag comes from (a core or HR lookup), the special approval workflow and reporting. |
@@ -317,7 +317,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 29 | Secured lending: collateral register, simulated appraisal, LTV enforcement, liens and insurance, deposit holds in simulated core; home-loan product | COL-001..006, PC-009, F5 | L | Second Phase 1 wave in the PRD ("then secured lending"). |
 | 30 | ✅ Done (INT-1..INT-9, OCR-1..OCR-4; batch 2: the customer captured from the draft, the File intake channel, more synthetic files). Email and file intake with simulated OCR producing drafts; OCR on captured documents; statement analysis | INT-010, DOC-002, DOC-007, F4 | L | Needs #5 first. |
 | 31 | Collections: simulated core delinquency feed, buckets, strategies, collector queue, PTP, contact rules, restructuring and write-off workflows | CLX-001..005, CLX-007, CLX-008, CMP-009, F7 | L | Third Phase 1 wave in the PRD ("then collections"). |
-| 32 | Remaining reports and exports: portfolio quality, collections performance, scheduled exports, regulatory extracts, bureau submission file (generated, not submitted) | RPT-004..007, CMP-003 | L | Depends on #31 and on booked-loan history. |
+| 32 | ◐ Partly done (EXP-1, EXP-2: CSV downloads of the three reports; portfolio, collections and the bureau file deferred to #31, regulatory extracts to a template). Remaining reports and exports: portfolio quality, collections performance, scheduled exports, regulatory extracts, bureau submission file (generated, not submitted) | RPT-004..007, CMP-003 | L | Depends on #31 and on booked-loan history. |
 | 33 | Eligibility pre-check ✅ done (EL-1, EL-2, lane C batch 4); external decision engine port ✅ done (EX-1..EX-4, lane C batch 5); feature flags ✅ done (FF-1..FF-5, lane H); the rest open. Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
 | 34 | Partly built (OB-1..OB-3): structured request logs with a request id, GET /metrics (Prometheus text, off by default), a load-test script. Missing: tracing, dashboards and alerting, centralised log shipping, tenant-level views, a load test at 500 concurrent staff. Observability: structured logs, metrics, tracing, dashboards; load test to NFR-004 volumes | NFR-012, NFR-004, NFR-002 | M | Needed before a pilot, not before the demo. |
 | 39 | (ours, added from the §1 gaps) ✅ Done (D-18..D-22, lane C batch 6) for warnings and the triggers: RS-PL-5 warning rules (shown, never referring) and the referral triggers DEC-006 names that were missing (low model confidence, missing data, policy exception). Pricing-adjustment rules deferred | DEC-002, DEC-006 | M | Completes the P1 rule types and triggers the PRD lists, in the engine, versioned. Pricing adjustments change the offer rate, the quote and booking, so they wait (with #21's fees). |
@@ -359,7 +359,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Booking exceptions with retry and a "Reconciliation · today" panel | Exceptions | BKG-005 | Built (REC-1..REC-7): exceptions list and a reconciliation panel with a run history. |
 | Collateral register, collateral detail, Deposit holds | Secured lending | COL-001..006, PC-009 | Not built (#29). |
 | Delinquency overview, Collector queue, Restructuring, Write-off and recovery, Agency assignment (P2) | Collections | CLX-001..008 | Not built (#31). |
-| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Origination funnel, Decisioning dashboard and Turnaround and SLA built (RPT-1..RPT-4, TAT-1). Portfolio, collections, scheduled and regulatory reports not built (#32). |
+| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Origination funnel, Decisioning dashboard and Turnaround and SLA built (RPT-1..RPT-4, TAT-1), each with a CSV download (EXP-1). Portfolio and collections reports wait for #31; scheduled reports and regulatory extracts not built. |
 | Compliance: Audit log (searchable, tamper-evident) | Audit | PLT-004, CMP-010 | Built (AUD-1..AUD-8): `/audit` with filters and chain verification, for compliance and admin. |
 | Compliance: Consent records | Consent register | CMP-001 | Not built (#2). |
 | Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Built without export (CMP-1..CMP-5): list and detail, acknowledge, close with outcome and notes. |
