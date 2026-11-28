@@ -51,7 +51,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   business time), `intake/` (email and file intake drafts and OCR readings, which only feed the
   case aggregate), `providers/` (the
   decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
-  (model registry, override and drift monitoring, read-only) and the pure
+  (model registry, override and drift monitoring, read-only), `eligibility/` (the pre-check over
+  stated figures, stores nothing) and the pure
   `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
   repository and one transaction runner, so splitting into per-feature modules would only
   re-export that repository. Split when a second aggregate stands alone (e.g. collections). AML

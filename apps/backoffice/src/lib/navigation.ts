@@ -26,8 +26,11 @@ export function navFor(role: Role): NavGroup[] {
   const work: NavItem[] = [];
   const queue = QUEUE[role];
   if (queue) work.push({ href: "/queue", ...queue, count: true });
-  if (role === "LOAN_OFFICER")
+  if (role === "LOAN_OFFICER") {
     work.push({ href: "/cases/new", label: "New application", icon: "plus" });
+    // Eligibility pre-check (PRD PC-008): stated figures against the policy, before applying.
+    work.push({ href: "/eligibility", label: "Eligibility pre-check", icon: "check" });
+  }
   if (role !== "ADMIN") work.push({ href: "/cases", label: "All applications", icon: "file" });
   // Email and file intake (PRD INT-010, F4): the loan officer reviews OCR drafts; compliance reads.
   if (role === "LOAN_OFFICER" || role === "COMPLIANCE") {

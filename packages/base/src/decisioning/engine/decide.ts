@@ -62,7 +62,16 @@ function estimates(
   return {
     pd: sc.pdByGrade?.[grade] ?? null,
     recommendedAmount: rs.recommendedAmount
-      ? recommendedAmount(inputs, rs.monthlyRate[grade], rs.recommendedAmount)
+      ? affordableAmount(
+          {
+            monthlyIncome: inputs.applicant.monthlyIncome,
+            monthlyObligations: inputs.applicant.monthlyObligations,
+            amount: inputs.application.amount,
+            tenorMonths: inputs.application.tenorMonths,
+          },
+          rs.monthlyRate[grade],
+          rs.recommendedAmount,
+        )
       : null,
   };
 }
@@ -75,16 +84,15 @@ function estimates(
  * few centavos higher. Exact decimal arithmetic, rounded down to `roundDownTo` pesos; "0.00"
  * when nothing is affordable.
  */
-function recommendedAmount(
-  inputs: DecisionInputs,
+export function affordableAmount(
+  terms: { monthlyIncome: string; monthlyObligations: string; amount: string; tenorMonths: number },
   monthlyRate: string,
   policy: NonNullable<RuleSet["recommendedAmount"]>,
 ): string {
-  const { applicant, application } = inputs;
-  const n = application.tenorMonths;
-  const available = Money.of(applicant.monthlyIncome)
+  const n = terms.tenorMonths;
+  const available = Money.of(terms.monthlyIncome)
     .times(policy.maxDebtServiceRatio)
-    .minus(Money.of(applicant.monthlyObligations));
+    .minus(Money.of(terms.monthlyObligations));
   if (available.isNegative() || available.isZero()) return "0.00";
   // 1 + r·n as an integer over 10,000: the rate has exactly four decimals ("0.0160" → 160).
   if (!/^0\.\d{4}$/.test(monthlyRate)) throw new Error(`Unexpected monthly rate ${monthlyRate}`);
@@ -93,7 +101,7 @@ function recommendedAmount(
   // Round down to a multiple of `roundDownTo`: divide so the step is one centavo, round down.
   const step = policy.roundDownTo * 100;
   const floored = affordable.dividedBy(step).round("DOWN").times(step);
-  const requested = Money.of(application.amount);
+  const requested = Money.of(terms.amount);
   return (floored.lessThan(requested) ? floored : requested).toString();
 }
 

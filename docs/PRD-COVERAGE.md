@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 34 built, 40 partly built, 65 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
+Summary: 35 built, 40 partly built, 64 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
 (F1, F2, F4, F6) and 4 are not built.
 
 ## 1. Coverage table
@@ -54,7 +54,7 @@ Summary: 34 built, 40 partly built, 65 not built (139 IDs, counted from the tabl
 | PC-005 | Config versioning with maker-checker | partly built | `rule-sets.ts`, `scorecards.ts` | Versions are immutable in code (RS-PL-1, SC-PL-1). No draft, review, publish or rollback, and no maker-checker. |
 | PC-006 | In-flight cases keep their config version | partly built | decision record stores versions (F1-2), `decision.service.ts` reproduce | Decided cases replay on their own versions. A draft is not pinned to a version at creation, which only matters once a second version exists. |
 | PC-007 | Export/import config | not built | — | |
-| PC-008 | Eligibility pre-check API | not built | — | |
+| PC-008 | Eligibility pre-check API | built | `decisioning/engine/pre-check.ts`, `POST /eligibility/pre-check`, EL-1, EL-2 | Stated figures (amount, tenor, age, income, obligations) against the current rule set and the product limits, before any application: age, debt-to-income, the automatic approval limit and affordability at the best and worst grade rate, with an outcome. No provider call, no consent, nothing stored. Staff-facing (loan officer), not a borrower channel API (INT-001 is out of reach). |
 | PC-009 | Secured-loan attributes | not built | — | |
 
 ### 6.2 Application intake (INT)
@@ -318,7 +318,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 30 | ✅ Done (INT-1..INT-5, OCR-1..OCR-4; a new customer is captured as a walk-in first, WI-1). Email and file intake with simulated OCR producing drafts; OCR on captured documents; statement analysis | INT-010, DOC-002, DOC-007, F4 | L | Needs #5 first. |
 | 31 | Collections: simulated core delinquency feed, buckets, strategies, collector queue, PTP, contact rules, restructuring and write-off workflows | CLX-001..005, CLX-007, CLX-008, CMP-009, F7 | L | Third Phase 1 wave in the PRD ("then collections"). |
 | 32 | Remaining reports and exports: portfolio quality, collections performance, scheduled exports, regulatory extracts, bureau submission file (generated, not submitted) | RPT-004..007, CMP-003 | L | Depends on #31 and on booked-loan history. |
-| 33 | Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
+| 33 | Eligibility pre-check ✅ done (EL-1, EL-2, lane C batch 4); the rest open. Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
 | 34 | Observability: structured logs, metrics, tracing, dashboards; load test to NFR-004 volumes | NFR-012, NFR-004, NFR-002 | M | Needed before a pilot, not before the demo. |
 
 **Out of reach under the challenge mechanics (simulated only):**
