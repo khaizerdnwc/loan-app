@@ -19,12 +19,12 @@ import type {
   LoanAccountView,
   ProblemCode,
 } from "@loan/core";
-import { CaseStatus, DecisionOutcome, Money } from "@loan/core";
+import { CaseStatus, Money } from "@loan/core";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
-import { CURRENT_RULE_SET, RULE_SETS, ruleSet } from "../decisioning/engine";
+import { CURRENT_RULE_SET, EXTERNAL_OUTCOME, RULE_SETS, ruleSet } from "../decisioning/engine";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions, recommendationRefusal, recommendationTypes } from "./case-access";
 import { CasesRepository } from "./cases.repository";
@@ -413,12 +413,6 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     externalEngine: externalEngineOf(r),
   };
 }
-
-const EXTERNAL_OUTCOME = {
-  APPROVE: DecisionOutcome.Approve,
-  REFER: DecisionOutcome.Refer,
-  DECLINE: DecisionOutcome.Decline,
-} as const;
 
 /**
  * Who else decided (PRD DEC-008), from the stored snapshot: the role, the client engine's

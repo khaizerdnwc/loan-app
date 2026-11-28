@@ -453,7 +453,8 @@ const OUTCOME_WORDS: Record<DecisionOutcome, string> = {
   AUTO_DECLINE: "auto-decline",
 };
 
-const EXTERNAL_OUTCOME: Record<"APPROVE" | "REFER" | "DECLINE", DecisionOutcome> = {
+/** The external engine's answer as a decision outcome (one table: the engine and the views). */
+export const EXTERNAL_OUTCOME: Record<"APPROVE" | "REFER" | "DECLINE", DecisionOutcome> = {
   APPROVE: DecisionOutcome.Approve,
   REFER: DecisionOutcome.Refer,
   DECLINE: DecisionOutcome.Decline,

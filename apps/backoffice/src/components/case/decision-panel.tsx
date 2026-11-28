@@ -93,7 +93,15 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         />
       </div>
       {decision.externalEngine && (
-        <p className="mt-3 text-sm text-ink-900">{whoDecided(decision)}</p>
+        <p className="mt-3 text-sm text-ink-900">
+          {whoDecided(decision)}
+          {decision.externalEngine.reference && (
+            <span className="block text-xs text-mist-500">
+              Client engine reference:{" "}
+              <span className="font-mono">{decision.externalEngine.reference}</span>
+            </span>
+          )}
+        </p>
       )}
       {decision.recommendedAmount && (
         <p className="mt-3 text-xs text-mist-500">
@@ -183,11 +191,7 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
                     {rule.kind === "KNOCKOUT" && <Pill>Knockout</Pill>}
                   </span>
                   <span className="text-right text-xs text-mist-500 tabular-nums">
-                    {rule.id === "EX-ENGINE" ? (
-                      <ExternalAnswer value={rule.value} />
-                    ) : (
-                      formatAmountsInText(rule.value)
-                    )}
+                    {rule.id === "EX-ENGINE" ? rule.value : formatAmountsInText(rule.value)}
                   </span>
                 </li>
               );
@@ -229,8 +233,10 @@ function whoDecided(decision: DecisionRecordView): string {
   const ext = decision.externalEngine;
   if (!ext) return "";
   const knockedOut = decision.ruleResults.some((r) => r.kind === "KNOCKOUT" && r.result === "FAIL");
+  // True in every automation mode: live, a failed knockout declines; otherwise a person
+  // declines it.
   if (knockedOut) {
-    return "A knockout rule declined this application; the client's decision engine (simulated) cannot overrule it.";
+    return "A knockout rule failed for this application; the client's decision engine (simulated) cannot overrule it.";
   }
   if (ext.outcome === null) {
     return "The client's decision engine (simulated) could not answer, so a person decides this case.";
@@ -239,18 +245,6 @@ function whoDecided(decision: DecisionRecordView): string {
     return "Decided by the client's decision engine (simulated), instead of the score; the built-in score and grade are shown for pricing.";
   }
   return `Checked alongside the client's decision engine (simulated): ${ext.agreed ? "agreed" : "disagreed"}.`;
-}
-
-/** The EX-ENGINE rule's value, with the client engine's reference set in monospace. */
-function ExternalAnswer({ value }: { value: string }) {
-  const match = /^(.*?); ref ([^\s;]+)(.*)$/.exec(value);
-  if (!match) return <>{value}</>;
-  return (
-    <>
-      {match[1]}; ref <span className="font-mono">{match[2]}</span>
-      {match[3]}
-    </>
-  );
 }
 
 /** The engine found no affordable amount ("0.00"): said in words, never shown as ₱0.00. */

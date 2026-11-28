@@ -1,4 +1,11 @@
-export { affordableAmount, bandFor, canonicalJson, decide, hashInputs } from "./decide";
+export {
+  affordableAmount,
+  bandFor,
+  canonicalJson,
+  decide,
+  EXTERNAL_OUTCOME,
+  hashInputs,
+} from "./decide";
 export {
   type PreCheckInputs,
   type PreCheckOutcome,

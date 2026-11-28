@@ -103,6 +103,49 @@ describe("DecisionPanel with the client's decision engine (EX-3)", () => {
     ).toBeInTheDocument();
   });
 
+  it("a failed knockout under shadow mode is not called a decline: a person decides it", () => {
+    render(
+      <DecisionPanel
+        decision={decision({
+          outcome: "REFER",
+          engineOutcome: "AUTO_DECLINE",
+          automationMode: "SHADOW",
+          score: null,
+          grade: null,
+          ruleResults: [
+            {
+              id: "KO-SANCTIONS",
+              name: "No sanctions or watchlist match",
+              kind: "KNOCKOUT",
+              result: "FAIL",
+              value: "match",
+            },
+            {
+              id: "EX-ENGINE",
+              name: "External decision engine agrees with the built-in engine",
+              kind: "REFERRAL",
+              result: "NOT_EVALUATED",
+              value: "auto-approve; ref EXT-1; a knockout declines whatever it says",
+            },
+          ],
+          externalEngine: {
+            role: "ALONGSIDE",
+            outcome: "AUTO_APPROVE",
+            reference: "EXT-1",
+            agreed: null,
+          },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "A knockout rule failed for this application; the client's decision engine (simulated) cannot overrule it.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/knockout rule declined/)).toBeNull();
+    expect(screen.getByText(/a person decides/)).toBeInTheDocument();
+  });
+
   it("an engine that could not answer, and no engine at all", () => {
     const { rerender } = render(
       <DecisionPanel
