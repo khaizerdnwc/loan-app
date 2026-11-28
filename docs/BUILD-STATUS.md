@@ -75,6 +75,11 @@ commit passed the review loop. Blocked items carry the evidence.
 - 28 Nov 11:20–14:45 — paused at the 5-hour usage limit (out of usage credits); resumed
   after the account switch; all lanes and the H8 reviewers relaunched in their worktrees
   per rule 11, no lost work (staged diffs and the laneb-23-wip branch intact).
+- 28 Nov ~23:50 Manila — every lane stopped at the account's weekly usage limit (resets
+  2 Dec 22:00 Manila, after the deadline). Work in flight is safe in the worktrees: lane A
+  #19 staged (round 2 passed by security, data, ui-ux; one qa fix part-done, unstaged);
+  lane B #23 staged (round-1 fixes part-done, unstaged); lanes C, D, H, U clean. Relaunch
+  per rule 11 when an account with capacity is available.
 
 ## Blocked / waiting
 
