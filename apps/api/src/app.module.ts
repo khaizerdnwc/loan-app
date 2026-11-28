@@ -14,6 +14,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { SimulatedProvidersModule } from "./adapters/simulated/simulated-providers.module";
 import { env } from "./config/env";
 import { ExpirySweep } from "./expiry-sweep";
+import { signInAccountGlobalTracker, signInAccountTracker } from "./sign-in-trackers";
 import { SessionThrottlerGuard } from "./throttler.guard";
 
 @Controller("health")
@@ -46,19 +47,23 @@ class HealthController {
     ThrottlerModule.forRoot([
       // Every route: per signed-in staff member, else per caller address (throttler.guard.ts).
       { name: "default", ttl: 60_000, limit: 300 },
-      // Sign-in only (@SignInRoute), per address + username: guessing one account's password
-      // is capped, and one person's typos do not lock out the others behind the proxy.
+      // Sign-in only (@SignInRoute), per address (IPv6 /64) + username: one person's typos
+      // do not lock out the others sharing an address.
       {
         name: "signInAccount",
         ttl: SIGN_IN_LIMITS.ttlMs,
         limit: SIGN_IN_LIMITS.perAccount,
         skipIf: (ctx) => Reflect.getMetadata(SIGN_IN_KEY, ctx.getHandler()) !== true,
-        getTracker: (req) => {
-          const username = (req as { body?: { username?: unknown } }).body?.username;
-          const account =
-            typeof username === "string" ? username.trim().toLowerCase().slice(0, 40) : "";
-          return `${(req as { ip?: string }).ip ?? "unknown"}|${account}`;
-        },
+        getTracker: (req) => signInAccountTracker(req),
+      },
+      // Sign-in only, per username from every address together: guessing one account's
+      // password is capped however many addresses the guesses come from.
+      {
+        name: "signInAccountGlobal",
+        ttl: SIGN_IN_LIMITS.ttlMs,
+        limit: SIGN_IN_LIMITS.perAccountGlobal,
+        skipIf: (ctx) => Reflect.getMetadata(SIGN_IN_KEY, ctx.getHandler()) !== true,
+        getTracker: (req) => signInAccountGlobalTracker(req),
       },
     ]),
     SimulatedProvidersModule,

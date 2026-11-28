@@ -24,5 +24,14 @@ export const CurrentUser = createParamDecorator(
  */
 export const SignInRoute = () => SetMetadata(SIGN_IN_KEY, true);
 
-/** Sign-in limits, a minute each: per account (address + username) and per source address. */
-export const SIGN_IN_LIMITS = { perAccount: 20, perSource: 60, ttlMs: 60_000 } as const;
+/**
+ * Sign-in limits, a minute each: per account from one source (address + username), per account
+ * from every source together (username alone, so many addresses cannot multiply the guesses on
+ * one account), and per source address. IPv6 sources count per /64.
+ */
+export const SIGN_IN_LIMITS = {
+  perAccount: 20,
+  perAccountGlobal: 60,
+  perSource: 60,
+  ttlMs: 60_000,
+} as const;

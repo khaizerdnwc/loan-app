@@ -42,7 +42,7 @@ Docker (API `node_modules` 123 MB; backoffice `node_modules` 385 MB, `.next` 12 
 | api | `JWT_SECRET` | 32+ random characters (`openssl rand -hex 32`); the example value is refused |
 | api | `CORS_ORIGIN` | the backoffice's public URL |
 | api | `NODE_ENV` | `production` (the image sets it): the session cookie is then `Secure`, so serve over HTTPS |
-| api | `TRUST_PROXY_HOPS` | `0` unless an appending load balancer sits in front of the API |
+| api | `TRUST_PROXY_HOPS` | `1` only if the API has no public route and no other ingress (only the backoffice reaches it; it passes on the client address alone); otherwise `0`, or a client could choose its own rate-limit bucket by sending `X-Forwarded-For` straight to the API |
 | api | `EXPIRY_SWEEP_SECONDS` | `300` (default): seconds between expiry sweeps (drafts after 30 days, offers after 5). `0` turns the sweep off; run one API instance with it on, or accept that two instances sweep (each case is still expired once, under a row lock) |
 | api | `PROVIDER_RETRY_ATTEMPTS` | `3` (default, 1–5): attempts per decision provider call (bureau, KYC/AML, fraud), the first included; `1` = no retry |
 | api | `PROVIDER_RETRY_BASE_MS` | `200` (default): backoff before retry k is base × 2ᵏ⁻¹ plus up to base of jitter; `0` = retry at once. Keep attempts × (provider timeout + backoff) well under the 60 s decision target (NFR-003): the defaults give about 10 s per service at a 3 s timeout, the maximum settings far more |
@@ -51,6 +51,16 @@ Docker (API `node_modules` 123 MB; backoffice `node_modules` 385 MB, `.next` 12 
 | api | `BUREAU_CACHE_DAYS` | `30` (default): days a bureau report is reused for the same applicant and provider mode (PRD IH-005); `0` = never reuse (every decision pulls) |
 | api | `SWAGGER_ENABLED` | leave unset (off). `true` serves Swagger at `/docs`; only local development's `.env.example` sets it |
 | web | `API_URL` | the API's internal URL, e.g. `http://api:3101` (required in production) |
+| web | `WEB_TRUST_PROXY_HOPS` | load balancers in front of the backoffice that append the client address to `X-Forwarded-For`, usually `1` on a hosted platform. The backoffice passes the entry that many from the right to the API, alone. `0` (default): no address is passed on, and anonymous traffic, sign-in included, shares the backoffice's bucket. Never set it higher than the real count: an entry further left is written by the client |
+
+The API's `TRUST_PROXY_HOPS=1` has a precondition: the API is on a private network, or at
+least has no public domain or route, so that only the backoffice can reach it. No other
+service on the API's network may reach it either: anything that can call the API directly can
+send its own `X-Forwarded-For` and pick a rate-limit bucket. If the host gives the API a public
+URL, set `0` (and anonymous traffic shares one bucket) until that route is removed. The two settings are named apart on purpose: `TRUST_PROXY_HOPS` (API, counting the
+backoffice) and `WEB_TRUST_PROXY_HOPS` (backoffice, counting the balancers in front of it).
+The rate-limit counters live in each API replica's memory: with several replicas, each enforces
+its own budgets, so the effective limit is up to the replica count times the stated one.
 
 Only the backoffice needs to be public. The browser talks only to the backoffice's `/api`
 proxy, so the API can stay on a private network. Swagger is not served unless
@@ -74,6 +84,15 @@ Rehearsed by hand on 27 Nov 2026 (not a gate stage): migrations applied (3), the
    password) and run F1 (Maria) and F2 (Joel) as in `docs/ACCEPTANCE.md`.
 3. As Leo, switch a simulator to OUTAGE and back. A non-OK mode resets itself after 15
    minutes, so a reviewer cannot leave the demo broken.
+4. With `TRUST_PROXY_HOPS=1` on the API: verify the API's public URL does not answer (any
+   public hostname the host assigned to the API service times out or refuses). If it answers,
+   set `TRUST_PROXY_HOPS=0` until the route is removed.
+5. With `WEB_TRUST_PROXY_HOPS` above 0 (the backoffice logs a warning naming it): send failed
+   sign-ins through the backoffice's public URL with a forged header that changes on every
+   request (`X-Forwarded-For: 1.2.3.<n>`, distinct usernames) and confirm one of them gets 429
+   within 61 attempts (the per-source budget is 60 a minute). If none does, the backoffice is
+   trusting a client-written entry: lower `WEB_TRUST_PROXY_HOPS` to the real number of
+   appending balancers, or to `0`.
 
 ## Test credentials on a shared environment
 

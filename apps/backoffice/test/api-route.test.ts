@@ -1,7 +1,13 @@
 // @vitest-environment node
 import { NextRequest } from "next/server";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { GET, MAX_REQUEST_BODY_BYTES, POST, UPSTREAM_TIMEOUT_MS } from "@/app/api/[...path]/route";
+import {
+  clientAddress,
+  GET,
+  MAX_REQUEST_BODY_BYTES,
+  POST,
+  UPSTREAM_TIMEOUT_MS,
+} from "@/app/api/[...path]/route";
 import { resetEnvForTests } from "@/config/env";
 
 const API = "http://api.test:9000";
@@ -106,6 +112,14 @@ describe("the /api/* proxy", () => {
     expect(h.get("x-forwarded-for")).toBeNull();
     expect(h.get("x-evil")).toBeNull();
     expect(sent().init.signal).toBeInstanceOf(AbortSignal);
+  });
+
+  it("behind one trusted balancer, passes on only the address it appended", async () => {
+    vi.stubEnv("WEB_TRUST_PROXY_HOPS", "1");
+    resetEnvForTests();
+    // The client wrote 203.0.113.7 itself; the balancer appended the real 198.51.100.9.
+    await call(GET, ["cases"], { headers: { "x-forwarded-for": "203.0.113.7, 198.51.100.9" } });
+    expect(sent().init.headers.get("x-forwarded-for")).toBe("198.51.100.9");
   });
 
   it("forwards a POST body", async () => {
@@ -279,5 +293,51 @@ describe("backoffice environment", () => {
     vi.stubEnv("NODE_ENV", "production");
     resetEnvForTests();
     return expect(call(GET, ["cases"])).rejects.toThrow(/API_URL is required/);
+  });
+
+  it("refuses a WEB_TRUST_PROXY_HOPS outside 0–5", () => {
+    vi.stubEnv("WEB_TRUST_PROXY_HOPS", "9");
+    resetEnvForTests();
+    return expect(call(GET, ["cases"])).rejects.toThrow(/WEB_TRUST_PROXY_HOPS/);
+  });
+
+  it("warns in production when it trusts balancers in front of it, and only then", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+    try {
+      vi.stubEnv("NODE_ENV", "production");
+      vi.stubEnv("WEB_TRUST_PROXY_HOPS", "1");
+      resetEnvForTests();
+      await call(GET, ["cases"]);
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(String(warn.mock.calls[0]?.[0])).toMatch(/WEB_TRUST_PROXY_HOPS=1.*forged/s);
+
+      warn.mockClear();
+      vi.stubEnv("WEB_TRUST_PROXY_HOPS", "0");
+      resetEnvForTests();
+      await call(GET, ["cases"]);
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
+});
+
+describe("the client address passed to the API (clientAddress)", () => {
+  it.each([
+    ["no trusted hop: nothing in the header is believed", "203.0.113.7", 0, null],
+    ["one hop: the entry the balancer appended", "203.0.113.7, 198.51.100.9", 1, "198.51.100.9"],
+    [
+      "two hops: the outer balancer's entry",
+      "203.0.113.7, 198.51.100.9, 10.0.0.2",
+      2,
+      "198.51.100.9",
+    ],
+    ["IPv6", "2001:db8::1", 1, "2001:db8::1"],
+    ["fewer entries than hops", "198.51.100.9", 2, null],
+    ["not an address", "198.51.100.9, not-an-ip", 1, null],
+    ["an address with a port is not passed on", "198.51.100.9:443", 1, null],
+    ["no header", null, 1, null],
+  ] as const)("%s", (_label, header, hops, expected) => {
+    expect(clientAddress(header, hops)).toBe(expected);
   });
 });

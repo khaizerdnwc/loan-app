@@ -19,6 +19,10 @@ services:
       DATABASE_URL: postgres://loan:loan_local@db:5432/loan
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET (32+ characters)}
       CORS_ORIGIN: http://localhost:8100
+      # The backoffice is the API's one trusted proxy: it passes on the client address alone.
+      # Only safe while nothing else can reach the API (here it is published on 127.0.0.1 only,
+      # for the /health check of the rehearsal).
+      TRUST_PROXY_HOPS: "1"
     depends_on:
       db: { condition: service_healthy }
     ports: ["127.0.0.1:8101:3101"]
@@ -26,6 +30,9 @@ services:
     build: { context: ., target: web }
     environment:
       API_URL: http://api:3101
+      # No load balancer in front locally, so no client address is passed on (one bucket for
+      # anonymous traffic, as before). Behind a balancer that appends to X-Forwarded-For, 1.
+      WEB_TRUST_PROXY_HOPS: "0"
     depends_on:
       api: { condition: service_healthy }
     ports: ["127.0.0.1:8100:3100"]
