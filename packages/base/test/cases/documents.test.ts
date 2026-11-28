@@ -79,13 +79,36 @@ describe("the document checklist rules (DC-1..DC-3, PRD WF-007, DOC-003)", () =>
   );
 });
 
+describe("REQUEST_INFO lists the types the API will accept", () => {
+  it("passes on requestableTypes", () => {
+    const officer = { id: "STF-PAOLO", role: Role.LoanOfficer, fullName: "Paolo Tan" };
+    const c = { status: CaseStatus.Review, decisionId: "d" } as unknown as LoanCaseEntity;
+    const requestable = requestableTypes([doc("BANK_STATEMENTS_3M", DocumentStatus.Verified)]);
+    expect(
+      allowedActions(officer, c, null, null, false, true, null, null, {
+        request: null,
+        recommend: null,
+        requestable,
+      }),
+    ).toContainEqual({
+      action: "REQUEST_INFO",
+      enabled: true,
+      documentTypes: ["CERTIFICATE_OF_EMPLOYMENT", "INCOME_TAX_RETURN"],
+    });
+  });
+});
+
 describe("REQUEST_INFO and RECOMMEND mirror the checklist (one gate)", () => {
   const officer = { id: "STF-PAOLO", role: Role.LoanOfficer, fullName: "Paolo Tan" };
   const inReview = { status: CaseStatus.Review, decisionId: "d" } as unknown as LoanCaseEntity;
 
   it("both are offered in review when nothing waits", () => {
     const actions = allowedActions(officer, inReview, null, null, false, true, null);
-    expect(actions).toContainEqual({ action: "REQUEST_INFO", enabled: true });
+    expect(actions).toContainEqual({
+      action: "REQUEST_INFO",
+      enabled: true,
+      documentTypes: ["BANK_STATEMENTS_3M", "CERTIFICATE_OF_EMPLOYMENT", "INCOME_TAX_RETURN"],
+    });
     expect(actions).toContainEqual({ action: "RECOMMEND", enabled: true });
   });
 
@@ -105,12 +128,15 @@ describe("REQUEST_INFO and RECOMMEND mirror the checklist (one gate)", () => {
     }
   });
 
-  it("a case waiting for the borrower offers only withdrawing and the record", () => {
+  it("a case waiting for the borrower offers only routing, withdrawing and the record", () => {
     const waiting = {
       status: CaseStatus.InfoRequested,
       decisionId: "d",
+      ownerId: "STF-PAOLO",
     } as unknown as LoanCaseEntity;
     expect(allowedActions(officer, waiting, null, null).map((a) => a.action)).toEqual([
+      "REASSIGN",
+      "SET_PRIORITY",
       "WITHDRAW",
       "REPRODUCE_DECISION",
     ]);

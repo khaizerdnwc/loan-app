@@ -85,3 +85,11 @@ public persona list and unlimited scrypt computations (16 MiB, libuv threadpool)
 usernames. The fix is a second named throttler (e.g. `signInSource`) keyed on the address with
 a generous office-wide cap, alongside the per-username one. The test is a loop of distinct
 usernames from one address that must eventually get 429.
+
+## security-20261128-disbursement-account-from-system-of-record
+
+- Lane A #12 let a loan officer type a new-to-bank walk-in's WhiteBank account, checked only by pattern.
+- The BKG-001 checklist item tests the same pattern and reads "the applicant's own … account on record", so a loan could be disbursed into any customer's account, with the checker shown a green item.
+- An account is "verified" only when it comes from the system of record (core's customer file).
+- Not lint-shaped: it depends on where a value came from, across files.
+- Nearest gate: an e2e test that captures a walk-in with a seeded customer's account and asserts a 400, or a 409 at booking.

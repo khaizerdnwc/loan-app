@@ -1,5 +1,6 @@
 import { type BookingCheckView, CaseStatus, type Money } from "@loan/core";
 import type { DecisionInputs } from "../decisioning/engine";
+import { accountFromSystemOfRecord } from "./applicant-source";
 import { businessDate } from "./product";
 
 /**
@@ -30,7 +31,7 @@ export interface ChecklistCase {
   approvedMonthlyRate: string | null;
   approvedBy: string | null;
   signatureEnvelopeId: string | null;
-  applicant: { depositAccount: string };
+  applicant: { id: string; customerNumber: string | null; depositAccount: string };
 }
 
 /** The decision record's screening and when it ran (the record is written at screening). */
@@ -112,14 +113,19 @@ function kyc(decision: ChecklistDecision | null, now: Date): BookingCheckView {
 
 function account(c: ChecklistCase): BookingCheckView {
   const number = c.applicant.depositAccount;
-  const passed = WHITEBANK_DEPOSIT_ACCOUNT.test(number);
+  // Verified only when the account comes from core's record (or a seeded persona standing in
+  // for it), never from a value staff typed; the pattern alone proves nothing.
+  const fromRecord = accountFromSystemOfRecord(c.applicant);
+  const passed = fromRecord && WHITEBANK_DEPOSIT_ACCOUNT.test(number);
   return {
     check: "DISBURSEMENT_ACCOUNT_VERIFIED",
     label: "Disbursement account verified",
     passed,
     detail: passed
-      ? `${number}, the applicant's own WhiteBank deposit account on record`
-      : "No valid WhiteBank deposit account on record for the applicant",
+      ? `${number}, the applicant's own WhiteBank deposit account on record in core banking`
+      : fromRecord
+        ? "No valid WhiteBank deposit account on record for the applicant"
+        : "No WhiteBank deposit account from core banking: the applicant was captured by hand as new to the bank",
   };
 }
 

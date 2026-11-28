@@ -44,6 +44,30 @@ export class CasesRepository {
     return (manager?.getRepository(ApplicantEntity) ?? this.applicants).findOne({ where: { id } });
   }
 
+  /** The applicant captured from this core customer number, if any (PRD INT-002). */
+  findApplicantByCustomerNumber(customerNumber: string): Promise<ApplicantEntity | null> {
+    return this.applicants.findOne({ where: { customerNumber } });
+  }
+
+  insertApplicant(manager: EntityManager, a: ApplicantEntity): Promise<ApplicantEntity> {
+    return manager.getRepository(ApplicantEntity).save(a);
+  }
+
+  /** How many open officer-stage cases (draft, review, information requested) each officer owns. */
+  async openCasesByOwner(): Promise<Map<string, number>> {
+    const rows: { owner_id: string; n: string }[] = await this.cases
+      .createQueryBuilder("c")
+      .select("c.owner_id", "owner_id")
+      .addSelect("count(*)", "n")
+      .where("c.owner_id IS NOT NULL")
+      .andWhere("c.status IN (:...statuses)", {
+        statuses: [CaseStatus.Draft, CaseStatus.Review, CaseStatus.InfoRequested],
+      })
+      .groupBy("c.owner_id")
+      .getRawMany();
+    return new Map(rows.map((r) => [r.owner_id, Number(r.n)]));
+  }
+
   findCase(id: string): Promise<LoanCaseEntity | null> {
     return this.cases.findOne({ where: { id } });
   }
@@ -142,6 +166,18 @@ export class CasesRepository {
       }),
     ]);
     return { drafts: drafts.map((c) => c.id), offers: offers.map((c) => c.id) };
+  }
+
+  /**
+   * Write a case's routing (owner, priority) without touching `updated_at`: that column is the
+   * draft-expiry clock and the queue's waiting time, which routing must not move. The version
+   * is still bumped, so anyone holding the old row sees the change.
+   */
+  async saveRouting(manager: EntityManager, c: LoanCaseEntity): Promise<void> {
+    await manager.query(
+      `UPDATE "loan_case" SET "owner_id" = $2, "priority" = $3, "version" = "version" + 1 WHERE "id" = $1`,
+      [c.id, c.ownerId, c.priority],
+    );
   }
 
   saveCase(manager: EntityManager, c: LoanCaseEntity): Promise<LoanCaseEntity> {

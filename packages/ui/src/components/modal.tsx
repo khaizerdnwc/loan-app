@@ -100,6 +100,11 @@ export interface ConfirmDialogProps {
   busy?: boolean;
   /** A readable error from the last attempt, shown inline. */
   error?: string | null;
+  /**
+   * Why the confirm button cannot be used yet (it is disabled, and this sentence is shown and
+   * linked to it); null or absent when it can.
+   */
+  confirmDisabled?: string | null;
   onConfirm: () => void;
   onCancel: () => void;
   children?: ReactNode;
@@ -114,10 +119,12 @@ export function ConfirmDialog({
   variant = "primary",
   busy = false,
   error,
+  confirmDisabled = null,
   onConfirm,
   onCancel,
   children,
 }: ConfirmDialogProps) {
+  const disabledId = useId();
   return (
     <Modal
       open={open}
@@ -130,13 +137,24 @@ export function ConfirmDialog({
           <Button variant="secondary" onClick={onCancel} disabled={busy}>
             Cancel
           </Button>
-          <Button variant={variant} onClick={onConfirm} busy={busy}>
+          <Button
+            variant={variant}
+            onClick={onConfirm}
+            busy={busy}
+            disabled={Boolean(confirmDisabled)}
+            aria-describedby={confirmDisabled ? disabledId : undefined}
+          >
             {confirmLabel}
           </Button>
         </>
       }
     >
       {children}
+      {confirmDisabled && (
+        <p id={disabledId} className="mt-3 text-xs text-mist-600">
+          {confirmDisabled}
+        </p>
+      )}
       {error && (
         <Callout tone="bad" alert className="mt-3">
           {formatAmountsInText(error)}

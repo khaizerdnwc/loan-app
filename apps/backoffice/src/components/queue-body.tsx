@@ -36,12 +36,18 @@ export function QueueBody({
   stage,
   onStage,
   empty,
+  onPick,
+  pickingId = null,
 }: {
   staffRole: Role;
   items: CaseSummary[];
   stage: StageFilter;
   onStage: (s: StageFilter) => void;
   empty: string;
+  /** The loan officer's queue: Pick on unassigned referrals (WF-002). */
+  onPick?: (c: CaseSummary) => void;
+  /** The case whose Pick is in flight. */
+  pickingId?: string | null;
 }) {
   const stages = stagesIn(items);
   const filtering = stages.length > 1;
@@ -89,7 +95,7 @@ export function QueueBody({
           />
         </div>
       )}
-      <CaseTable cases={shown} empty={empty} />
+      <CaseTable cases={shown} empty={empty} onPick={onPick} busyId={pickingId} />
     </>
   );
 }

@@ -3,6 +3,7 @@ import {
   DeclineReason,
   DocumentType,
   OverrideReason,
+  Priority,
   Recommendation,
   WithdrawReason,
 } from "@loan/core";
@@ -159,6 +160,69 @@ export class WithdrawDto {
   @IsString()
   @MaxLength(2000)
   note?: string;
+}
+
+/** A new applicant captured by the loan officer (PRD INT-005); see NewApplicantRequest. */
+export class NewApplicantDto {
+  @ApiPropertyOptional({ example: "CIF-100245", description: "Existing customer: from core" })
+  @IsOptional()
+  @IsString()
+  @MaxLength(20)
+  customerNumber?: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(120)
+  fullName!: string;
+
+  @ApiProperty({ example: "1992-04-30" })
+  @IsString()
+  @MaxLength(10)
+  birthDate!: string;
+
+  @ApiProperty({ example: "1234" })
+  @IsString()
+  @MaxLength(4)
+  governmentIdLast4!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(160)
+  employer!: string;
+
+  @ApiProperty({ example: 24 })
+  @IsInt()
+  @Min(0)
+  @Max(600)
+  employmentMonths!: number;
+
+  @ApiProperty({ example: "45000.00" })
+  @IsDecimal(DECIMAL, { message: "monthlyIncome must be a decimal string with at most 2 decimals" })
+  monthlyIncome!: string;
+
+  @ApiProperty({ example: "5000.00" })
+  @IsDecimal(DECIMAL, {
+    message: "monthlyObligations must be a decimal string with at most 2 decimals",
+  })
+  monthlyObligations!: string;
+}
+
+export class ReassignDto {
+  @ApiProperty({ example: "STF-JOY" })
+  @IsString()
+  @Length(1, 40)
+  ownerId!: string;
+
+  @ApiProperty()
+  @IsString()
+  @MaxLength(500)
+  reason!: string;
+}
+
+export class SetPriorityDto {
+  @ApiProperty({ enum: Object.values(Priority) })
+  @IsIn(Object.values(Priority))
+  priority!: Priority;
 }
 
 export class InfoRequestDto {

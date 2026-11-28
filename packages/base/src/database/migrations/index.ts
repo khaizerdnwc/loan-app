@@ -6,6 +6,7 @@ import { ConsentRecords1764300000004 } from "./1764300000004-ConsentRecords";
 import { OneOpenApplication1764300000005 } from "./1764300000005-OneOpenApplication";
 import { WithdrawAndExpiry1764300000006 } from "./1764300000006-WithdrawAndExpiry";
 import { InfoRequestAndDocuments1764300001000 } from "./1764300001000-InfoRequestAndDocuments";
+import { RoutingAndWalkIns1764300001001 } from "./1764300001001-RoutingAndWalkIns";
 import { AuditLogAndAmlEscalations1764300002000 } from "./1764300002000-AuditLogAndAmlEscalations";
 import { ReconciliationRuns1764300002001 } from "./1764300002001-ReconciliationRuns";
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
@@ -26,6 +27,7 @@ export const MIGRATIONS = [
   OneOpenApplication1764300000005,
   WithdrawAndExpiry1764300000006,
   InfoRequestAndDocuments1764300001000,
+  RoutingAndWalkIns1764300001001,
   AuditLogAndAmlEscalations1764300002000,
   ReconciliationRuns1764300002001,
   AutomationAndTriggers1764300003000,

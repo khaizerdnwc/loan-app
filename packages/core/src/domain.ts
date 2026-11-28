@@ -144,6 +144,16 @@ export const WITHDRAW_REASON_LABEL: Record<WithdrawReason, string> = {
   NOT_PROCEEDING: "Not proceeding (other)",
 };
 
+/** Where an application came in. Staff capture at a branch is the only channel in this release. */
+export const Channel = { Branch: "BRANCH" } as const;
+export type Channel = (typeof Channel)[keyof typeof Channel];
+
+export const CHANNEL_LABEL: Record<Channel, string> = { BRANCH: "Branch" };
+
+/** A case's place in the loan officers' queue (PRD WF-002): HIGH cases are listed first. */
+export const Priority = { Normal: "NORMAL", High: "HIGH" } as const;
+export type Priority = (typeof Priority)[keyof typeof Priority];
+
 /**
  * Documents a loan officer can request from the borrower on a referred case (PRD WF-007,
  * DOC-003; the prototype's "Request information" dialog).
@@ -213,5 +223,6 @@ export const ServiceName = {
   ESignature: "E_SIGNATURE",
   Fraud: "FRAUD",
   DocumentIntake: "DOCUMENT_INTAKE",
+  CustomerLookup: "CUSTOMER_LOOKUP",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

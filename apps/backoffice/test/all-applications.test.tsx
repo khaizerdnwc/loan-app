@@ -48,6 +48,10 @@ const summary = (id: string, status: CaseStatus, name: string): CaseSummary => (
   reasonCount: 0,
   grade: null,
   escalated: false,
+  ownerId: null,
+  ownerName: null,
+  channel: "BRANCH",
+  priority: "NORMAL",
   createdAt: "2026-11-28T01:00:00.000Z",
   updatedAt: "2026-11-28T01:00:00.000Z",
 });

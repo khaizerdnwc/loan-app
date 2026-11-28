@@ -13,6 +13,7 @@ import { ProductAutomationEntity } from "./automation/automation.entities";
 import { AutomationRepository } from "./automation/automation.repository";
 import { AutomationService } from "./automation/automation.service";
 import { ActivityService } from "./cases/activity.service";
+import { ApplicantsService } from "./cases/applicants.service";
 import { BookingService } from "./cases/booking.service";
 import { CaseViews } from "./cases/case-views";
 import { CasesController } from "./cases/cases.controller";
@@ -24,6 +25,8 @@ import { DocumentsService } from "./cases/documents.service";
 import { ApplicantEntity } from "./cases/entities/applicant.entity";
 import { LoanCaseEntity } from "./cases/entities/loan-case.entity";
 import { ExpiryService } from "./cases/expiry.service";
+import { RoutingController } from "./cases/routing.controller";
+import { RoutingService } from "./cases/routing.service";
 import { ComplianceController } from "./compliance/compliance.controller";
 import { ComplianceRepository } from "./compliance/compliance.repository";
 import { ComplianceService } from "./compliance/compliance.service";
@@ -66,6 +69,7 @@ export class LendingModule {
         AuthController,
         CasesController,
         DocumentsController,
+        RoutingController,
         SimulationController,
         AuditController,
         ComplianceController,
@@ -86,6 +90,8 @@ export class LendingModule {
         ExpiryService,
         BookingService,
         DocumentsService,
+        RoutingService,
+        ApplicantsService,
         SessionGuard,
         AuditRepository,
         AuditService,

@@ -83,7 +83,11 @@ describe("request information (DC-1, PRD WF-007)", () => {
     const c = await inReview();
     expect(c.status).toBe("REVIEW");
     expect(c.documents).toEqual([]);
-    expect(c.allowedActions).toContainEqual({ action: "REQUEST_INFO", enabled: true });
+    expect(c.allowedActions).toContainEqual({
+      action: "REQUEST_INFO",
+      enabled: true,
+      documentTypes: ["BANK_STATEMENTS_3M", "CERTIFICATE_OF_EMPLOYMENT", "INCOME_TAX_RETURN"],
+    });
 
     const res = await h.as("paolo").post(`/cases/${c.id}/info-request`, REQUEST).expect(200);
     const after = res.body as CaseDetail;
@@ -99,8 +103,14 @@ describe("request information (DC-1, PRD WF-007)", () => {
       ["BANK_STATEMENTS_3M", "REQUESTED", null, ["SIMULATE_UPLOAD"]],
       ["CERTIFICATE_OF_EMPLOYMENT", "REQUESTED", null, ["SIMULATE_UPLOAD"]],
     ]);
-    // While the borrower is asked, the officer can only wait or withdraw.
-    expect(after.allowedActions.map((a) => a.action)).toEqual(["WITHDRAW", "REPRODUCE_DECISION"]);
+    // While the borrower is asked, the officer can only wait or withdraw (and route the case).
+    expect(after.allowedActions.map((a) => a.action)).toEqual([
+      "PICK",
+      "REASSIGN",
+      "SET_PRIORITY",
+      "WITHDRAW",
+      "REPRODUCE_DECISION",
+    ]);
 
     const events = (await activity(c.id)).filter((e) => e.action === "INFO_REQUESTED");
     expect(events).toHaveLength(1);
@@ -314,7 +324,12 @@ describe("verify or reject (DC-3, PRD DOC-003)", () => {
       ["CERTIFICATE_OF_EMPLOYMENT", "REJECTED", "Paolo Tan", "Unsigned by the employer."],
     ]);
     expect(after.allowedActions).toContainEqual({ action: "RECOMMEND", enabled: true });
-    expect(after.allowedActions).toContainEqual({ action: "REQUEST_INFO", enabled: true });
+    // The API lists what a new request may ask for: not the verified statements.
+    expect(after.allowedActions).toContainEqual({
+      action: "REQUEST_INFO",
+      enabled: true,
+      documentTypes: ["CERTIFICATE_OF_EMPLOYMENT", "INCOME_TAX_RETURN"],
+    });
     const events = (await activity(c.id)).map((e) => e.action);
     expect(events).toContain("DOCUMENT_VERIFIED");
     expect(events).toContain("DOCUMENT_REJECTED");

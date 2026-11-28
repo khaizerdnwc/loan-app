@@ -20,6 +20,14 @@ export class StaffRepository {
     return (manager?.getRepository(StaffEntity) ?? this.repo).findOne({ where: { id } });
   }
 
+  /** Every staff member with this role, by name. */
+  withRole(role: StaffEntity["role"], manager?: EntityManager): Promise<StaffEntity[]> {
+    return (manager?.getRepository(StaffEntity) ?? this.repo).find({
+      where: { role },
+      order: { fullName: "ASC" },
+    });
+  }
+
   async namesById(ids: string[]): Promise<Map<string, string>> {
     if (ids.length === 0) return new Map();
     const rows = await this.repo.find({ order: { id: "ASC" } });

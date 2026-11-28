@@ -1,4 +1,9 @@
-import type { ApplicantIdentity, KycAml, ScreeningResult } from "@loan/contracts";
+import {
+  type ApplicantIdentity,
+  identityKey,
+  type KycAml,
+  type ScreeningResult,
+} from "@loan/contracts";
 import { ProviderMode, ScreeningStage, ServiceName } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
@@ -24,6 +29,11 @@ interface StoredScreening {
  * on a match is fictional ("Simulated watchlist"). No real list is queried (the mechanics
  * forbid real providers in this release). A persona the simulated list adds after onboarding
  * (`listedBeforeDisbursement`) is clear at application and matches before disbursement.
+ * A real screen matches the person, not the bank's key: an applicant id the simulator does not
+ * know (a walk-in captured at the branch) is matched on `identityKey` (name, birth date, ID
+ * last 4) against the personas, so re-capturing a listed persona still matches. Someone who is
+ * no persona at all has their presented ID verified and is on no list, as a real eKYC check of
+ * a genuine ID would answer.
  */
 @Injectable()
 export class SimulatedKycAml implements KycAml {
@@ -41,11 +51,13 @@ export class SimulatedKycAml implements KycAml {
   ): Promise<ScreeningResult> {
     const mode = await applyFailureMode(ServiceName.KycAml, this.modes, this.options);
     const rows: { screening: StoredScreening }[] = await this.ds.query(
-      "SELECT screening FROM sim.persona_profile WHERE applicant_id = $1",
-      [subject.applicantId],
+      `SELECT screening FROM sim.persona_profile
+        WHERE applicant_id = $1 OR identity_key = $2
+        ORDER BY (applicant_id = $1) DESC, applicant_id LIMIT 1`,
+      [subject.applicantId, identityKey(subject)],
     );
     const stored: StoredScreening = rows[0]?.screening ?? {
-      kycVerified: false,
+      kycVerified: true,
       sanctionsMatch: false,
       matchedList: null,
       politicallyExposed: false,

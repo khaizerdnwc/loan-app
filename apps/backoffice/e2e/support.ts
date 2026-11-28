@@ -23,6 +23,7 @@ export const PERSONA = {
   diane: "Diane Yu",
   leo: "Leo Santiago",
   celia: "Celia Ortiz",
+  joy: "Joy Dela Cruz",
 } as const;
 export type Persona = keyof typeof PERSONA;
 
@@ -40,6 +41,7 @@ const ROLE: Record<Persona, Role> = {
   diane: "COMPLIANCE",
   leo: "ADMIN",
   celia: "ADMIN",
+  joy: "LOAN_OFFICER",
 };
 
 /**
@@ -171,6 +173,7 @@ export async function resetModes(page: Page): Promise<void> {
       "E_SIGNATURE",
       "FRAUD",
       "DOCUMENT_INTAKE",
+      "CUSTOMER_LOOKUP",
     ];
     const out: number[] = [];
     for (const s of services) {
@@ -183,5 +186,5 @@ export async function resetModes(page: Page): Promise<void> {
     }
     return out;
   });
-  expect(statuses).toEqual([200, 200, 200, 200, 200, 200, 200]);
+  expect(statuses.every((s) => s === 200)).toBe(true);
 }

@@ -17,7 +17,7 @@ const signedCase = (patch: Partial<ChecklistCase> = {}): ChecklistCase => ({
   approvedMonthlyRate: "0.0120",
   approvedBy: null,
   signatureEnvelopeId: "ENV-SIM-0001",
-  applicant: { depositAccount: "WB-SAV-0021-4410" },
+  applicant: { id: "APL-MARIA", customerNumber: null, depositAccount: "WB-SAV-0021-4410" },
   ...patch,
 });
 
@@ -96,14 +96,28 @@ describe("the pre-booking checklist (BK-1, PRD BKG-001)", () => {
       "KYC_VALID",
     ],
     [
+      "a hand-captured walk-in's account, whatever it looks like",
+      signedCase({
+        applicant: {
+          id: "APL-W0000000001",
+          customerNumber: null,
+          depositAccount: "WB-SAV-0245-1180",
+        },
+      }),
+      screened(),
+      "DISBURSEMENT_ACCOUNT_VERIFIED",
+    ],
+    [
       "no deposit account",
-      signedCase({ applicant: { depositAccount: "" } }),
+      signedCase({ applicant: { id: "APL-MARIA", customerNumber: null, depositAccount: "" } }),
       screened(),
       "DISBURSEMENT_ACCOUNT_VERIFIED",
     ],
     [
       "an account that is not a WhiteBank deposit account",
-      signedCase({ applicant: { depositAccount: "BPI-1234567890" } }),
+      signedCase({
+        applicant: { id: "APL-MARIA", customerNumber: null, depositAccount: "BPI-1234567890" },
+      }),
       screened(),
       "DISBURSEMENT_ACCOUNT_VERIFIED",
     ],
@@ -113,6 +127,21 @@ describe("the pre-booking checklist (BK-1, PRD BKG-001)", () => {
     expect(checklistRefusal(items)).toMatch(/^Pre-booking checklist: .+ — .+\. The booking cannot/);
   });
 
+  it("passes a walk-in's account that came from core banking (it has a customer number)", () => {
+    const items = bookingChecklist(
+      signedCase({
+        applicant: {
+          id: "APL-W0000000002",
+          customerNumber: "CIF-100245",
+          depositAccount: "WB-SAV-0245-1180",
+        },
+      }),
+      screened(),
+      NOW,
+    );
+    expect(items?.[3]).toMatchObject({ check: "DISBURSEMENT_ACCOUNT_VERIFIED", passed: true });
+  });
+
   it("accepts screening a moment younger than 12 months", () => {
     const items = bookingChecklist(signedCase(), screened(new Date("2025-11-28T04:00:01Z")), NOW);
     expect(failing(items)).toEqual([]);
@@ -120,7 +149,10 @@ describe("the pre-booking checklist (BK-1, PRD BKG-001)", () => {
 
   it("names the first failing item in the refusal", () => {
     const items = bookingChecklist(
-      signedCase({ signatureEnvelopeId: null, applicant: { depositAccount: "" } }),
+      signedCase({
+        signatureEnvelopeId: null,
+        applicant: { id: "APL-MARIA", customerNumber: null, depositAccount: "" },
+      }),
       screened(),
       NOW,
     );

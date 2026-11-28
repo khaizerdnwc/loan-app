@@ -3,6 +3,8 @@ import {
   type CoreBanking,
   CREDIT_BUREAU,
   type CreditBureau,
+  CUSTOMER_LOOKUP,
+  type CustomerLookup,
   DISBURSEMENT,
   type Disbursement,
   DOCUMENT_INTAKE,
@@ -53,6 +55,25 @@ describe("simulated providers conform to their ports", () => {
       fileDepth: "NO_HIT",
       bureauScore: null,
     });
+  });
+
+  it("KYC/AML matches a person it has no applicant id for on identity; a stranger is verified and clear", async () => {
+    const kyc = h.app.get<KycAml>(KYC_AML);
+    expect(
+      await kyc.screen({ ...maria, applicantId: "NOBODY", fullName: "Someone New" }),
+    ).toMatchObject({
+      mode: "SIMULATED",
+      kycVerified: true,
+      sanctionsMatch: false,
+    });
+    expect(
+      await kyc.screen({
+        applicantId: "APL-WUNKNOWN01",
+        fullName: "Ramon  cruz",
+        birthDate: "1974-06-20",
+        governmentIdLast4: "1188",
+      }),
+    ).toMatchObject({ sanctionsMatch: true, matchedList: "Simulated watchlist" });
   });
 
   it("KYC/AML reports a watchlist match for Ramon and clears Maria", async () => {
@@ -137,6 +158,32 @@ describe("simulated providers conform to their ports", () => {
         .catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ProviderUnavailableError);
       expect((err as ProviderUnavailableError).service).toBe("CORE_BANKING");
+    },
+  );
+
+  it("the core customer lookup finds a synthetic customer, labelled simulated; an unknown number is null", async () => {
+    const core = h.app.get<CustomerLookup>(CUSTOMER_LOOKUP);
+    const found = await core.find("CIF-100412");
+    expect(found).toMatchObject({
+      mode: "SIMULATED",
+      customerNumber: "CIF-100412",
+      fullName: "Celeste Navarro",
+      depositAccount: "WB-SAV-0412-6045",
+    });
+    expect(found?.monthlyIncome.toString()).toBe("38000.00");
+    expect(await core.find("CIF-000000")).toBeNull();
+  });
+
+  it.each(["OUTAGE", "TIMEOUT", "MALFORMED"])(
+    "the core customer lookup in %s fails with ProviderUnavailableError, never a wrong answer",
+    async (mode) => {
+      await setMode(h, "CUSTOMER_LOOKUP", mode);
+      const err = await h.app
+        .get<CustomerLookup>(CUSTOMER_LOOKUP)
+        .find("CIF-100412")
+        .catch((e: unknown) => e);
+      expect(err).toBeInstanceOf(ProviderUnavailableError);
+      expect((err as ProviderUnavailableError).service).toBe("CUSTOMER_LOOKUP");
     },
   );
 
@@ -319,6 +366,7 @@ describe("simulation controls", () => {
     expect(list.map((s) => s.service).sort()).toEqual([
       "CORE_BANKING",
       "CREDIT_BUREAU",
+      "CUSTOMER_LOOKUP",
       "DISBURSEMENT",
       "DOCUMENT_INTAKE",
       "E_SIGNATURE",

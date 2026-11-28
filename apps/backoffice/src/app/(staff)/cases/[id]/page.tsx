@@ -2,6 +2,7 @@
 
 import {
   type CaseDetail,
+  CHANNEL_LABEL,
   DECLINE_REASON_LABEL,
   OVERRIDE_REASON_LABEL,
   productLabel,
@@ -86,12 +87,16 @@ export default function CasePage() {
               </span>
               <span>{c.purpose}</span>
               <span>Created {formatDateTime(c.createdAt)}</span>
+              <span data-testid="case-owner">
+                {c.ownerName ? `Owner ${c.ownerName}` : "Unassigned"} · {CHANNEL_LABEL[c.channel]}
+              </span>
             </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <StagePill status={c.status} />
           {c.escalated && <Pill tone="bad">Escalated</Pill>}
+          {c.priority === "HIGH" && <Pill tone="bad">High priority</Pill>}
           {c.decision && (
             <Button variant="secondary" onClick={() => setShowRecord(true)}>
               Decision record

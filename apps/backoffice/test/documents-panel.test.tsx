@@ -274,7 +274,11 @@ describe("Request information in the next-action card (DC-1)", () => {
           infoRequest: null,
           documents: [{ ...RECEIVED, status: "VERIFIED", actions: [] }],
           allowedActions: [
-            { action: "REQUEST_INFO", enabled: true },
+            {
+              action: "REQUEST_INFO",
+              enabled: true,
+              documentTypes: ["BANK_STATEMENTS_3M", "INCOME_TAX_RETURN"],
+            },
             { action: "RECOMMEND", enabled: true },
           ],
         })}
@@ -288,8 +292,12 @@ describe("Request information in the next-action card (DC-1)", () => {
     );
     await userEvent.click(screen.getByRole("button", { name: "Request information" }));
     const dialog = screen.getByRole("dialog");
-    // A verified document is not offered again.
-    expect(within(dialog).queryByLabelText("Certificate of employment")).not.toBeInTheDocument();
+    // The dialog offers exactly the types the API listed on the action.
+    expect(
+      within(dialog)
+        .getAllByRole("checkbox")
+        .map((b) => b.closest("label")?.textContent),
+    ).toEqual(["Bank statements, last 3 months", "Latest income tax return"]);
     await userEvent.click(within(dialog).getByLabelText("Bank statements, last 3 months"));
     await userEvent.click(within(dialog).getByRole("button", { name: "Send request" }));
     expect(within(dialog).getByRole("alert")).toHaveTextContent(

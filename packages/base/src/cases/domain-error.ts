@@ -39,3 +39,9 @@ export const overrideReasonRequired = (detail: string) =>
   new DomainError(400, ProblemCode.OverrideReasonRequired, detail, [
     { field: "overrideReason", message: detail },
   ]);
+
+/** A Postgres unique violation (23505) on the named constraint or index. */
+export function isUniqueViolation(err: unknown, constraint: string): boolean {
+  const driver = (err as { driverError?: { code?: string; constraint?: string } }).driverError;
+  return driver?.code === "23505" && driver.constraint === constraint;
+}
