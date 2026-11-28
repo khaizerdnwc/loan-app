@@ -272,7 +272,6 @@ export class CasesRepository {
 
   // --- history -----------------------------------------------------------------------------
 
-  /** The applicant's open application for the product (not in a closed status), if any. */
   /** Every open (not closed) case of an applicant, oldest first. */
   openCasesOfApplicant(applicantId: string, manager: EntityManager): Promise<LoanCaseEntity[]> {
     return manager.getRepository(LoanCaseEntity).find({
@@ -281,6 +280,7 @@ export class CasesRepository {
     });
   }
 
+  /** The applicant's open application for the product (not in a closed status), if any. */
   findOpenCase(
     applicantId: string,
     productCode: string,
