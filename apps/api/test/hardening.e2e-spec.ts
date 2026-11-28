@@ -1,4 +1,4 @@
-import { SIGN_IN_LIMITS } from "@loan/base";
+import { SEED_TEST_PASSWORD, SIGN_IN_LIMITS } from "@loan/base";
 import { JwtService } from "@nestjs/jwt";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
@@ -64,6 +64,102 @@ describe("per-user throttling behind one address (H3)", () => {
     await request(server).get("/auth/me").set("Authorization", `Bearer ${forged}`).expect(429);
     // ...while a real session from the same address is not.
     expect((await me("ella").expect(200)).body.id).toBe(STAFF.ella);
+  }, 60_000);
+});
+
+describe("behind the backoffice, sign-in is limited per client address (H8)", () => {
+  // Its own app, trusting one hop (the backoffice), with fresh throttle counters.
+  it("two clients behind the proxy get separate sign-in budgets, and a client-written entry splits nothing", async () => {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const app = moduleRef.createNestApplication();
+    configureApp(app, { trustProxyHops: 1 });
+    await app.init();
+    try {
+      const signIn = (xff: string, i: number) =>
+        request(app.getHttpServer())
+          .post("/auth/sign-in")
+          .set("X-Forwarded-For", xff)
+          .send({ username: `spray-${i}`, password: "guess" });
+      // Client A uses up its budget (distinct usernames: only the per-source cap applies).
+      for (let i = 0; i < SIGN_IN_LIMITS.perSource; i++) {
+        await signIn("198.51.100.1", i).expect(401);
+      }
+      const limited = await signIn("198.51.100.1", 999).expect(429);
+      expect(limited.body.code).toBe("RATE_LIMITED");
+      // Client B, through the same proxy, is not affected.
+      const other = await signIn("198.51.100.2", 1000).expect(401);
+      expect(other.body.code).toBe("UNAUTHENTICATED");
+      // Client A writing its own entry first: the API still takes the backoffice's (rightmost).
+      await signIn("203.0.113.50, 198.51.100.1", 1001).expect(429);
+    } finally {
+      await app.close();
+    }
+  }, 60_000);
+
+  /** Its own app trusting one hop, with fresh counters; `run` gets a sign-in helper. */
+  async function behindProxy(
+    run: (
+      signIn: (xff: string, username: string, password?: string) => request.Test,
+    ) => Promise<void>,
+  ): Promise<void> {
+    const moduleRef = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const app = moduleRef.createNestApplication();
+    configureApp(app, { trustProxyHops: 1 });
+    await app.init();
+    try {
+      await run((xff, username, password = "guess") =>
+        request(app.getHttpServer())
+          .post("/auth/sign-in")
+          .set("X-Forwarded-For", xff)
+          .send({ username, password }),
+      );
+    } finally {
+      await app.close();
+    }
+  }
+
+  it("guesses on one account from many addresses are still capped (per account, all sources)", async () => {
+    await behindProxy(async (signIn) => {
+      for (let i = 1; i <= SIGN_IN_LIMITS.perAccountGlobal; i++) {
+        await signIn(`198.51.100.${i}`, "target").expect(401);
+      }
+      const limited = await signIn("203.0.113.200", "target").expect(429);
+      expect(limited.body.code).toBe("RATE_LIMITED");
+    });
+  }, 60_000);
+
+  it("addresses rotating inside one IPv6 /64 count as one source for one account", async () => {
+    await behindProxy(async (signIn) => {
+      for (let i = 1; i <= SIGN_IN_LIMITS.perAccount; i++) {
+        await signIn(`2001:db8:1:2::${i.toString(16)}`, "target6").expect(401);
+      }
+      const limited = await signIn("2001:db8:1:2:ffff::1", "target6").expect(429);
+      expect(limited.body.code).toBe("RATE_LIMITED");
+    });
+  }, 60_000);
+
+  it("the accepted trade-off: once an account's all-sources cap is hit, even its right password gets 429 and no session", async () => {
+    await behindProxy(async (signIn) => {
+      for (let i = 1; i <= SIGN_IN_LIMITS.perAccountGlobal; i++) {
+        await signIn(`198.51.100.${i}`, "rina").expect(401);
+      }
+      // The real owner, from an address that has not been used, with the right password.
+      const refused = await signIn("203.0.113.77", "rina", SEED_TEST_PASSWORD).expect(429);
+      expect(refused.body.code).toBe("RATE_LIMITED");
+      expect(refused.headers["set-cookie"]).toBeUndefined();
+    });
+  }, 60_000);
+
+  // A regression guard for the throttler library's own normalisation (its default tracker
+  // already counts IPv6 per /64), not proof of this change: it passed before H8 round 2 too.
+  it("distinct usernames from addresses rotating inside one /64 reach the per-source cap", async () => {
+    await behindProxy(async (signIn) => {
+      for (let i = 1; i <= SIGN_IN_LIMITS.perSource; i++) {
+        await signIn(`2001:db8:9:9::${i.toString(16)}`, `spray6-${i}`).expect(401);
+      }
+      const limited = await signIn("2001:db8:9:9:abcd::1", "spray6-last").expect(429);
+      expect(limited.body.code).toBe("RATE_LIMITED");
+    });
   }, 60_000);
 });
 

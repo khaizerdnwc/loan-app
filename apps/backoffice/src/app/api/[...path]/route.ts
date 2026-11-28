@@ -1,3 +1,4 @@
+import { isIP } from "node:net";
 import { type NextRequest, NextResponse } from "next/server";
 import { env } from "@/config/env";
 
@@ -61,11 +62,15 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
   }
   const session = request.cookies.get(SESSION_COOKIE)?.value;
   if (session) headers.set("cookie", `${SESSION_COOKIE}=${session}`);
+  // The client's address, for the API's per-address limits (it trusts this one hop). Only
+  // what a trusted load balancer appended is passed on, alone; the client's own
+  // x-forwarded-for entries never are.
+  const client = clientAddress(request.headers.get("x-forwarded-for"), env().WEB_TRUST_PROXY_HOPS);
+  if (client) headers.set("x-forwarded-for", client);
   const hasBody = !["GET", "HEAD"].includes(request.method);
 
   // One deadline covers the whole exchange: reading the client's body, then the API's answer.
   // A client body that stalls past it is a 504; an API that does not answer in time is a 502.
-  // A client's x-forwarded-for is never passed on (it is client-chosen).
   const deadline = new AbortController();
   const timer = setTimeout(
     () => deadline.abort(new DOMException("timed out", "TimeoutError")),
@@ -107,6 +112,23 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
   } finally {
     clearTimeout(timer);
   }
+}
+
+/**
+ * The client's address from X-Forwarded-For, given how many load balancers in front of the
+ * backoffice append to it (`hops`), or null. Next fills the header from the socket only when
+ * the request has none, so a client can always send its own: with no trusted hop nothing in it
+ * is believed. With n hops, the n-th entry from the right is what the outermost trusted balancer
+ * saw; anything further left was written by the client. Only a well-formed IP is passed on.
+ */
+export function clientAddress(header: string | null, hops: number): string | null {
+  if (!header || hops < 1) return null;
+  const entries = header
+    .split(",")
+    .map((e) => e.trim())
+    .filter(Boolean);
+  const entry = entries[entries.length - hops];
+  return entry && isIP(entry) !== 0 ? entry : null;
 }
 
 const TOO_LARGE = Symbol("too large");

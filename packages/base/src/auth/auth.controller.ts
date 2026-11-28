@@ -63,11 +63,13 @@ export class AuthController {
   @Public()
   @SignInRoute()
   @HttpCode(200)
-  // Per source address (every browser behind the proxy shares one), and per account through
-  // the `signInAccount` throttler the composition root applies to @SignInRoute handlers.
+  // Per source address (the client's, where the backoffice passes it on; IPv6 per /64), and per
+  // account through the `signInAccount` (address + username) and `signInAccountGlobal`
+  // (username alone) throttlers the composition root applies to @SignInRoute handlers.
   @Throttle({
     default: { limit: SIGN_IN_LIMITS.perSource, ttl: SIGN_IN_LIMITS.ttlMs },
     signInAccount: { limit: SIGN_IN_LIMITS.perAccount, ttl: SIGN_IN_LIMITS.ttlMs },
+    signInAccountGlobal: { limit: SIGN_IN_LIMITS.perAccountGlobal, ttl: SIGN_IN_LIMITS.ttlMs },
   })
   async signIn(
     @Body() body: SignInDto,
