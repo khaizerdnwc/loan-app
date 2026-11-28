@@ -33,6 +33,8 @@ export {
 export { MIGRATIONS } from "./database/migrations";
 export { moneyColumn, moneyTransformer } from "./database/money.transformer";
 export * from "./decisioning/engine";
+export { GovernanceRepository } from "./governance/governance.repository";
+export { GovernanceService, HARNESS_CAP } from "./governance/governance.service";
 export { IntakeRepository } from "./intake/intake.repository";
 export { LendingModule, type LendingModuleOptions } from "./lending.module";
 export { NotificationService } from "./notifications/notification.service";

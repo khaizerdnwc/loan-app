@@ -139,6 +139,7 @@ export const AUDIT_ACTION_LABEL: Readonly<Record<string, string>> = {
   AML_ESCALATION_ACKNOWLEDGED: "AML review acknowledged",
   AML_ESCALATION_CLOSED: "AML review closed",
   PRE_DISBURSEMENT_MATCH_AFTER_BOOKING: "Screening match after booking",
+  HARNESS_RUN: "Rule-set test harness run",
 };
 
 /** An action code in words; an unknown code is shown as it is. */

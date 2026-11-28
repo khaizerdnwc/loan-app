@@ -140,8 +140,16 @@ export const RULE_SETS: Readonly<Record<string, RuleSet>> = {
 
 export const CURRENT_RULE_SET = "RS-PL-5";
 
+/**
+ * Whether a version names a rule set. Own keys only: a name such as "constructor" or
+ * "__proto__" reaches Object.prototype through plain indexing and must not count.
+ */
+export function isRuleSetVersion(version: string): boolean {
+  return Object.hasOwn(RULE_SETS, version);
+}
+
 export function ruleSet(version: string): RuleSet {
-  const rs = RULE_SETS[version];
+  const rs = isRuleSetVersion(version) ? RULE_SETS[version] : undefined;
   if (!rs) throw new Error(`Unknown rule set version ${version}`);
   return rs;
 }
