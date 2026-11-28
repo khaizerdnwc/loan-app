@@ -11,6 +11,7 @@ import {
   count,
   FULL_CONSENT,
   type Harness,
+  resetData,
   setMode,
   startHarness,
   submitCase,
@@ -286,6 +287,13 @@ const NEW_CUSTOMER = {
 };
 
 describe("walk-in and core customer capture (WI-1, PRD INT-005, INT-002)", () => {
+  // One person is on record once (WI-2): remove the walk-ins each test captured, with their
+  // cases, so the next capture of the same synthetic person is not refused as already on file.
+  afterEach(async () => {
+    await resetData(h.ds);
+    await h.ds.query("DELETE FROM applicant WHERE id LIKE 'APL-W%'");
+  });
+
   it("WI-1 a walk-in new to the bank is captured by hand, then applied for like any applicant", async () => {
     const res = await h.as("paolo").post("/applicants", NEW_CUSTOMER).expect(201);
     const a = res.body as ApplicantView;
@@ -399,27 +407,20 @@ describe("walk-in and core customer capture (WI-1, PRD INT-005, INT-002)", () =>
     ).toBe(1);
   });
 
-  it("WI-1 a walk-in re-capturing a sanctioned persona's identity is screened as that person (declined), not waved through", async () => {
-    const a = (
-      await h
-        .as("paolo")
-        .post("/applicants", {
-          ...NEW_CUSTOMER,
-          fullName: "  ramon   CRUZ ",
-          birthDate: "1974-06-20",
-          governmentIdLast4: "1188",
-        })
-        .expect(201)
-    ).body as ApplicantView;
-    const c = await submitCase(
-      h,
-      { applicantId: a.id, amount: "60000.00" },
-      { sameApplicant: true },
-    );
-    expect(c.outcome).toBe("AUTO_DECLINE");
-    expect(c.decision?.ruleResults.find((r) => r.id === "KO-SANCTIONS")).toMatchObject({
-      result: "FAIL",
-    });
+  it("WI-1, WI-2 a walk-in re-capturing a sanctioned persona's identity is refused as that person already on file (409, naming them), not waved through", async () => {
+    const before = await count(h.ds, "SELECT count(*) AS n FROM applicant");
+    const res = await h
+      .as("paolo")
+      .post("/applicants", {
+        ...NEW_CUSTOMER,
+        fullName: "  ramon   CRUZ ",
+        birthDate: "1974-06-20",
+        governmentIdLast4: "1188",
+      })
+      .expect(409);
+    // The officer is pointed at the record on file, whose screening declines (D-2).
+    expect(res.body.detail).toContain("APL-RAMON");
+    expect(await count(h.ds, "SELECT count(*) AS n FROM applicant")).toBe(before);
   });
 
   it("WI-1 a hand-captured walk-in is stored with no deposit account (the checklist refuses booking until core has one)", async () => {

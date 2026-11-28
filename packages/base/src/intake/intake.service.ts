@@ -27,6 +27,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
 import { ActivityService } from "../cases/activity.service";
+import { sameIdentity } from "../cases/applicant-identity";
 import { ApplicantsService, CUSTOMER_NUMBER_INDEX } from "../cases/applicants.service";
 import { CasesRepository } from "../cases/cases.repository";
 import { CasesService, duplicateApplication, OPEN_APPLICATION_INDEX } from "../cases/cases.service";
@@ -43,7 +44,7 @@ import { PERSONAL_LOAN, termErrors } from "../cases/product";
 import { TransactionRunner } from "../database/transaction-runner";
 import type { IntakeDraftEntity } from "./intake.entities";
 import { IntakeRepository } from "./intake.repository";
-import { draftActions, idDigits, mismatchTolerance, normaliseName, rowFlags } from "./intake-rules";
+import { draftActions, idDigits, mismatchTolerance, rowFlags } from "./intake-rules";
 
 /** The partial unique index that keeps one pending draft per file row (migration 1764300004000). */
 export const PENDING_ROW_INDEX = "UQ_intake_draft_pending_row";
@@ -138,7 +139,7 @@ export class IntakeService {
         for (const row of bundle.rows) {
           const match =
             row.fullName && row.birthDate && row.governmentIdLast4
-              ? await this.repo.matchApplicant(
+              ? await this.casesRepo.matchApplicantIdentity(
                   {
                     fullName: row.fullName,
                     birthDate: row.birthDate,
@@ -270,16 +271,15 @@ export class IntakeService {
         };
         // One capture per identity at a time, then match again: a customer captured meanwhile
         // (by hand, or by another draft for the same person) is used, never captured twice.
-        await this.repo.lockIdentity(m, identity);
-        const match = await this.repo.matchApplicant(identity, m);
+        await this.casesRepo.lockApplicantIdentity(m, identity);
+        const match = await this.casesRepo.matchApplicantIdentity(identity, m);
         if (match.kind === "many") throw severalMatch();
         let applicant = match.kind === "one" ? match.applicant : null;
         if (!applicant && toCapture) {
           if (!sameIdentity(toCapture, identity)) {
             throw invalidState("The draft changed meanwhile. Reload the list.");
           }
-          await this.applicants.insertApplicant(m, user, toCapture);
-          applicant = toCapture;
+          applicant = await this.applicants.insertApplicant(m, user, toCapture);
         }
         if (!applicant) {
           throw validation(
@@ -301,7 +301,7 @@ export class IntakeService {
                 ],
           );
         }
-        const captured = applicant === toCapture;
+        const captured = match.kind === "none" && toCapture !== null;
         applicantName = applicant.fullName;
         applicantId = applicant.id;
         const c = await this.cases.captureDraft(
@@ -395,7 +395,7 @@ export class IntakeService {
       birthDate: draft.birthDate,
       governmentIdLast4: last4,
     };
-    const match = await this.repo.matchApplicant(identity);
+    const match = await this.casesRepo.matchApplicantIdentity(identity);
     if (match.kind === "many") throw severalMatch();
     if (match.kind === "one") return null;
     if (!draft.employer || !draft.declaredMonthlyIncome) {
@@ -563,18 +563,6 @@ const NEW_CUSTOMER_FIELD: Record<string, string> = {
   monthlyObligations: "newCustomer.monthlyObligations",
   customerNumber: "newCustomer.customerNumber",
 };
-
-/** The same person: name (as compared everywhere in intake), birth date and ID ending. */
-function sameIdentity(
-  a: { fullName: string; birthDate: string; governmentIdLast4: string },
-  b: { fullName: string; birthDate: string; governmentIdLast4: string },
-): boolean {
-  return (
-    normaliseName(a.fullName) === normaliseName(b.fullName) &&
-    a.birthDate === b.birthDate &&
-    a.governmentIdLast4 === b.governmentIdLast4
-  );
-}
 
 function severalMatch(): DomainError {
   return new DomainError(

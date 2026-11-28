@@ -90,7 +90,7 @@ export class ConfirmIntakeDraftDto {
   })
   @IsOptional()
   @Matches(/^\d{4}$/, {
-    message: "governmentIdLast4 must be the last 4 digits of the government ID",
+    message: "governmentIdLast4 Enter the last 4 digits of the government ID.",
   })
   governmentIdLast4?: string;
 

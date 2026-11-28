@@ -19,6 +19,7 @@ import type { EntityManager } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
 import { TransactionRunner } from "../database/transaction-runner";
+import { ActivityService } from "./activity.service";
 import { WALK_IN_ID_PREFIX } from "./applicant-source";
 import { CasesRepository } from "./cases.repository";
 import { ageOn } from "./decision.service";
@@ -52,6 +53,7 @@ export class ApplicantsService {
     private readonly repo: CasesRepository,
     private readonly audit: AuditService,
     @Inject(CUSTOMER_LOOKUP) private readonly core: CustomerLookup,
+    private readonly activity: ActivityService,
   ) {}
 
   /** Pre-fill: the customer as core knows them, and the applicant already on file, if any. */
@@ -78,12 +80,13 @@ export class ApplicantsService {
 
   async create(user: SessionUser, body: NewApplicantRequest): Promise<ApplicantView> {
     this.officerOnly(user);
-    const a = await this.buildApplicant(body);
+    const built = await this.buildApplicant(body);
+    let a: ApplicantEntity;
     try {
-      await this.tx.run((m) => this.insertApplicant(m, user, a));
+      a = await this.tx.run((m) => this.insertApplicant(m, user, built));
     } catch (err) {
       if (!isUniqueViolation(err, CUSTOMER_NUMBER_INDEX)) throw err;
-      throw await this.alreadyOnFile(a);
+      throw await this.alreadyOnFile(built);
     }
     return {
       id: a.id,
@@ -156,11 +159,37 @@ export class ApplicantsService {
   }
 
   /**
-   * Insert a built applicant and its APPLICANT_CAPTURED audit entry, in the caller's transaction.
-   * A second applicant for the same core customer fails on the partial unique index; the caller
-   * maps it with `alreadyOnFile` after its transaction has rolled back.
+   * Store a built applicant, in the caller's transaction, and return the applicant on record.
+   * One person is on record once: the identity (name as compared, birth date, ID ending) is
+   * locked for the transaction and matched first.
+   * - No match: inserted, with its APPLICANT_CAPTURED audit entry.
+   * - One match captured by hand (no customer number) and this capture comes from core: that
+   *   walk-in is upgraded in place (customer number, payout account, relationship and verified
+   *   income from core; the declared income kept), with an APPLICANT_UPGRADED audit entry. Its
+   *   cases stay linked, and it can now be booked (the account is core's).
+   * - Any other match (one already from core, a hand capture of someone on file, or several):
+   *   refused (409, naming them, so the officer uses them instead).
+   * A second applicant for the same core customer also fails on the partial unique index; the
+   * caller maps it with `alreadyOnFile` after its transaction has rolled back.
    */
-  async insertApplicant(m: EntityManager, user: SessionUser, a: ApplicantEntity): Promise<void> {
+  async insertApplicant(
+    m: EntityManager,
+    user: SessionUser,
+    a: ApplicantEntity,
+  ): Promise<ApplicantEntity> {
+    const identity = {
+      fullName: a.fullName,
+      birthDate: a.birthDate,
+      governmentIdLast4: a.governmentIdLast4,
+    };
+    await this.repo.lockApplicantIdentity(m, identity);
+    const match = await this.repo.matchApplicantIdentity(identity, m);
+    if (match.kind === "one" && match.applicant.customerNumber === null && a.customerNumber) {
+      return this.upgradeWalkIn(m, user, match.applicant, a);
+    }
+    if (match.kind !== "none") {
+      throw identityOnFile(match.kind === "one" ? [match.applicant] : match.applicants);
+    }
     await this.repo.insertApplicant(m, a);
     await this.audit.append(m, {
       actor: user,
@@ -170,6 +199,58 @@ export class ApplicantsService {
         : `Captured applicant ${a.id}, new to the bank (walk-in).`,
       details: { applicantId: a.id, customerNumber: a.customerNumber },
     });
+    return a;
+  }
+
+  /**
+   * A hand-captured walk-in now found in core: the same row takes core's customer number, payout
+   * account, relationship and verified income, and the declared income is what the applicant
+   * declares now (the current declaration, which RS-PL-2 compares with core's). Under the
+   * identity lock, in the caller's transaction. Each open case of the applicant gets an
+   * APPLICANT_LINKED_TO_CORE event (case history and audit chain); the entries carry ids and
+   * references only, no account number or income.
+   */
+  private async upgradeWalkIn(
+    m: EntityManager,
+    user: SessionUser,
+    walkIn: ApplicantEntity,
+    fromCore: ApplicantEntity,
+  ): Promise<ApplicantEntity> {
+    const before = {
+      customerNumber: walkIn.customerNumber,
+      hadPayoutAccount: walkIn.depositAccount !== "",
+    };
+    walkIn.declaredMonthlyIncome = fromCore.declaredMonthlyIncome;
+    walkIn.customerNumber = fromCore.customerNumber;
+    walkIn.depositAccount = fromCore.depositAccount;
+    walkIn.relationshipMonths = fromCore.relationshipMonths;
+    walkIn.monthlyIncome = fromCore.monthlyIncome;
+    await this.repo.updateApplicant(m, walkIn);
+    await this.audit.append(m, {
+      actor: user,
+      action: "APPLICANT_UPGRADED",
+      summary: `Linked walk-in applicant ${walkIn.id} to core customer ${walkIn.customerNumber} (simulated lookup).`,
+      details: {
+        applicantId: walkIn.id,
+        before,
+        after: { customerNumber: walkIn.customerNumber, hadPayoutAccount: true },
+      },
+    });
+    for (const c of await this.repo.openCasesOfApplicant(walkIn.id, m)) {
+      await this.activity.record(m, {
+        caseId: c.id,
+        actor: user,
+        action: "APPLICANT_LINKED_TO_CORE",
+        summary: `The applicant was linked to core customer ${walkIn.customerNumber}: identity, payout account and verified income now come from core (simulated).`,
+        details: {
+          applicantId: walkIn.id,
+          customerNumber: walkIn.customerNumber,
+          before: { hadPayoutAccount: before.hadPayoutAccount },
+          after: { hadPayoutAccount: true },
+        },
+      });
+    }
+    return walkIn;
   }
 
   /** The 409 for a core customer already on file (read outside the failed transaction). */
@@ -202,6 +283,18 @@ export class ApplicantsService {
       throw forbiddenRole("Only a loan officer captures applicants.");
     }
   }
+}
+
+/** The 409 for a person already on record, naming them so the officer uses them instead. */
+function identityOnFile(onFile: ApplicantEntity[]): DomainError {
+  const named = onFile.map((x) => `${x.id} (${x.fullName})`).join(", ");
+  return new DomainError(
+    409,
+    ProblemCode.DuplicateApplication,
+    onFile.length === 1
+      ? `This customer is already on file as applicant ${named}. Choose them from the list instead.`
+      : `Several customers on record already have this name, birth date and ID: ${named}. Choose the right one from the list instead.`,
+  );
 }
 
 function fieldErrors(

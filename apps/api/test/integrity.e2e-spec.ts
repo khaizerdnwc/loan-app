@@ -152,6 +152,22 @@ describe("TRUNCATE is refused on the insert-only tables (H-7)", () => {
   });
 });
 
+describe("a new applicant is inserted, never upserted (WI-2)", () => {
+  it("a copy of APL-MARIA under her id with another name is refused (23505) and the stored row is unchanged", async () => {
+    const before = await h.ds.query("SELECT * FROM applicant WHERE id = 'APL-MARIA'");
+    const repo = h.app.get(CasesRepository);
+    const maria = await repo.findApplicant("APL-MARIA");
+    const copy = { ...maria, fullName: "Someone Else" } as Parameters<
+      CasesRepository["insertApplicant"]
+    >[1];
+    const err = await h.ds
+      .transaction((m) => repo.insertApplicant(m, copy))
+      .catch((e: unknown) => e as { driverError?: { code?: string } });
+    expect((err as { driverError?: { code?: string } }).driverError?.code).toBe("23505");
+    expect(await h.ds.query("SELECT * FROM applicant WHERE id = 'APL-MARIA'")).toEqual(before);
+  });
+});
+
 describe("foreign keys on the child tables (H-7)", () => {
   it("every child reference is a validated foreign key that cascades nothing (NO ACTION)", async () => {
     const rows = (await h.ds.query(

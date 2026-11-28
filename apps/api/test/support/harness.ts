@@ -169,6 +169,11 @@ export const FULL_CONSENT = {
  * A new synthetic applicant with the same profile as a seeded one (and the same simulated
  * bureau and screening answers), so a test gets its own applicant: one applicant may have only
  * one open application per product (INT-007). The name stays the same.
+ *
+ * So the twin has the seeded applicant's identity (name, birth date, ID ending), and for the
+ * rest of the run that identity matches "many" (WI-2): a capture of it is refused naming each.
+ * A test that needs it to match exactly one customer must use an identity nobody twins
+ * (Lorna Abad's, for example).
  */
 export async function twin(h: Harness, seededId: string): Promise<string> {
   const id = `${seededId}-${randomUUID().slice(0, 8)}`;
