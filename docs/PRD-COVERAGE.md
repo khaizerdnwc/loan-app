@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 35 built, 40 partly built, 64 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
+Summary: 36 built, 39 partly built, 64 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
 (F1, F2, F4, F6) and 4 are not built.
 
 ## 1. Coverage table
@@ -78,7 +78,7 @@ Summary: 35 built, 40 partly built, 64 not built (139 IDs, counted from the tabl
 | WF-001 | Configurable stages per product | partly built | `packages/base/src/cases/lifecycle.ts`, L-1 | One fixed transition table, enforced at both ends. It is not configurable, and there is no "closed" stage. |
 | WF-002 | Work queues by role/branch/product/priority | partly built | QR-1, `routing.service.ts`, queue Mine/Team/Unassigned | Owner, channel, priority and top reason on every case; pick, reassign with a reason, high priority first. Missing: branch and product routing (one branch, one product) and automatic round robin (the reassign dialog shows each officer's load instead). |
 | WF-003 | SLA timers and escalation | partly built | SLA-1..SLA-4, `/sla/cases`, queue SLA column | Stage clocks in Philippine business time (review 8 business hours, approval and booking stages 4), from the activity history; Past SLA and At risk on queue rows, All applications and the case page. Missing: automatic escalation or reassignment on breach, notifications (#23), and SLAs configurable per product (in code). |
-| WF-004 | Approval matrix | partly built | `case-access.ts` `authorityProblem`, R-6 | Authority is amount AND grade per approver, read from the staff table. No product or exception-type dimension, delegated levels or committee level. |
+| WF-004 | Approval matrix | built | AM-1, `approval-matrix.ts`, `approval_level`, `GET /approval-matrix` | Delegated levels L1–L3 as data by product, amount, grade and exception type (override, policy exception, related party); refusals name the level to route to. Missing: editing the matrix on screen (set by migration), a second approver above an override threshold, and a committee level (#22). |
 | WF-005 | Maker-checker on approval, override, booking, disbursement | built | R-4, R-5, R-6, `booking.service.ts` | The officer recommends and a different approver approves (overrides included). Booking maker ≠ checker. Disbursement runs in the checker's booking step, not as a separate checker step. |
 | WF-006 | Unified case view | partly built | `cases/[id]/page.tsx`, `decision-panel.tsx`, F2-2 | Applicant, rule results, score, grade, reasons, decision record, recommendation, booking and history. No bureau detail card, documents, or full relationship data (only relationship months). |
 | WF-007 | Request information/documents from borrower | built | DC-1, DC-2, `documents.service.ts`, `lifecycle.ts` REQUEST_INFO/INFO_RECEIVED | The officer asks for documents with a message and due date; REVIEW → INFO_REQUESTED → REVIEW when they arrive. The borrower side (app inbox, upload) is simulated; the due date is not enforced and no notification is sent (#23). |
@@ -304,7 +304,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 16 | ✅ Done (QR-1; no automatic round robin). Queue routing: pick, reassign, priority, round robin | WF-002 | M | Team operations. |
 | 17 | Credit memo generated from the case, editable by the analyst, stored with versions | WF-008 | M | Part of F2 review in the PRD. |
 | 18 | Disclosure statement generated from approved terms and acknowledged before the simulated signature; templates | CMP-002, DOC-004, SS-002 (staff side) | M | Truth in Lending requirement for the PH release. Needs a fee model (PC-002). |
-| 19 | Configurable approval matrix (product, exception type, delegated levels) as data | WF-004 | M | Generalises the amount-and-grade authority already built. |
+| 19 | ✅ Done (AM-1; read-only matrix, set by migration). Configurable approval matrix (product, exception type, delegated levels) as data | WF-004 | M | Generalises the amount-and-grade authority already built. |
 | 20 | Rule sets as published data with draft, review and publish under maker-checker, effective dates, and a draft-vs-live test harness over stored decisions | DEC-001, DEC-003, DEC-004, PC-005, PC-006, F8 | L | Needed for F8 and the "product setup in under 2 weeks" metric. Must keep ADR 0022 replay (published versions immutable). Deferred from lane C batch 3 in favour of #26: storing rule sets as data changes ADR 0022 R4 (versions are code), every replay path and the editor screen, more than one batch. |
 | 21 | Product configuration (core product reference, ranges, pricing grids, fees, form fields, document checklists) | PC-001..PC-004, PC-002 fees | L | Follows #20. Fees unblock #18. |
 | 22 | Credit committee: circulation, votes, quorum, conditions, minutes | WF-010 | L | F5 and above-authority cases. Replaces today's "escalated" flag. |
@@ -363,7 +363,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Compliance: Consent records | Consent register | CMP-001 | Not built (#2). |
 | Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Built without export (CMP-1..CMP-5): list and detail, acknowledge, close with outcome and notes. |
 | Compliance: Related-party lending, Segregation of duties, Data subject requests, Model governance, Fair collection oversight | Compliance views | CMP-006, CMP-011, CMP-004, CMP-008, CMP-009 | SoD enforced (R-1..R-9) but there is no screen. Others not built. |
-| Configuration: Products, Workflows, Approval matrix (L1/L2/L3 and override threshold), Documents and templates, Notifications, Collection strategies | Config | PC-*, WF-001, WF-003, WF-004, DOC-004, NTF-*, CLX-002 | Not built (#19, #20, #21, #23). |
+| Configuration: Products, Workflows, Approval matrix (L1/L2/L3 and override threshold), Documents and templates, Notifications, Collection strategies | Config | PC-*, WF-001, WF-003, WF-004, DOC-004, NTF-*, CLX-002 | Approval matrix built, read-only (AM-1). The rest not built (#20, #21, #23). |
 | Configuration: Decisioning (rules, bands, triggers, draft, submit for review, approve and publish by a different user, pipeline) | Rules | DEC-001..006, PC-005, F8 | Engine built in code. No editor or maker-checker publish (#20). |
 | Configuration: AI models (registry, features, prohibited features, shadow, monitoring, fairness, overrides, automation per product, kill switch, pooled P2) | Models | AIS-007..012, §7.5 | Automation per product and kill switch built as the Automation controls screen (#10, with maker-checker). Registry, monitoring and the rest not built (#26). |
 | Configuration: Integrations, API access, Users and roles (SSO, MFA), Tenant settings and modules | Admin | IH-002, IH-008, PLT-001, PLT-006 | Simulation controls only (`/simulation`). The rest is not built or out of reach. |

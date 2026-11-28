@@ -1,5 +1,6 @@
 import type { AutomationMode } from "./automation";
 import type {
+  ApprovalException,
   CaseStatus,
   Channel,
   CoreBankingSimulationMode,
@@ -32,9 +33,29 @@ export interface StaffView {
   fullName: string;
   role: Role;
   title: string;
-  /** Approvers only. */
+  /** Approvers only: from their level in the approval matrix. */
   approvalLimit: string | null;
   approvalGrades: Grade[] | null;
+  /** Approvers only: their delegated level in the approval matrix (PRD WF-004). */
+  approvalLevel: { code: string; name: string } | null;
+}
+
+/**
+ * One delegated authority level of the approval matrix (PRD WF-004): what an approver at this
+ * level may approve, by product, amount, risk grade and exception type.
+ */
+export interface ApprovalLevelView {
+  code: string;
+  name: string;
+  productCode: string;
+  /** Higher ranks may approve more; a case beyond one level goes to the next. */
+  rank: number;
+  /** The largest amount this level approves. */
+  maxAmount: string;
+  grades: Grade[];
+  exceptions: ApprovalException[];
+  /** The approvers at this level, by name. */
+  approvers: { fullName: string }[];
 }
 
 export interface ApplicantView {
@@ -218,7 +239,18 @@ export type ActionAvailability =
        */
       documentTypes?: DocumentType[];
     }
-  | { action: CaseAction; enabled: false; blockedBy: ProblemCode; detail: string };
+  | {
+      action: CaseAction;
+      enabled: false;
+      blockedBy: ProblemCode;
+      detail: string;
+      /**
+       * APPROVE above the approver's level only: posting it anyway is refused but escalates the
+       * case to a level of the approval matrix that covers it, so the UI keeps it clickable.
+       * Absent when no level covers the case or the approver holds none (nothing to escalate to).
+       */
+      escalates?: true;
+    };
 
 /** A recommendation type the loan officer may send now, or why the API refuses it. */
 export type RecommendationAvailability =
@@ -298,6 +330,14 @@ export interface CaseDetail extends CaseSummary {
    * (prototype approve dialog); UNAVAILABLE when core cannot answer; else null.
    */
   proposedRepayment: IndicativeRepaymentView | null;
+  /**
+   * While the case waits for an approver (APPROVAL): what makes it an exception, and the lowest
+   * level of the approval matrix that may approve it (null: no level does). Null otherwise.
+   */
+  approvalRoute: {
+    exceptions: ApprovalException[];
+    level: { code: string; name: string } | null;
+  } | null;
   /** What the signed-in user may do now (the API decides; the UI only shows it). */
   allowedActions: ActionAvailability[];
   /** The current decision was made while a provider could not answer (bureau, screening, fraud). */

@@ -25,6 +25,7 @@ import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
 import { CURRENT_RULE_SET, RULE_SETS, ruleSet } from "../decisioning/engine";
+import { caseExceptions, coveringLevel } from "./approval-matrix";
 import { bookingChecklist, checklistRefusal } from "./booking-checklist";
 import { allowedActions, recommendationRefusal, recommendationTypes } from "./case-access";
 import { CasesRepository } from "./cases.repository";
@@ -98,6 +99,9 @@ export class CaseViews {
     }
     const checklist = bookingChecklist(c, decision, new Date());
     const outage = DecisionService.decidedDuringOutage(decision);
+    const exceptions = caseExceptions(c, decision);
+    const levels = c.status === CaseStatus.Approval ? await this.staff.approvalLevels() : [];
+    const route = c.status === CaseStatus.Approval ? coveringLevel(levels, c, exceptions) : null;
     const actions = allowedActions(
       user,
       c,
@@ -112,6 +116,7 @@ export class CaseViews {
         recommend: unreviewedRefusal(documents),
         requestable: requestableTypes(documents),
       },
+      { exceptions, levels },
     );
 
     return {
@@ -207,6 +212,10 @@ export class CaseViews {
               c.grade,
               decision.monthlyRate,
             )
+          : null,
+      approvalRoute:
+        c.status === CaseStatus.Approval
+          ? { exceptions, level: route ? { code: route.code, name: route.name } : null }
           : null,
       allowedActions: actions,
       decidedDuringOutage: outage,

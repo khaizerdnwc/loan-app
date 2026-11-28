@@ -1,5 +1,6 @@
 import {
   type ApplicantView,
+  type ApprovalLevelView,
   type CaseDetail,
   type CoreCustomerView,
   type LoanOfficerView,
@@ -25,6 +26,13 @@ export class RoutingController {
     private readonly routing: RoutingService,
     private readonly applicants: ApplicantsService,
   ) {}
+
+  /** The approval matrix: delegated levels by product, amount, grade and exception (WF-004). */
+  @Get("approval-matrix")
+  @Roles(...Object.values(Role))
+  approvalMatrix(): Promise<ApprovalLevelView[]> {
+    return this.routing.approvalMatrix();
+  }
 
   @Get("loan-officers")
   @Roles(Role.LoanOfficer)

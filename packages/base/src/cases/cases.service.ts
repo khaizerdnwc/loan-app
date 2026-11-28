@@ -25,7 +25,8 @@ import { StaffRepository } from "../auth/staff.repository";
 import { ComplianceService } from "../compliance/compliance.service";
 import { TransactionRunner } from "../database/transaction-runner";
 import { ActivityService } from "./activity.service";
-import { authorityProblem, canView, recommendationRefusal } from "./case-access";
+import { authorityProblem, caseExceptions, escalates } from "./approval-matrix";
+import { canView, recommendationRefusal } from "./case-access";
 import { CaseViews } from "./case-views";
 import { CasesRepository } from "./cases.repository";
 import { CONSENT_CHANNEL, consentComplete } from "./consent";
@@ -91,7 +92,12 @@ export class CasesService {
     let cases = await this.repo.list(user, view);
     if (user.role === Role.Approver && view === "queue") {
       const me = await this.staff.findById(user.id);
-      cases = cases.filter((c) => me !== null && authorityProblem(me, c) === null);
+      const covered: LoanCaseEntity[] = [];
+      for (const c of cases) {
+        const decision = c.decisionId ? await this.repo.findDecision(c.decisionId) : null;
+        if (me && authorityProblem(me, c, caseExceptions(c, decision)) === null) covered.push(c);
+      }
+      cases = covered;
     }
     if (user.role === Role.LoanOfficer && view === "queue") {
       if (owner === "me") cases = cases.filter((c) => c.ownerId === user.id);
@@ -485,17 +491,23 @@ export class CasesService {
       }
       // Defence in depth: recommend already refuses this, but nothing decided during an
       // outage may be approved, whatever path brought it to APPROVAL.
-      const decision = c.decisionId ? await this.repo.findDecision(c.decisionId) : null;
+      const decision = c.decisionId ? await this.repo.findDecision(c.decisionId, m) : null;
       if (DecisionService.decidedDuringOutage(decision)) {
         throw invalidState(
           "This case was decided while a provider could not answer (no score, or no sanctions screening), so it cannot be approved. Return it so the loan officer can decide it again.",
         );
       }
+      // The approver's level, read with the staff row in this transaction (never the token).
       const me = await this.staff.findById(user.id, m);
-      const problem = me ? authorityProblem(me, c) : "Your authority could not be read.";
+      const levels = await this.staff.approvalLevels(m);
+      const exceptions = caseExceptions(c, decision);
+      const problem = me
+        ? authorityProblem(me, c, exceptions, levels)
+        : "Your authority could not be read.";
       if (problem) {
-        // Escalate, and commit the flag even though the approval is refused (R-6).
-        if (!c.escalated) {
+        // Escalate, and commit the flag even though the approval is refused (R-6) — but only
+        // when a level covers the case and the approver holds one; else nothing changes.
+        if (!c.escalated && escalates(me, c, exceptions, levels)) {
           c.escalated = true;
           await this.repo.saveCase(m, c);
           await this.activity.record(m, {

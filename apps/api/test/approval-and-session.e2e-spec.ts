@@ -231,7 +231,7 @@ describe("test sign-in (Program Mechanics 1a)", () => {
     const rows = (await h.ds.query("SELECT password_hash FROM staff")) as {
       password_hash: string;
     }[];
-    expect(rows.length).toBe(10);
+    expect(rows.length).toBe(11);
     for (const r of rows) expect(r.password_hash).toMatch(/^scrypt\$16384\$8\$1\$/);
     // One shared test password, but every row has its own salt, so no two hashes match.
     expect(new Set(rows.map((r) => r.password_hash)).size).toBe(rows.length);

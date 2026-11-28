@@ -2,6 +2,7 @@
 
 import {
   type ActionAvailability,
+  APPROVAL_EXCEPTION_LABEL,
   type CaseAction,
   type CaseDetail,
   DECLINE_REASON_LABEL,
@@ -423,7 +424,12 @@ export function ActionsPanel({
  * happen. Every other disabled action cannot be attempted.
  */
 function canAttempt(a: ActionAvailability): boolean {
-  return !a.enabled && a.action === "APPROVE" && a.blockedBy === ProblemCode.AuthorityLimit;
+  return (
+    !a.enabled &&
+    a.action === "APPROVE" &&
+    a.blockedBy === ProblemCode.AuthorityLimit &&
+    a.escalates === true
+  );
 }
 
 /**
@@ -505,6 +511,18 @@ function expiresNote(c: CaseDetail): string {
   return c.expiresAt ? ` Expires on ${formatDateTime(c.expiresAt)}.` : "";
 }
 
+/** Which level of the approval matrix may approve the case, and why (WF-004), as a sentence. */
+function approvalRouteNote(c: CaseDetail): string {
+  const route = c.approvalRoute;
+  if (!route) return "";
+  const why = route.exceptions.length
+    ? ` (${route.exceptions.map((e) => APPROVAL_EXCEPTION_LABEL[e].toLowerCase()).join(", ")})`
+    : "";
+  return route.level
+    ? ` Approval matrix: ${route.level.code} · ${route.level.name} or above${why}.`
+    : ` Approval matrix: no level covers it${why}; it can only be declined or returned.`;
+}
+
 /** What the case is waiting for and who acts next, in words. */
 function waitingFor(c: CaseDetail): string {
   switch (c.status) {
@@ -519,9 +537,11 @@ function waitingFor(c: CaseDetail): string {
         ? `Waiting for the borrower (simulated): ${c.infoRequest.documents.map((d) => DOCUMENT_TYPE_LABEL[d]).join("; ")}. ${isOverdue(c.infoRequest.dueOn) ? `Overdue since ${formatDate(c.infoRequest.dueOn)}: the borrower has not answered by the due date; follow up, or withdraw the application.` : `Due ${formatDate(c.infoRequest.dueOn)}.`} The case goes back to review when everything has arrived.`
         : "Waiting for the borrower's documents. The case goes back to review when everything has arrived.";
     case "APPROVAL":
-      return c.escalated
-        ? "Waiting for an approver whose authority covers this amount and grade."
-        : "Waiting for an approver to decide on the recommendation.";
+      return `${
+        c.escalated
+          ? "Waiting for an approver whose authority covers this amount and grade."
+          : "Waiting for an approver to decide on the recommendation."
+      }${approvalRouteNote(c)}`;
     case "OFFER":
       return `Approved. Waiting for the borrower's e-signature (simulated), recorded by loan operations.${expiresNote(c)}`;
     case "BOOKING":

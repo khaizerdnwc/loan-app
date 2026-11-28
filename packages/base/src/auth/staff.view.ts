@@ -8,7 +8,10 @@ export function toStaffView(s: StaffEntity): StaffView {
     fullName: s.fullName,
     role: s.role,
     title: s.title,
-    approvalLimit: s.approvalLimit ? s.approvalLimit.toString() : null,
-    approvalGrades: s.approvalGrades,
+    approvalLimit: s.approvalLevel?.maxAmount.toString() ?? null,
+    approvalGrades: s.approvalLevel?.grades ?? null,
+    approvalLevel: s.approvalLevel
+      ? { code: s.approvalLevel.code, name: s.approvalLevel.name }
+      : null,
   };
 }

@@ -80,6 +80,10 @@ export function navFor(role: Role): NavGroup[] {
       // Model governance (PRD AIS-008..012): read by administrators and compliance.
       { href: "/models", label: "Model governance", icon: "chart" },
     );
+  // The approval matrix (PRD WF-004): who may approve what; approvers, administrators and
+  // compliance read it.
+  if (role === "APPROVER" || role === "ADMIN" || role === "COMPLIANCE")
+    system.push({ href: "/approval-matrix", label: "Approval matrix", icon: "check" });
   groups.push({ heading: "System", items: system });
   return groups;
 }

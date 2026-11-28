@@ -21,6 +21,7 @@ export const STAFF = {
   leo: "STF-LEO",
   celia: "STF-CELIA",
   joy: "STF-JOY",
+  teo: "STF-TEO",
 } as const;
 export type Persona = keyof typeof STAFF;
 
