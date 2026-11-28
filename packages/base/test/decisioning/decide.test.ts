@@ -247,8 +247,22 @@ describe("score bands and referral triggers (D-4, D-5, D-6, D-7)", () => {
           ? { role, status: "UNAVAILABLE", reason: "outage" }
           : { role, status: "OK", decision, reasonCodes: [], reference: "EXT-1" },
     });
+    // RS-PL-5: an odd tenor (R29), a full file with no score (R28, R27), a score near 700 (R27).
+    const oddTenor: DecisionInputs = {
+      ...MARIA_F1,
+      application: { ...MARIA_F1.application, tenorMonths: 20 },
+    };
+    const noScore: DecisionInputs = {
+      ...MARIA_F1,
+      bureau: {
+        ...(MARIA_F1.bureau as Extract<DecisionInputs["bureau"], { status: "OK" }>),
+        bureauScore: null,
+      },
+    };
     const seen = new Set<string>();
     for (const p of [
+      oddTenor,
+      noScore,
       ext("ALONGSIDE", null),
       ext("ALONGSIDE", "DECLINE"),
       ext("INSTEAD", "REFER"),
@@ -464,7 +478,9 @@ describe("no bureau record (R08)", () => {
     expect(r.score).toBe(537);
     expect(r.grade).toBe("E");
     // A trigger refers "regardless of score": the low score becomes a reason, not a decline.
-    expect(r.reasonCodes.map((c) => c.code)).toEqual(["R08", "R07"]);
+    // RS-PL-5: only 4 of 7 factors come from data (no score, no utilisation or missed-payment
+    // record), so low model confidence (R27) is a reason too.
+    expect(r.reasonCodes.map((c) => c.code)).toEqual(["R08", "R27", "R07"]);
     expect(rule(NINA_NO_HIT, "RF-FILE")).toMatchObject({ result: "FAIL", value: "no hit" });
     expect(r.scoreContributions.find((c) => c.factor === "Bureau score")).toMatchObject({
       detail: "no score",

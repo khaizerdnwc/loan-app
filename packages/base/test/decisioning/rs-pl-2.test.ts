@@ -23,8 +23,8 @@ const withApplicant = (applicant: Partial<DecisionInputs["applicant"]>): Decisio
   applicant: { ...MARIA_F1.applicant, ...applicant },
 });
 
-it("RS-PL-4 (RS-PL-2's rules, a recommended amount, the external engine step) is current", () => {
-  expect(CURRENT_RULE_SET).toBe("RS-PL-4");
+it("RS-PL-5 (RS-PL-4 plus warnings and three referral triggers) is current", () => {
+  expect(CURRENT_RULE_SET).toBe("RS-PL-5");
 });
 
 describe("D-10 declared vs verified income (PRD DEC-006, F3)", () => {
@@ -217,7 +217,7 @@ describe("D-14 records made under RS-PL-1 still reproduce (ADR 0022 R4)", () => 
 
   it("RS-PL-2 refuses a snapshot without its inputs instead of guessing them", () => {
     const old = storedRsPl1[0]?.inputs as unknown as DecisionInputs;
-    expect(() => decide(old, V)).toThrow(/RS-PL-4 needs/);
+    expect(() => decide(old, V)).toThrow(/RS-PL-5 needs/);
     expect(() => decide(old, { ruleSet: "RS-PL-2", scorecard: "SC-PL-1" })).toThrow(
       /RS-PL-2 needs/,
     );

@@ -19,8 +19,8 @@ import {
 const V = { ruleSet: CURRENT_RULE_SET, scorecard: CURRENT_SCORECARD };
 
 describe("D-16 PD and recommended amount (PRD AIS-001), versioned as RS-PL-3 and SC-PL-2", () => {
-  it("are current: RS-PL-4 keeps RS-PL-3's estimates, SC-PL-2 is the scorecard", () => {
-    expect(V).toEqual({ ruleSet: "RS-PL-4", scorecard: "SC-PL-2" });
+  it("are current: RS-PL-5 keeps RS-PL-3's estimates, SC-PL-2 is the scorecard", () => {
+    expect(V).toEqual({ ruleSet: "RS-PL-5", scorecard: "SC-PL-2" });
     const v3 = { ruleSet: "RS-PL-3", scorecard: "SC-PL-2" };
     expect(decide(asRsPl3(NICO_HIGH_DTI), v3).recommendedAmount).toBe(
       decide(NICO_HIGH_DTI, V).recommendedAmount,

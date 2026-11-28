@@ -83,7 +83,8 @@ export type ExternalEngineInput =
     }
   | { role: "ALONGSIDE" | "INSTEAD"; status: "UNAVAILABLE"; reason: string };
 
-export type RuleKind = "KNOCKOUT" | "REFERRAL";
+/** WARNING (RS-PL-5 on): recorded and shown, never changes the outcome. */
+export type RuleKind = "KNOCKOUT" | "REFERRAL" | "WARNING";
 export type RuleOutcome = "PASS" | "FAIL" | "NOT_EVALUATED";
 
 export interface RuleResult {

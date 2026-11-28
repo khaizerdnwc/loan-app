@@ -233,7 +233,7 @@ describe("EX-3 a decision calls the external engine, stores its answer and repla
     const c = await submitCase(h, { applicantId: "APL-MARIA" });
     expect(c.status).toBe("OFFER");
     const d = await decisionOf(c);
-    expect(d.ruleSetVersion).toBe("RS-PL-4");
+    expect(d.ruleSetVersion).toBe("RS-PL-5");
     expect(externalOf(d)).toEqual({ role: "NONE" });
     expect(exRule(d)).toBeUndefined();
     expect(await externalCalls(c.id)).toBe(0);

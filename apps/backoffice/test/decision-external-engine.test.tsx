@@ -68,6 +68,73 @@ describe("DecisionPanel with the client's decision engine (EX-3)", () => {
     expect(screen.getByText("EXT-3F8B2C6D1A09").className).toMatch(/font-mono/);
   });
 
+  it("instead: when the client approves but a bank control (R29) still refers, it does not say the client decided", () => {
+    render(
+      <DecisionPanel
+        decision={decision({
+          outcome: "REFER",
+          engineOutcome: "REFER",
+          ruleResults: [
+            {
+              id: "RF-POLICY",
+              name: "Standard terms (tenor in 6-month steps, amount at most 10 × monthly income)",
+              kind: "REFERRAL",
+              result: "FAIL",
+              value: "32 months",
+            },
+          ],
+          reasonCodes: [
+            {
+              code: "R29",
+              staff:
+                "Policy exception: the requested terms are outside the product's standard terms",
+              borrower: "Your application needs a review by our credit team.",
+            },
+          ],
+          referralTriggers: [
+            "Policy exception: the requested terms are outside the product's standard terms",
+          ],
+          externalEngine: {
+            role: "INSTEAD",
+            outcome: "AUTO_APPROVE",
+            reference: "EXT-4C2A9E61B7D0",
+            agreed: null,
+          },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(
+        "The client's decision engine (simulated) approved, instead of the score, but a bank control still refers it (see Referred because); the built-in score and grade are shown for pricing.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/^Decided by the client's decision engine/)).toBeNull();
+    expect(screen.getByText("Referred because:")).toBeInTheDocument();
+  });
+
+  it("instead: a client decline turned into a referral by a bank-provider outage says a person decides", () => {
+    render(
+      <DecisionPanel
+        decision={decision({
+          outcome: "REFER",
+          engineOutcome: "REFER",
+          score: null,
+          grade: null,
+          ruleResults: [],
+          externalEngine: {
+            role: "INSTEAD",
+            outcome: "AUTO_DECLINE",
+            reference: "EXT-8B1D4F7A2C30",
+            agreed: null,
+          },
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/declined, instead of the score, but a bank provider did not answer/),
+    ).toBeInTheDocument();
+  });
+
   it("alongside: says whether the two engines agreed", () => {
     const { rerender } = render(
       <DecisionPanel

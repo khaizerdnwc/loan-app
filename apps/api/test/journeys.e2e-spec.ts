@@ -29,7 +29,7 @@ describe("F1 — Maria Santos, auto-approved ₱150,000 over 24 months", () => {
     const record = (await h.as("paolo").get(`/cases/${c.id}/decision`).expect(200))
       .body as DecisionRecordView;
     expect(record).toMatchObject({
-      ruleSetVersion: "RS-PL-4",
+      ruleSetVersion: "RS-PL-5",
       scorecardVersion: "SC-PL-2",
       // AIS-001: the grade A PD and the affordable amount (her ₱150,000 request).
       pd: "0.0080",
@@ -138,8 +138,13 @@ describe("F2 — Joel Reyes, referred thin file, counter-offer ₱120,000 over 3
       "RF-INCOME",
       "RF-RELATED",
       "RF-FRAUD",
+      "RF-POLICY",
       "RF-FILE",
+      "RF-DATA",
       "SC-BAND",
+      "RF-CONFIDENCE",
+      "WN-UTILISATION",
+      "WN-EMPLOYMENT",
       "AU-MODE",
     ]);
     expect(view.decision?.referralTriggers).toEqual([

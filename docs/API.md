@@ -157,6 +157,11 @@ declined, approved with no grade to price). The decision view's `externalEngine`
 was used; `outcome` and `reference` null when it could not answer; `agreed` (alongside only)
 whether it agreed with the built-in engine.
 
+From RS-PL-5 a rule result's `kind` may be `WARNING` (WN-UTILISATION, WN-EMPLOYMENT): recorded
+and shown, never changing the outcome. The new referral rules are RF-POLICY, RF-DATA and
+RF-CONFIDENCE, with reason codes R29 (policy exception), R28 (missing data) and R27 (low model
+confidence).
+
 `CaseDetail.decidedDuringOutage` says the current decision was made while the bureau,
 screening, fraud check or external decision engine could not answer (the officer re-decides it).
 `CaseDetail.recommendationTypes`, when RECOMMEND is offered, lists APPROVE, COUNTER_OFFER and
