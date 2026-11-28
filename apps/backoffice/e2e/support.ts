@@ -192,9 +192,10 @@ export async function resetModes(page: Page): Promise<void> {
       service: string;
     }[];
     const missing = listed.map((l) => l.service).filter((name) => !services.includes(name));
-    return { statuses: out, missing };
+    return { statuses: out, missing, listed: listed.length, expected: services.length };
   });
+  // The reset list and the API's list are the same set: nothing missing, nothing extra.
   expect(statuses.missing).toEqual([]);
-  expect(statuses.statuses).toHaveLength(10);
+  expect(statuses.listed).toBe(statuses.expected);
   expect(statuses.statuses.every((s) => s === 200)).toBe(true);
 }
