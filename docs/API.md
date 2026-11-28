@@ -24,6 +24,8 @@ Consent: `POST /cases` and `PATCH /cases/:id` accept `consent: { creditBureauChe
 
 Screening before disbursement (PRD CMP-005): `POST /cases/:id/booking/approve` screens the applicant again before booking. A watchlist match answers 409 `SCREENING_MATCH` without naming the list (this attempt booked nothing; after an earlier failed attempt it says that attempt may have reached core; the booking is failed and held; an AML escalation opens); while that escalation is open, or after Compliance confirms the match, the call answers 409 `COMPLIANCE_HOLD` and writes nothing; screening unavailable answers 503 and holds the booking for a retry.
 
+Email and file intake (INT-010, F4) and OCR (DOC-002, DOC-007): `/intake/*` turns a synthetic uploaded file into drafts (`IntakeDraftView`, types in `packages/core/src/intake.ts`) through the simulated `DocumentExtraction` port; a draft is only ever confirmed into a case DRAFT by the loan officer, never submitted. Upload and discard write audit entries (`INTAKE_UPLOADED`, `INTAKE_DRAFT_DISCARDED`); a confirm writes `CASE_CREATED` and `INTAKE_CONFIRMED` on the new case. OCR readings of case documents (`DocumentExtractionView`) carry `flags` (`INCOME_MISMATCH`, `EMPLOYER_MISMATCH`, `OBLIGATIONS_HIGHER`) against the application's figures; they inform the review and never change a decision. The simulated service is `DOCUMENT_EXTRACTION` on `/simulation/services`.
+
 Audit: sign-ins (success, failure, sign-out), simulation mode changes and every case activity event are written to the hash-chained audit log (`audit_event`, insert-only) in the transaction of the change.
 
 Authentication: `POST /auth/sign-in` checks a username and test password and sets an httpOnly
@@ -97,6 +99,13 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /sla/cases/:id | same, and the case's own visibility (404 outside it) | `CaseSlaView` `{ sla: SlaView \| null, holidayCalendarEnds }` (sla null for a stage without an SLA) |
 | GET | /reports/turnaround?from=&to= | loan officer, approver, compliance, admin | `TurnaroundReport`: business time per stage for visits ending in the period, open cases by SLA state, holidays skipped, `holidayCalendarEnds` (served by the sla/ module's `TurnaroundController`) |
 | GET | /reports/funnel?from=&to= | loan officer, approver, compliance, admin | `OriginationFunnelReport` (same period rules) |
+| GET | /intake/drafts?view=pending\|all | loan officer, compliance | `IntakeDraftView[]` (default pending: waiting for review), newest upload first; `actions` (CONFIRM, DISCARD) only for the loan officer while pending |
+| GET | /intake/drafts/:id | loan officer, compliance | `IntakeDraftView` |
+| POST | /intake/uploads | loan officer | `IntakeUploadRequest` `{ source: EMAIL_BUNDLE \| PARTNER_SPREADSHEET }` → 201 `IntakeUploadView`: a synthetic file read by simulated OCR into drafts for review (no case is created). 409 `CONFLICT` while the same file's drafts wait for review; 503 when OCR cannot answer (nothing written) |
+| POST | /intake/drafts/:id/confirm | loan officer (draft pending) | `ConfirmIntakeDraftRequest` `{ amount, tenorMonths, purpose, governmentIdLast4? }` → `IntakeDraftView` (CONFIRMED, `case` set): captures a case DRAFT for the matched customer, not submitted. 400 for terms outside the product or a missing or non-matching ID; 409 when already reviewed, or `DUPLICATE_APPLICATION` when the applicant has an open application |
+| POST | /intake/drafts/:id/discard | loan officer (draft pending) | `DiscardIntakeDraftRequest` `{ reason }` → `IntakeDraftView` (DISCARDED). 400 without a reason; 409 when already reviewed |
+| GET | /cases/:id/extractions | loan officer, approver, compliance (with the case's visibility) | `CaseExtractionsView`: each requested document's OCR reading of its current upload (or null) and, for the loan officer, whether OCR may run now (`extract.enabled`, `detail`) |
+| POST | /cases/:id/documents/:type/extract | loan officer (REVIEW or INFO_REQUESTED, document received or verified) | → `CaseExtractionsView`: OCR (simulated) reads the upload; stored insert-only with its statement analysis (bank statements), compared figures and flags, and a DOCUMENT_EXTRACTED event. Does not change the case or its decision. 409 when already read, not received, not requested or the case is not in review; 503 when OCR cannot answer (nothing written) |
 
 Who sees what (`GET /cases`, `GET /cases/:id`):
 

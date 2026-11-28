@@ -5,6 +5,7 @@ import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
 import moneyColumnNumeric from "../src/rules/money-column-numeric.js";
 import moneyThroughFormatter from "../src/rules/money-through-formatter.js";
+import noApplicantDataInAuditAppend from "../src/rules/no-applicant-data-in-audit-append.js";
 import noArbitraryTextSize from "../src/rules/no-arbitrary-text-size.js";
 import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "../src/rules/no-commented-out-code.js";
@@ -892,6 +893,84 @@ ruleTester.run("no-provider-call-in-transaction", asRule(noProviderCallInTransac
       code: `class S { constructor(private readonly gw: ProviderGateway) {}
         async go() { await tx.run(async () => { await this.gw.screen(s, id); }); } }`,
       errors: [{ messageId: "inTransaction" }],
+    },
+  ],
+});
+
+ruleTester.run("no-applicant-data-in-audit-append", asRule(noApplicantDataInAuditAppend), {
+  valid: [
+    // Ids and references only; the actor (staff) is not inspected.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, a) { await this.audit.append(m, {
+        actor: user, action: "APPLICANT_CAPTURED",
+        summary: \`Captured applicant \${a.id}.\`, details: { applicantId: a.id } }); } }`,
+    },
+    // A const built earlier from safe values.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, b) { const s = \`Uploaded \${b.reference}\`;
+        await this.audit.append(m, { actor: user, action: "X", summary: s }); } }`,
+    },
+    // Not an audit service: an array append, an activity record (the case history).
+    { filename: BASE, code: `form.append("fileName", f.fileName);` },
+    {
+      filename: BASE,
+      code: `class S { async go(m) { await this.activity.record(m, { summary: a.fullName }); } }`,
+    },
+    // Outside server code.
+    { filename: WEB, code: `audit.append(m, { summary: a.fullName });` },
+    {
+      filename: at("apps/api/test/x.e2e-spec.ts"),
+      code: `audit.append(m, { summary: a.fullName });`,
+    },
+    // The opt-out.
+    {
+      filename: BASE,
+      code: `class S { async go(m, b) { await this.audit.append(m, {
+        // eslint-disable-next-line rule-to-test/no-applicant-data-in-audit-append -- synthetic catalogue name
+        summary: b.fileName }); } }`,
+    },
+  ],
+  invalid: [
+    // The shape that bit us: the uploaded file name in a template literal.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, bundle) { await this.audit.append(m, {
+        actor: user, action: "INTAKE_UPLOADED",
+        summary: \`Uploaded "\${bundle.fileName}"\` }); } }`,
+      errors: [{ messageId: "applicantData" }],
+    },
+    // Optional chaining, and an applicant name in details.
+    {
+      filename: BASE,
+      code: `class S { async go(m, d, a) { await this.audit.append(m, {
+        summary: \`From \${d.batch?.fileName ?? "a file"}\`, details: { name: a.fullName } }); } }`,
+      errors: [{ messageId: "applicantData" }, { messageId: "applicantData" }],
+    },
+    // A forbidden key, computed member access, and a destructured identifier.
+    {
+      filename: BASE,
+      code: `class S { async go(m, a) { const { birthDate } = a; await this.auditService.append(m, {
+        details: { governmentIdLast4: x, b: a["fullName"], c: birthDate } }); } }`,
+      errors: [
+        { messageId: "applicantData" },
+        { messageId: "applicantData" },
+        { messageId: "applicantData" },
+      ],
+    },
+    // A value built into a const first, and a whole entry object built first.
+    {
+      filename: API,
+      code: `async function go(audit, m, a) { const s = "for " + a.fullName;
+        await audit.append(m, { summary: s }); }`,
+      errors: [{ messageId: "applicantData" }],
+    },
+    {
+      filename: BASE,
+      code: `class S { async go(m, a) { const entry = { summary: a.email };
+        await this.audit.append(m, entry); } }`,
+      errors: [{ messageId: "applicantData" }],
     },
   ],
 });

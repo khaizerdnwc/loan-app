@@ -59,6 +59,27 @@ async function populate(): Promise<void> {
       .post("/automation/PL/changes", { kind: "SET_MODE", mode: "SHADOW", reason: "H-7 rows" })
       .expect(201);
   }
+  // Email and file intake (#30): an uploaded batch, and an OCR reading of a case document.
+  if ((await count(h.ds, "SELECT count(*) AS n FROM intake_batch")) === 0) {
+    await h.as("paolo").post("/intake/uploads", { source: "EMAIL_BUNDLE" }).expect(201);
+  }
+  if ((await count(h.ds, "SELECT count(*) AS n FROM document_extraction")) === 0) {
+    const c = await submitCase(h, {
+      applicantId: "APL-JOEL",
+      amount: "200000.00",
+      tenorMonths: 36,
+    });
+    await h
+      .as("paolo")
+      .post(`/cases/${c.id}/info-request`, {
+        documents: ["BANK_STATEMENTS_3M"],
+        message: "H-7 rows",
+        dueInDays: 3,
+      })
+      .expect(200);
+    await h.as("paolo").post(`/cases/${c.id}/documents/BANK_STATEMENTS_3M/upload`).expect(200);
+    await h.as("paolo").post(`/cases/${c.id}/documents/BANK_STATEMENTS_3M/extract`).expect(200);
+  }
 }
 
 /** The Postgres error code a failed query carries (23503 foreign key, P0001 refuse_change). */

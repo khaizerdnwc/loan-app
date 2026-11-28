@@ -14,6 +14,7 @@
  *   - no-todo-comment                    : TODO/FIXME/HACK/XXX markers are untracked work
  *   - no-console-in-server               : server code logs through Nest's Logger
  *   - no-math-random-in-server           : ids, keys and tokens come from a CSPRNG
+ *   - no-applicant-data-in-audit-append  : direct audit entries name records by id, never applicant data or file names
  *   - no-money-parse-in-controller       : controllers never Money.of() request input (a 500 on bad input)
  *   - no-process-env-outside-config      : process.env only in apps/<app>/src/config/env.ts
  *   - require-roles-on-controller-handler: every handler declares @Roles(...) or @Public()
@@ -43,6 +44,7 @@
  */
 import moneyColumnNumeric from "./rules/money-column-numeric.js";
 import moneyThroughFormatter from "./rules/money-through-formatter.js";
+import noApplicantDataInAuditAppend from "./rules/no-applicant-data-in-audit-append.js";
 import noArbitraryTextSize from "./rules/no-arbitrary-text-size.js";
 import noCaseStatusAssignmentOutsideLifecycle from "./rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "./rules/no-commented-out-code.js";
@@ -79,6 +81,7 @@ export default {
     "no-todo-comment": noTodoComment,
     "no-console-in-server": noConsoleInServer,
     "no-math-random-in-server": noMathRandomInServer,
+    "no-applicant-data-in-audit-append": noApplicantDataInAuditAppend,
     "no-money-parse-in-controller": noMoneyParseInController,
     "no-process-env-outside-config": noProcessEnvOutsideConfig,
     "require-roles-on-controller-handler": requireRolesOnControllerHandler,

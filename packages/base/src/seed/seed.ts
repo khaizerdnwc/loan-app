@@ -158,6 +158,11 @@ interface ApplicantSeed {
   };
   /** The simulated fraud check's answer; absent means no signals. */
   fraud?: { flagged: boolean; signals: string[] };
+  /**
+   * What the simulated OCR reads from this person's documents (PRD DOC-002, DOC-007), where it
+   * differs from the default (their income on record as salary credits, their obligations).
+   */
+  documents?: { salaryCredit?: string; recurringObligations?: string };
 }
 
 const CLEAR = {
@@ -682,6 +687,77 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  // Email and file intake (PRD INT-010, F4): the people in the simulated OCR's synthetic files.
+  // The partner spreadsheet's three rows (Cordillera Foods HR); Elmer's ID number is missing
+  // from the sheet on purpose. Maria's bureau profile with their own incomes.
+  {
+    id: "APL-RAMIL",
+    fullName: "Ramil Ocampo",
+    birthDate: "1997-02-14",
+    governmentIdLast4: "5521",
+    employer: "Cordillera Foods Inc.",
+    employmentMonths: 30,
+    relationshipMonths: 18,
+    monthlyIncome: "32000.00",
+    monthlyObligations: "3000.00",
+    depositAccount: "WB-SAV-0310-5521",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
+  {
+    id: "APL-JOY",
+    fullName: "Joy Fernandez",
+    birthDate: "1990-08-03",
+    governmentIdLast4: "6034",
+    employer: "Cordillera Foods Inc.",
+    employmentMonths: 60,
+    relationshipMonths: 36,
+    monthlyIncome: "41000.00",
+    monthlyObligations: "4000.00",
+    depositAccount: "WB-SAV-0310-6034",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
+  {
+    id: "APL-ELMER",
+    fullName: "Elmer Santos",
+    birthDate: "1982-11-21",
+    governmentIdLast4: "6619",
+    employer: "Cordillera Foods Inc.",
+    employmentMonths: 96,
+    relationshipMonths: 48,
+    monthlyIncome: "35500.00",
+    monthlyObligations: "5000.00",
+    depositAccount: "WB-SAV-0310-6619",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+  },
+  // The email bundle's applicant, used only by the intake browser journey: Joel's thin-file
+  // profile (Refer, 612 C), so the officer requests her statements and OCR analyses them
+  // (salary credits of 54,800 a month, within 15% of the 56,000 declared).
+  {
+    id: "APL-GRACE-VILLAMOR",
+    fullName: "Grace Villamor",
+    birthDate: "1993-01-27",
+    governmentIdLast4: "7342",
+    employer: "Pasig Digital Studio",
+    employmentMonths: 40,
+    relationshipMonths: 0,
+    monthlyIncome: "56000.00",
+    monthlyObligations: "11000.00",
+    depositAccount: "WB-SAV-0087-7342",
+    bureau: {
+      fileDepth: "THIN",
+      bureauScore: 640,
+      tradeLines: 1,
+      utilisationPct: 42,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 7,
+    },
+    screening: CLEAR,
+    documents: { salaryCredit: "54800.00" },
+  },
 ];
 
 /**
@@ -722,7 +798,7 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
     }
     await m.getRepository(StaffEntity).upsert(staff, ["id"]);
     await m.getRepository(ApplicantEntity).upsert(
-      SEED_APPLICANTS.map(({ bureau: _b, screening: _s, fraud: _f, ...a }) => ({
+      SEED_APPLICANTS.map(({ bureau: _b, screening: _s, fraud: _f, documents: _d, ...a }) => ({
         ...a,
         monthlyIncome: Money.of(a.monthlyIncome),
         monthlyObligations: Money.of(a.monthlyObligations),
@@ -738,8 +814,35 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
          ON CONFLICT (applicant_id) DO UPDATE SET bureau = $2, screening = $3, fraud = $4, identity_key = $5`,
         [a.id, a.bureau, a.screening, a.fraud ?? null, identityKey(a)],
       );
+      await m.query(
+        `INSERT INTO sim.document_profile (applicant_id, payload) VALUES ($1, $2)
+         ON CONFLICT (applicant_id) DO UPDATE SET payload = $2`,
+        [a.id, documentProfile(a)],
+      );
     }
     await m.getRepository(BusinessHolidayEntity).upsert(SEED_HOLIDAYS, ["date"]);
   });
   return { staff: SEED_STAFF.length, applicants: SEED_APPLICANTS.length };
+}
+
+/**
+ * What the simulated OCR reads from an applicant's documents: by default their income on
+ * record as salary credits in each of the 3 months, their obligations as recurring debits, an
+ * average daily balance of 60% of the salary, no returned items and no gambling or lending apps.
+ */
+function documentProfile(a: ApplicantSeed) {
+  const salary = a.documents?.salaryCredit ?? a.monthlyIncome;
+  return {
+    monthlyIncome: a.monthlyIncome,
+    employer: a.employer,
+    statement: {
+      salaryCredit: salary,
+      monthsWithSalary: 3,
+      monthsCovered: 3,
+      recurringObligations: a.documents?.recurringObligations ?? a.monthlyObligations,
+      averageDailyBalance: Money.of(salary).times("0.6").round("HALF_UP").toString(),
+      returnedItems: 0,
+      riskyMerchants: false,
+    },
+  };
 }

@@ -32,6 +32,7 @@ describe("where each role lands and what its sidebar offers", () => {
     ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
+      "/intake",
       "/compliance/escalations",
       "/audit",
       "/operations/exceptions",
@@ -67,6 +68,22 @@ describe("where each role lands and what its sidebar offers", () => {
       page: "Decisioning",
     });
     expect(pageIconFor("ADMIN", "/reports/funnel")).toBe("chart");
+  });
+
+  it("email and file intake for the loan officer (who acts) and compliance (who reads) only (INT-5)", () => {
+    expect(hrefs("LOAN_OFFICER")).toContain("/intake");
+    for (const role of [
+      "APPROVER",
+      "LOAN_OPERATIONS",
+      "LOAN_OPERATIONS_SUPERVISOR",
+      "ADMIN",
+    ] as Role[]) {
+      expect(hrefs(role)).not.toContain("/intake");
+    }
+    expect(breadcrumbFor("LOAN_OFFICER", "/intake")).toEqual({
+      section: "My work",
+      page: "Email and file intake",
+    });
   });
 
   it("only compliance works AML escalations; compliance and admin read the audit log", () => {

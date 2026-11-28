@@ -7,7 +7,9 @@ import {
   type CustomerLookup,
   DISBURSEMENT,
   type Disbursement,
+  DOCUMENT_EXTRACTION,
   DOCUMENT_INTAKE,
+  type DocumentExtraction,
   type DocumentIntake,
   E_SIGNATURE,
   type ESignature,
@@ -227,6 +229,74 @@ describe("simulated providers conform to their ports", () => {
     },
   );
 
+  it("OCR reads each synthetic file into labelled rows and a document into the applicant's figures, idempotent on the key (INT-1, OCR-1)", async () => {
+    const ocr = h.app.get<DocumentExtraction>(DOCUMENT_EXTRACTION);
+    const sheet = await ocr.extractBundle({
+      idempotencyKey: "conf-ocr-1",
+      source: "PARTNER_SPREADSHEET",
+    });
+    expect(sheet).toMatchObject({
+      provider: "OCR and statement analysis (simulated)",
+      mode: "SIMULATED",
+      fingerprint: "SYN-SHEET-CORDILLERA-2026-11",
+    });
+    expect(sheet.rows.map((r) => [r.rowNumber, r.fullName, r.amount?.toString()])).toEqual([
+      [2, "Ramil Ocampo", "50000.00"],
+      [3, "Joy Fernandez", "90000.00"],
+      [4, "Elmer Santos", "70000.00"],
+    ]);
+    const again = await ocr.extractBundle({
+      idempotencyKey: "conf-ocr-1",
+      source: "PARTNER_SPREADSHEET",
+    });
+    expect(again.reference).toBe(sheet.reference);
+    const other = await ocr.extractBundle({
+      idempotencyKey: "conf-ocr-2",
+      source: "PARTNER_SPREADSHEET",
+    });
+    expect(other.reference).not.toBe(sheet.reference);
+
+    const req = {
+      idempotencyKey: "conf-ocr-doc-1",
+      applicantId: "APL-MARIA",
+      documentType: "BANK_STATEMENTS_3M" as const,
+      uploadReference: "DOC-00000001",
+    };
+    const reading = await ocr.readDocument(req);
+    expect(reading).toMatchObject({ mode: "SIMULATED", employer: "Luzon Freight Services Inc." });
+    expect(reading.monthlyIncome?.toString()).toBe("78000.00");
+    expect(reading.statement?.recurringObligations.toString()).toBe("9000.00");
+    expect((await ocr.readDocument(req)).reference).toBe(reading.reference);
+    // No statement analysis for other documents; nothing read for an unknown applicant.
+    expect(
+      (await ocr.readDocument({ ...req, documentType: "INCOME_TAX_RETURN" })).statement,
+    ).toBeNull();
+    const unknown = await ocr.readDocument({ ...req, applicantId: "APL-NOBODY" });
+    expect(unknown).toMatchObject({ monthlyIncome: null, employer: null, statement: null });
+  });
+
+  it.each(["OUTAGE", "TIMEOUT", "MALFORMED"])(
+    "OCR in %s fails with ProviderUnavailableError for files and documents, never a wrong answer",
+    async (mode) => {
+      await setMode(h, "DOCUMENT_EXTRACTION", mode);
+      const ocr = h.app.get<DocumentExtraction>(DOCUMENT_EXTRACTION);
+      for (const call of [
+        () => ocr.extractBundle({ idempotencyKey: `f-ocr-${mode}`, source: "EMAIL_BUNDLE" }),
+        () =>
+          ocr.readDocument({
+            idempotencyKey: `f-ocr-doc-${mode}`,
+            applicantId: "APL-MARIA",
+            documentType: "CERTIFICATE_OF_EMPLOYMENT",
+            uploadReference: "DOC-1",
+          }),
+      ]) {
+        const err = await call().catch((e: unknown) => e);
+        expect(err).toBeInstanceOf(ProviderUnavailableError);
+        expect((err as ProviderUnavailableError).service).toBe("DOCUMENT_EXTRACTION");
+      }
+    },
+  );
+
   it("disbursement and e-signature are idempotent on the key", async () => {
     const pay = h.app.get<Disbursement>(DISBURSEMENT);
     const req = {
@@ -368,6 +438,7 @@ describe("simulation controls", () => {
       "CREDIT_BUREAU",
       "CUSTOMER_LOOKUP",
       "DISBURSEMENT",
+      "DOCUMENT_EXTRACTION",
       "DOCUMENT_INTAKE",
       "E_SIGNATURE",
       "FRAUD",

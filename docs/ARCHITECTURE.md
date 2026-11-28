@@ -8,8 +8,9 @@ The short reference for agents and reviewers. The longer narrative, with diagram
 ```
 packages/core        Money, domain enums and labels, the HTTP contract types, RFC 9457 shape
 packages/contracts   port interfaces: CreditBureau, KycAml, FraudCheck, CoreBanking,
-                     Disbursement, ESignature, DocumentIntake, CustomerLookup, SimulationControl (each with its
-                     Nest token)
+                     Disbursement, ESignature, DocumentIntake, CustomerLookup,
+                     DocumentExtraction (OCR and statement analysis), SimulationControl (each
+                     with its Nest token)
 packages/base        the lending domain — one Nest module (lending.module.ts):
                        auth/        test sign-in (scrypt), SessionGuard (global, fails closed)
                        cases/       capture, decision, review, approval, signing, booking,
@@ -28,6 +29,8 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        reports/     decision mix and origination funnel (read-only)
                        sla/         stage SLAs in Philippine business time, the holiday
                                     calendar and turnaround (read-only over the history)
+                       intake/      email and file intake (OCR drafts confirmed into case
+                                    drafts) and OCR readings of case documents
                        decisioning/engine/  pure, versioned decide()
                        database/    data source, migrations, transaction runner
                        seed/        synthetic staff, applicants, product
@@ -66,6 +69,13 @@ or a committee adds a real second aggregate.
 transaction runner), and its `reconciliation_run` table is an insert-only run log, not an
 aggregate of its own. `reports/` owns no state at all: it is read-only aggregate queries over
 the case, decision and activity tables. `sla/` is the same kind: read-only queries over the activity history, plus a holiday calendar that is reference data, not an aggregate. Folder dependencies stay one-way: `sla/` uses `cases/` (visibility) and `reports/` (period rules and readers), and nothing in `cases/` or `reports/` imports `sla/`; the turnaround report keeps its `/reports/turnaround` URL but its controller is declared in `sla/`.
+
+`intake/` stays inside too: an intake draft is confirmed into a case draft inside the same
+transaction (`CasesService.captureDraft`, INT-007 and the case's activity events), and an OCR
+reading of a case document is written under the case's row lock with a case event; both need
+the case repository, activity service and transaction runner. `intake_draft` is a small
+review queue that only ever feeds the case aggregate. Folder dependencies stay one-way:
+`intake/` uses `cases/` (and `audit/`), and nothing in `cases/` imports `intake/`.
 
 ## Ports and simulators
 

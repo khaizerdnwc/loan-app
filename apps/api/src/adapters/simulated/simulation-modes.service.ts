@@ -19,6 +19,7 @@ const LABELS: Record<ServiceName, string> = {
   FRAUD: "Fraud signals (simulated)",
   DOCUMENT_INTAKE: "Document upload (simulated)",
   CUSTOMER_LOOKUP: "Core customer lookup (simulated)",
+  DOCUMENT_EXTRACTION: "OCR and statement analysis (simulated)",
 };
 
 const UNIVERSAL: CoreMode[] = Object.values(SimulationMode);

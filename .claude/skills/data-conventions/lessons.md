@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role data`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [data-20261128-queue-filter-before-limit] paths: packages/base/src/**/*.repository.ts, packages/base/src/**/*.service.ts · shape: test-candidate · A queue's status filter goes in the SQL WHERE before take(); never filter in memory after a capped query. Check: every caller filtering a take()-limited result.
 - [data-20261128-updated-at-is-a-clock] paths: packages/base/src/cases/** · shape: test-candidate · updated_at is the draft-expiry and queue-age clock; a non-business save() (routing, flags) moves it. Check: such a write refuses an expired draft and keeps updated_at, or the clock has its own column.
 - [data-20261128-history-joins-the-record-it-acted-on] paths: packages/base/src/governance/**, packages/base/src/reports/** · shape: test-candidate · An event acting on a decision stores its decisionId; reports join on that, not the case pointer. Check: recommend, return, re-decide keeps old attribution.
 - [data-20261128-input-cache-keyed-on-provenance] paths: packages/base/src/providers/**, packages/base/src/cases/decision.service.ts · shape: test-candidate · A cache feeding a decision snapshot is keyed on what the record states about the source (provider mode). Check: a cached report from another mode is a miss.

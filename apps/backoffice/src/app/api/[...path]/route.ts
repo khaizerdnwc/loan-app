@@ -23,6 +23,7 @@ export const ALLOWED_ROOTS: ReadonlySet<string> = new Set([
   "sla",
   "providers",
   "models",
+  "intake",
 ]);
 
 /** How long the API may take before the browser is told it is not answering. */
