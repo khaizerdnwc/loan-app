@@ -117,7 +117,7 @@ export default function CasePage() {
           {c.decision ? (
             <DecisionPanel decision={c.decision} />
           ) : (
-            <Card title="Decision summary">
+            <Card region title="Decision summary">
               <p className="text-sm">
                 Not decided yet. The decision runs when the application is submitted.
               </p>
