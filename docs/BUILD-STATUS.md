@@ -72,9 +72,9 @@ commit passed the review loop. Blocked items carry the evidence.
   so the merge commit went in (merge commits are exempt from the commit lock). The data
   reviewer then judged the merge against that lesson: ✅, no change needed. The stamp check
   is now run on its own with its exit status checked.
-- 28 Nov ~10:26 — every lane and reviewer stopped at the 5-hour usage limit; the user
-  switched accounts and all lanes and the H8 reviewers were relaunched in their worktrees
-  per rule 11 (no lost work: staged diffs and the laneb-23-wip branch intact).
+- 28 Nov 11:20–14:45 — paused at the 5-hour usage limit (out of usage credits); resumed
+  after the account switch; all lanes and the H8 reviewers relaunched in their worktrees
+  per rule 11, no lost work (staged diffs and the laneb-23-wip branch intact).
 
 ## Blocked / waiting
 
