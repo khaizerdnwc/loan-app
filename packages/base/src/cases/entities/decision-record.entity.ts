@@ -8,7 +8,6 @@ import {
   JoinColumn,
   ManyToOne,
   PrimaryGeneratedColumn,
-  type Relation,
 } from "typeorm";
 import { moneyColumn } from "../../database/money.transformer";
 import type {
@@ -17,7 +16,6 @@ import type {
   RuleResult,
   ScoreContribution,
 } from "../../decisioning/engine";
-import { LoanCaseEntity } from "./loan-case.entity";
 
 /**
  * The automated decision, insert-only (ADR 0022 R3). The repository has no update or
@@ -40,10 +38,16 @@ export class DecisionRecordEntity {
   @Column({ name: "case_id", type: "uuid" })
   caseId!: string;
 
-  /** A decision belongs to an existing case; nothing cascades into it. */
-  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  /**
+   * A decision belongs to an existing case; nothing cascades into it. The target is named by
+   * string and the property typed structurally, not as LoanCaseEntity, so this file does not
+   * import loan-case.entity.ts, which imports this one for `LoanCaseEntity.decision`
+   * (no-circular in .dependency-cruiser.cjs counts type-only imports too). Declared only so the
+   * foreign key is part of the entity metadata (drift check); nothing loads it.
+   */
+  @ManyToOne("LoanCaseEntity", { onDelete: "NO ACTION" })
   @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_decision_record_case" })
-  loanCase?: Relation<LoanCaseEntity>;
+  loanCase?: { id: string };
 
   @Column({ type: "jsonb" })
   inputs!: DecisionInputs;
