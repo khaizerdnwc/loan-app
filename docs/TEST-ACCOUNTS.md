@@ -17,6 +17,7 @@ data is synthetic. A deployment holding anything real would need its own passwor
 | `joy` | Joy Dela Cruz | Loan officer | The same as Paolo: a second loan officer, so cases can be picked from the team queue and reassigned | Approve, sign, book | Work queue |
 | `rina` | Rina Aquino | Approver | Approve up to **₱1,000,000** for grades **A–C**; decline or return to the officer | Book; approve above her authority | Work queue (approvals within her authority) |
 | `ben` | Ben Castro | Approver | Approve up to **₱100,000** for grades **A–B** (shows the authority breach: Joel's ₱120,000 grade C case is refused and escalated) | Approve above ₱100,000 or grade C–E | Work queue |
+| `teo` | Teodoro Lim | Approver (head of credit) | Approval matrix level L3: up to **₱3,000,000** for grades **A–D**, including overrides, policy exceptions and related-party loans | Recommend, sign, book | Approvals |
 | `marco` | Marco Bautista | Loan operations (booking **maker**) | Record the simulated e-signature; submit a booking for a checker | Approve a booking | Work queue (signing and booking) |
 | `ella` | Ella Reyes | Loan operations supervisor (**checker**) | Approve or retry a booking another person submitted; also act as maker | Approve a booking she submitted herself | Work queue (bookings to check) |
 | `lito` | Lito Garcia | Loan operations supervisor (**checker**) | Same as Ella; the second checker for maker-checker demos | Approve a booking he submitted himself | Work queue |

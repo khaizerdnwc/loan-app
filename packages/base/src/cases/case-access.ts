@@ -1,16 +1,18 @@
 import {
   type ActionAvailability,
+  type ApprovalException,
   type CaseAction,
   CaseStatus,
   type DocumentType,
-  Money,
   ProblemCode,
   Recommendation,
   type RecommendationAvailability,
   Role,
 } from "@loan/core";
+import type { ApprovalLevelEntity } from "../auth/approval-level.entity";
 import type { SessionUser } from "../auth/session";
 import type { StaffEntity } from "../auth/staff.entity";
+import { authorityProblem, escalates } from "./approval-matrix";
 import { OPERATIONS_STAGES } from "./cases.repository";
 import { REQUESTABLE_TYPES } from "./documents";
 import type { BookingRequestEntity } from "./entities/booking.entities";
@@ -36,30 +38,6 @@ export function canView(user: SessionUser, c: LoanCaseEntity): boolean {
     default:
       return false;
   }
-}
-
-/**
- * Whether an approver's authority covers a case: the amount to approve is within their
- * limit AND the grade is one they may approve (ASSUMPTIONS "Approver authority"). Returns
- * the reason when it does not. Read from the staff table at decision time, never from the
- * session token.
- */
-export function authorityProblem(approver: StaffEntity, c: LoanCaseEntity): string | null {
-  const amount = c.recommendedAmount ?? c.requestedAmount;
-  const limit = approver.approvalLimit ?? Money.zero();
-  const grades = approver.approvalGrades ?? [];
-  const problems: string[] = [];
-  if (amount.greaterThan(limit)) {
-    problems.push(`₱${amount.toString()} is above your approval limit of ₱${limit.toString()}`);
-  }
-  if (!c.grade || !grades.includes(c.grade)) {
-    problems.push(
-      `grade ${c.grade ?? "none"} is outside the grades you may approve (${grades.join(", ") || "none"})`,
-    );
-  }
-  return problems.length
-    ? `${problems.join(", and ")}. Route it to an approver with higher authority.`
-    : null;
 }
 
 /**
@@ -157,6 +135,14 @@ export function allowedActions(
     request: null,
     recommend: null,
   },
+  /**
+   * The approval matrix (WF-004): the case's exception types and every level, so a refused
+   * APPROVE names the level to route it to.
+   */
+  matrix: { exceptions: ApprovalException[]; levels: ApprovalLevelEntity[] } = {
+    exceptions: [],
+    levels: [],
+  },
 ): ActionAvailability[] {
   const out: ActionAvailability[] = [];
   for (const action of ROLE_ACTIONS[user.role]) {
@@ -250,13 +236,19 @@ export function allowedActions(
         });
         continue;
       }
-      const problem = staff ? authorityProblem(staff, c) : "Your authority could not be read.";
+      const problem = staff
+        ? authorityProblem(staff, c, matrix.exceptions, matrix.levels)
+        : "Your authority could not be read.";
       if (problem) {
+        // Clickable (it escalates) only when the approver holds a level and another level of
+        // the matrix covers the case; otherwise approving leads nowhere: decline or return it.
+        const escalatable = escalates(staff ?? null, c, matrix.exceptions, matrix.levels);
         out.push({
           action,
           enabled: false,
           blockedBy: ProblemCode.AuthorityLimit,
           detail: problem,
+          ...(escalatable ? { escalates: true as const } : {}),
         });
         continue;
       }

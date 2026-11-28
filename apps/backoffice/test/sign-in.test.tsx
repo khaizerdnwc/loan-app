@@ -15,6 +15,7 @@ const RINA = {
   title: "Approver",
   approvalLimit: "1000000.00",
   approvalGrades: ["A", "B", "C"],
+  approvalLevel: { code: "L2", name: "Approver" },
 };
 
 afterEach(() => {

@@ -1,4 +1,5 @@
 import {
+  type ApprovalLevelView,
   type CaseDetail,
   type LoanOfficerView,
   Priority,
@@ -38,6 +39,27 @@ export class RoutingService {
     private readonly activity: ActivityService,
     private readonly cases: CasesService,
   ) {}
+
+  /**
+   * The approval matrix (PRD WF-004): every delegated level, lowest first, with its approvers.
+   * Read-only for every role; the levels change only through a migration in this release.
+   */
+  async approvalMatrix(): Promise<ApprovalLevelView[]> {
+    const levels = await this.staff.approvalLevels();
+    const approvers = await this.staff.withRole(Role.Approver);
+    return levels.map((l) => ({
+      code: l.code,
+      name: l.name,
+      productCode: l.productCode,
+      rank: l.rank,
+      maxAmount: l.maxAmount.toString(),
+      grades: l.grades,
+      exceptions: l.exceptions,
+      approvers: approvers
+        .filter((a) => a.approvalLevelCode === l.code)
+        .map((a) => ({ fullName: a.fullName })),
+    }));
+  }
 
   /** The loan officers a case can be handed to, with how many open cases each owns. */
   async loanOfficers(user: SessionUser): Promise<LoanOfficerView[]> {

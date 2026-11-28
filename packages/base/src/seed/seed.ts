@@ -18,8 +18,8 @@ interface StaffSeed {
   fullName: string;
   role: StaffEntity["role"];
   title: string;
-  approvalLimit: string | null;
-  approvalGrades: StaffEntity["approvalGrades"];
+  /** Approvers only: their level in the approval matrix (migration 1764300001002). */
+  approvalLevelCode: string | null;
 }
 
 /**
@@ -36,8 +36,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Paolo Tan",
     role: "LOAN_OFFICER",
     title: "Loan officer / credit analyst",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   // A second loan officer, so a case can be picked from the team queue and reassigned (WF-002).
   {
@@ -46,8 +45,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Joy Dela Cruz",
     role: "LOAN_OFFICER",
     title: "Loan officer / credit analyst",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   {
     id: "STF-RINA",
@@ -55,8 +53,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Rina Aquino",
     role: "APPROVER",
     title: "Approver · ₱1,000,000 · grades A–C",
-    approvalLimit: "1000000.00",
-    approvalGrades: ["A", "B", "C"],
+    approvalLevelCode: "L2",
   },
   {
     id: "STF-BEN",
@@ -64,8 +61,17 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Ben Castro",
     role: "APPROVER",
     title: "Approver · ₱100,000 · grades A–B",
-    approvalLimit: "100000.00",
-    approvalGrades: ["A", "B"],
+    approvalLevelCode: "L1",
+  },
+  // The head of credit: level L3 of the approval matrix (larger amounts, grade D, policy
+  // exceptions and related-party loans).
+  {
+    id: "STF-TEO",
+    username: "teo",
+    fullName: "Teodoro Lim",
+    role: "APPROVER",
+    title: "Head of credit",
+    approvalLevelCode: "L3",
   },
   {
     id: "STF-MARCO",
@@ -73,8 +79,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Marco Bautista",
     role: "LOAN_OPERATIONS",
     title: "Loan operations (booking maker)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   {
     id: "STF-ELLA",
@@ -82,8 +87,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Ella Reyes",
     role: "LOAN_OPERATIONS_SUPERVISOR",
     title: "Loan operations supervisor (checker)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   {
     id: "STF-LITO",
@@ -91,8 +95,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Lito Garcia",
     role: "LOAN_OPERATIONS_SUPERVISOR",
     title: "Loan operations supervisor (checker)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   {
     id: "STF-DIANE",
@@ -100,8 +103,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Diane Yu",
     role: "COMPLIANCE",
     title: "Compliance / audit (read-only)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   {
     id: "STF-LEO",
@@ -109,8 +111,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Leo Santiago",
     role: "ADMIN",
     title: "Administrator (simulation controls)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
   // The second administrator: an automation change needs one to draft it and another to approve.
   {
@@ -119,8 +120,7 @@ export const SEED_STAFF: StaffSeed[] = [
     fullName: "Celia Ortiz",
     role: "ADMIN",
     title: "Credit risk manager (administrator)",
-    approvalLimit: null,
-    approvalGrades: null,
+    approvalLevelCode: null,
   },
 ];
 
@@ -793,7 +793,6 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
       staff.push({
         ...s,
         passwordHash: await hashPassword(SEED_TEST_PASSWORD),
-        approvalLimit: s.approvalLimit ? Money.of(s.approvalLimit) : null,
       });
     }
     await m.getRepository(StaffEntity).upsert(staff, ["id"]);

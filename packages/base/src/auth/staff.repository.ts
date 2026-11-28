@@ -1,6 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import type { EntityManager, Repository } from "typeorm";
+import { ApprovalLevelEntity } from "./approval-level.entity";
 import { StaffEntity } from "./staff.entity";
 
 @Injectable()
@@ -18,6 +19,13 @@ export class StaffRepository {
 
   findById(id: string, manager?: EntityManager): Promise<StaffEntity | null> {
     return (manager?.getRepository(StaffEntity) ?? this.repo).findOne({ where: { id } });
+  }
+
+  /** The approval matrix's levels, lowest first (PRD WF-004). */
+  approvalLevels(manager?: EntityManager): Promise<ApprovalLevelEntity[]> {
+    return (manager ?? this.repo.manager)
+      .getRepository(ApprovalLevelEntity)
+      .find({ order: { rank: "ASC", code: "ASC" } });
   }
 
   /** Every staff member with this role, by name. */

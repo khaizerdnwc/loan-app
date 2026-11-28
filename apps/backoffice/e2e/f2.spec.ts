@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { act, caseHeader, dialog, history, openCase, submitApplication } from "./support";
+import { act, caseHeader, dialog, history, openCase, signIn, submitApplication } from "./support";
 
 /**
  * F2 — referred thin-file loan with a counter-offer, across roles (ACCEPTANCE F2-1..F2-6 and
@@ -49,7 +49,9 @@ test("F2 Joel is referred, countered with a reason, refused above Ben's authorit
   await expect(caseHeader(page)).toContainText("Awaiting approval");
 
   // F2-5: Rina (₱1,000,000, grades A–C) approves the counter-offer.
+  // AM-1: the case names the level of the approval matrix that may approve it.
   await openCase(page, "rina", path);
+  await expect(page.getByText(/Approval matrix: L2/)).toBeVisible();
   await act(page, "Approve");
   await expect(caseHeader(page)).toContainText("Offer");
   const approvedAmount = page.getByText("Approved amount", { exact: true }).locator("..");
@@ -72,4 +74,13 @@ test("F2 Joel is referred, countered with a reason, refused above Ben's authorit
   await expect(page.getByText(/Disbursed ₱120,000\.00/)).toBeVisible();
   await expect(history(page)).toContainText("Ben Castro");
   await expect(history(page)).toContainText("Rina Aquino");
+
+  // AM-1: the approval matrix screen lists its three levels.
+  await signIn(page, "rina");
+  await page.goto("/approval-matrix");
+  const matrix = page.getByRole("table", { name: "Approval matrix" });
+  await expect(matrix.locator("tbody tr")).toHaveCount(3);
+  for (const code of ["L1", "L2", "L3"]) {
+    await expect(matrix.getByText(code, { exact: true })).toBeVisible();
+  }
 });

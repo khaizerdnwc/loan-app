@@ -29,6 +29,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/simulation",
       "/automation",
       "/models",
+      "/approval-matrix",
     ]);
     expect(hrefs("COMPLIANCE")).toEqual([
       "/cases",
@@ -42,6 +43,7 @@ describe("where each role lands and what its sidebar offers", () => {
       "/simulation",
       "/automation",
       "/models",
+      "/approval-matrix",
     ]);
     expect(hrefs("LOAN_OFFICER")).not.toContain("/automation");
     expect(hrefs("LOAN_OFFICER")).not.toContain("/models");

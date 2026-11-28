@@ -1,6 +1,6 @@
-import { type Grade, type Money, Role } from "@loan/core";
-import { Column, Entity, PrimaryColumn, Unique } from "typeorm";
-import { moneyColumn } from "../database/money.transformer";
+import { Role } from "@loan/core";
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryColumn, Unique } from "typeorm";
+import { ApprovalLevelEntity } from "./approval-level.entity";
 
 /** A seeded staff member with a test sign-in (username + scrypt-hashed test password). */
 @Entity({ name: "staff" })
@@ -26,11 +26,12 @@ export class StaffEntity {
   @Column({ type: "varchar", length: 120 })
   title!: string;
 
-  /** Approvers only: the largest amount they may approve. */
-  @Column(moneyColumn({ name: "approval_limit", nullable: true }))
-  approvalLimit!: Money | null;
+  /** Approvers only: their delegated level in the approval matrix (PRD WF-004). */
+  @Column({ name: "approval_level", type: "varchar", length: 10, nullable: true })
+  approvalLevelCode!: string | null;
 
-  /** Approvers only: the risk grades they may approve. */
-  @Column({ name: "approval_grades", type: "varchar", array: true, nullable: true })
-  approvalGrades!: Grade[] | null;
+  /** The level itself, loaded with the staff member so every authority check can read it. */
+  @ManyToOne(() => ApprovalLevelEntity, { eager: true, nullable: true, onDelete: "NO ACTION" })
+  @JoinColumn({ name: "approval_level", foreignKeyConstraintName: "FK_staff_approval_level" })
+  approvalLevel!: ApprovalLevelEntity | null;
 }

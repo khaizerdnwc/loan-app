@@ -144,6 +144,24 @@ export const WITHDRAW_REASON_LABEL: Record<WithdrawReason, string> = {
   NOT_PROCEEDING: "Not proceeding (other)",
 };
 
+/**
+ * What makes an approval an exception that only some delegated levels may approve (PRD WF-004):
+ * an override of the automated outcome or terms, a policy exception (override reason OV05),
+ * or a loan to a related party (the decision's input).
+ */
+export const ApprovalException = {
+  Override: "OVERRIDE",
+  PolicyException: "POLICY_EXCEPTION",
+  RelatedParty: "RELATED_PARTY",
+} as const;
+export type ApprovalException = (typeof ApprovalException)[keyof typeof ApprovalException];
+
+export const APPROVAL_EXCEPTION_LABEL: Record<ApprovalException, string> = {
+  OVERRIDE: "Override of the automated decision",
+  POLICY_EXCEPTION: "Policy exception",
+  RELATED_PARTY: "Related-party loan",
+};
+
 /** Where an application came in. Staff capture at a branch is the only channel in this release. */
 export const Channel = { Branch: "BRANCH" } as const;
 export type Channel = (typeof Channel)[keyof typeof Channel];

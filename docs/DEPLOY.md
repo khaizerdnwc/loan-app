@@ -106,7 +106,26 @@ so the 1001 backfill (`owner_id = created_by` for drafts) gives the same result 
 unassigned in the team queue, including cases an approver returned before the upgrade (after
 it, a returned case goes back to the officer who recommended it). `migration:revert` undoes
 migrations in the order they were executed, not by timestamp, so on such a database the first
-reverts undo 1001 and then 1000.
+reverts undo 1001 and then 1000. 1764300001002 (approval matrix) can likewise apply after
+9000: it creates `approval_level` and changes only the `staff` approval columns, which 2000
+to 9000 neither create nor read (9000's foreign keys are on the case's child tables, not on
+`staff`), so the backfill gives the same levels in any order; the rehearsal below ran it after
+9000.
+
+1764300001002 (approval matrix) replaces each approver's own limit and grades with a level of
+the matrix, fail closed: the highest level contained in the old authority (its limit at most the
+old limit, its grades all among the old grades), otherwise none. An approver left with no level
+cannot approve until a level is assigned deliberately (by a release in this version: there is
+no screen for it yet); nobody gains authority. Rehearsed
+on lane A's test database at the prior head (1764300009000), with approvers in the old shape:
+₱100,000 / A–B became L1 and ₱1,000,000 / A–C L2 (Ben and Rina); ₱2,500,000 / A–D became L2
+(L3's ₱3,000,000 is not contained); ₱9,000,000 / A–E became L3, because L3 is contained in it
+(capped there, not widened); ₱500,000 / grade D only and ₱5,000,000 with no grades got no
+level; officers stay without one. Reverting and migrating again gave the same levels. L1
+approves no overrides, which the old per-person authority did not distinguish, so a junior
+approver who approved overrides before the upgrade no longer can. Its `down()` restores the
+columns from the level, so an approver comes back with their level's limit and grades (not the
+original), and one with no level comes back with none.
 
 Migration 1764300009000 adds foreign keys to the child tables and refuses TRUNCATE on the
 insert-only ones. It fails, naming the constraint and applying nothing, if a row points at a

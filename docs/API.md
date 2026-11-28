@@ -16,6 +16,8 @@ Proposed repayment (prototype approve dialog): `CaseDetail.proposedRepayment` is
 
 Indicative repayment (INT-004): `CaseDetail.indicativeRepayment` is the `IndicativeRepaymentView` for the requested terms while the case has no decision (a draft), else null. `CaseDetail.approved.regularInstalment` is null when core banking cannot quote it; the case still opens.
 
+Approval matrix (WF-004): an approver's authority is their level (`StaffView.approvalLevel`; `approvalLimit` and `approvalGrades` now come from it). `CaseDetail.approvalRoute` is, while the case is in APPROVAL, `{ exceptions, level }`: what makes it an exception and the lowest level that may approve it (null when none does).
+
 Routing (WF-002): `CaseSummary` (and so `CaseDetail`) carries `ownerId`, `ownerName` (null = unassigned in the team queue), `channel` (BRANCH, the one channel in this release), and `priority` (NORMAL or HIGH). A loan officer's `view=queue` can take `owner=me` or `owner=unassigned` and is ordered high priority first, then the longest waiting. Ownership routes work; it does not restrict which loan officer may act on a case. `ActionAvailability` for an enabled REQUEST_INFO also lists `documentTypes`, the types a request may ask for now.
 
 Documents (WF-007, DOC-003): `CaseDetail.infoRequest` is the latest request `{ documents, message, dueOn, requestedBy, requestedByName, requestedAt }` or null; `CaseDetail.documents` is the checklist, one `CaseDocumentView` per requested type `{ type, status: REQUESTED | RECEIVED | VERIFIED | REJECTED, requestedAt, upload (synthetic metadata, labelled SIMULATED) | null, review | null, actions }`, where `actions` lists what the caller may do with it now (SIMULATE_UPLOAD, VERIFY, REJECT). The due date is shown, not enforced.
@@ -45,6 +47,7 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /applicants | loan officer | `ApplicantView[]` |
 | POST | /applicants | loan officer | `NewApplicantRequest` → `ApplicantView` (201). A walk-in new to the bank (identity typed in), or an existing customer (`customerNumber`): identity, deposit account, relationship and verified income then come from simulated core, the body's income is kept as declared. 400 with field errors; 409 `DUPLICATE_APPLICATION` when the customer is already on file (unique index); 503 when core cannot answer for a `customerNumber` (nothing stored; a capture without one still works) |
 | GET | /customers/:customerNumber | loan officer | `CoreCustomerView` from simulated core banking's customer file (pre-fill, labelled `providerMode`), with `applicantId` when already on file. 404 unknown, 503 when core cannot answer |
+| GET | /approval-matrix | any signed-in | `ApprovalLevelView[]`: the delegated levels of the approval matrix, lowest first, with the approvers at each (WF-004) |
 | GET | /loan-officers | loan officer | `LoanOfficerView[]`: the loan officers with how many open cases each owns (for reassigning) |
 | POST | /cases/:id/pick | loan officer (REVIEW or INFO_REQUESTED, unassigned) | → `CaseDetail`, owned by the caller. 409 when someone owns it or it has left the loan officers |
 | POST | /cases/:id/reassign | loan officer (DRAFT, REVIEW, INFO_REQUESTED) | `ReassignRequest` `{ ownerId, reason }` → `CaseDetail`. 400 for no reason or a target who is not a loan officer; 409 for the current owner or outside those statuses |
@@ -151,7 +154,7 @@ refuses it now:
 
 | Action | Disabled when | blockedBy |
 |---|---|---|
-| APPROVE | amount above the approver's limit, or grade outside their grades | AUTHORITY_LIMIT_EXCEEDED |
+| APPROVE | the approver's level in the approval matrix does not cover the case: product, amount above its limit, grade outside its grades, or an exception (override, policy exception, related-party loan) it is not delegated; the detail names the lowest level that covers it | AUTHORITY_LIMIT_EXCEEDED |
 | APPROVE | the approver made the recommendation (defence in depth: one person holds one role today, so the role guard already refuses this) | MAKER_CHECKER_VIOLATION |
 | APPROVE | the recommendation is to decline (decline or return it instead) | INVALID_STATE_TRANSITION |
 | APPROVE | the case was decided while a provider could not answer (return it to be decided again) | INVALID_STATE_TRANSITION |
@@ -163,4 +166,6 @@ refuses it now:
 | APPROVE_BOOKING / RETRY_BOOKING | an AML escalation from screening before disbursement is open, or Compliance confirmed the match | COMPLIANCE_HOLD |
 
 A disabled APPROVE can still be posted: the API refuses it with that code and, for the
-authority case, flags the case as escalated (ACCEPTANCE R-6).
+authority case, flags the case as escalated (ACCEPTANCE R-6) when the approver holds a level
+and a level of the approval matrix covers the case (the action then carries `escalates: true`);
+otherwise nothing is written (AM-1).

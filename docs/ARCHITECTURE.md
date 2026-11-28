@@ -116,7 +116,7 @@ state change happens in one transaction with its activity event.
 | Signed in; role and name re-read from `staff` on every request | `SessionGuard` (global; no `@Roles`/`@Public` → 403) |
 | Role may call the endpoint | `@Roles` on every handler (lint rule) |
 | Case visible to the role (404 outside it) | `canView` (reads), `CasesRepository.list` (lists) |
-| Authority: amount and grade | `CasesService.approve`, read from `staff` in the transaction |
+| Authority: the approver's level in the approval matrix (product, amount, grade, exception) | `CasesService.approve` via `cases/approval-matrix.ts`, the level read with the `staff` row in the transaction |
 | Maker-checker | `CasesService.approve` (recommender ≠ approver), `BookingService.book` (maker ≠ checker) |
 | AML hold before disbursement | `ComplianceService.screenBeforeDisbursement`, inside the booking's locked transaction |
 | Audit trail | `ActivityService.record` → `AuditService.append` (same transaction); triggers refuse UPDATE, DELETE, TRUNCATE |

@@ -7,6 +7,7 @@ import { OneOpenApplication1764300000005 } from "./1764300000005-OneOpenApplicat
 import { WithdrawAndExpiry1764300000006 } from "./1764300000006-WithdrawAndExpiry";
 import { InfoRequestAndDocuments1764300001000 } from "./1764300001000-InfoRequestAndDocuments";
 import { RoutingAndWalkIns1764300001001 } from "./1764300001001-RoutingAndWalkIns";
+import { ApprovalMatrix1764300001002 } from "./1764300001002-ApprovalMatrix";
 import { AuditLogAndAmlEscalations1764300002000 } from "./1764300002000-AuditLogAndAmlEscalations";
 import { ReconciliationRuns1764300002001 } from "./1764300002001-ReconciliationRuns";
 import { BusinessHolidays1764300002002 } from "./1764300002002-BusinessHolidays";
@@ -31,6 +32,7 @@ export const MIGRATIONS = [
   WithdrawAndExpiry1764300000006,
   InfoRequestAndDocuments1764300001000,
   RoutingAndWalkIns1764300001001,
+  ApprovalMatrix1764300001002,
   AuditLogAndAmlEscalations1764300002000,
   ReconciliationRuns1764300002001,
   BusinessHolidays1764300002002,

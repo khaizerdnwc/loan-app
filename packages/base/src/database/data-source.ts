@@ -1,5 +1,6 @@
 import { DataSource, type DataSourceOptions } from "typeorm";
 import { AuditEventEntity } from "../audit/entities/audit-event.entity";
+import { ApprovalLevelEntity } from "../auth/approval-level.entity";
 import { StaffEntity } from "../auth/staff.entity";
 import {
   AutomationChangeEntity,
@@ -31,6 +32,7 @@ import { MIGRATIONS } from "./migrations";
 
 /** Every lending entity, listed explicitly (no glob: the same list works from src and dist). */
 export const ENTITIES = [
+  ApprovalLevelEntity,
   StaffEntity,
   ApplicantEntity,
   LoanCaseEntity,
