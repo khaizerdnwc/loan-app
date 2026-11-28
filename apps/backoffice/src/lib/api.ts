@@ -81,11 +81,20 @@ export function errorMessage(error: unknown): string {
 
 /**
  * The API's field errors (RFC 9457 `errors[]`) keyed by field, so a form can show each one
- * next to its input. Empty for any other error.
+ * next to its input. Empty for any other error. A message that starts with its own field's name
+ * (the validator's convention the problem filter reads the field from, e.g. "employmentMonths
+ * Enter the months…") is shown without it when what follows is a sentence (capitalised); a
+ * validator phrase ("amount must be a decimal string…") keeps its subject.
  */
 export function fieldErrorsOf(error: unknown): Record<string, string> {
   if (!(error instanceof ApiError)) return {};
   const out: Record<string, string> = {};
-  for (const e of error.fieldErrors) if (!(e.field in out)) out[e.field] = e.message;
+  for (const e of error.fieldErrors) {
+    if (e.field in out) continue;
+    const rest = e.message.startsWith(`${e.field} `) ? e.message.slice(e.field.length + 1) : "";
+    // Only an officer sentence after the token ("Enter the months…") is shown on its own; a
+    // validator phrase ("must be a decimal string…") needs its subject and stays whole.
+    out[e.field] = /^\p{Lu}/u.test(rest) ? rest : e.message;
+  }
   return out;
 }

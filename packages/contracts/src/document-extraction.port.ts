@@ -12,6 +12,12 @@ export interface BundleExtractionRequest {
   /** One key per upload: a retry after a timeout reads the same file into the same rows. */
   idempotencyKey: string;
   source: IntakeSource;
+  /**
+   * Simulated upload only: which synthetic file the officer chose (a key of
+   * `INTAKE_SAMPLE_FILES`); the source's first file when left out. A real provider receives the
+   * file itself.
+   */
+  sampleFile?: string;
 }
 
 export interface ExtractedRow {

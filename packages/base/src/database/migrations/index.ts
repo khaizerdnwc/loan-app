@@ -16,6 +16,7 @@ import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAn
 import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
 import { ExternalDecisionEngine1764300003002 } from "./1764300003002-ExternalDecisionEngine";
 import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtraction";
+import { IntakeCapturedApplicant1764300004001 } from "./1764300004001-IntakeCapturedApplicant";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
 
 /**
@@ -43,5 +44,6 @@ export const MIGRATIONS = [
   ProviderResilienceAndEstimates1764300003001,
   ExternalDecisionEngine1764300003002,
   IntakeAndExtraction1764300004000,
+  IntakeCapturedApplicant1764300004001,
   ForeignKeysAndTruncateGuards1764300009000,
 ];

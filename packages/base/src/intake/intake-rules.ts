@@ -4,11 +4,13 @@ import {
   DocumentStatus,
   type DocumentType,
   ExtractionFlag,
+  type FieldError,
   type IntakeDraftAction,
   IntakeDraftStatus,
   Money,
   Role,
 } from "@loan/core";
+import { termErrors } from "../cases/product";
 import { CURRENT_RULE_SET, ruleSet } from "../decisioning/engine";
 
 /**
@@ -49,16 +51,22 @@ export interface ExtractedRowFacts {
   documentMonthlyIncome: Money | null;
 }
 
-/** What a person must look at in an extracted row, given whether a customer matched it. */
+/** What a person must look at in an extracted row, given how many customers on record match it. */
 export function rowFlags(
   row: ExtractedRowFacts,
-  matched: boolean,
+  match: "none" | "one" | "many",
   tolerance: string,
 ): ExtractionFlag[] {
   const flags: ExtractionFlag[] = [];
   if (!row.governmentIdLast4) flags.push(ExtractionFlag.GovernmentIdMissing);
-  if (row.amount === null || row.tenorMonths === null) flags.push(ExtractionFlag.TermsMissing);
-  if (row.governmentIdLast4 && !matched) flags.push(ExtractionFlag.NoCustomerMatch);
+  if (row.amount === null || row.tenorMonths === null) {
+    flags.push(ExtractionFlag.TermsMissing);
+  } else if (termErrors(row.amount, row.tenorMonths).length > 0) {
+    // The officer corrects the terms on review; the product limits are checked again on confirm.
+    flags.push(ExtractionFlag.TermsOutsideProduct);
+  }
+  if (row.governmentIdLast4 && match === "none") flags.push(ExtractionFlag.NoCustomerMatch);
+  if (row.governmentIdLast4 && match === "many") flags.push(ExtractionFlag.SeveralCustomersMatch);
   if (
     row.declaredMonthlyIncome &&
     row.documentMonthlyIncome &&
@@ -111,9 +119,41 @@ export function documentFlags(
   return flags;
 }
 
+/**
+ * The ID digits a confirm uses: the ones OCR read, which the officer cannot change; the officer's
+ * only when the file had none. Different digits from OCR's are a field error, null when neither
+ * has any (the caller asks for them).
+ */
+export function idDigits(
+  read: string | null,
+  typed: string | null,
+): { digits: string | null; error: FieldError | null } {
+  if (read !== null) {
+    if (typed !== null && typed !== read) {
+      return {
+        digits: null,
+        error: {
+          field: "governmentIdLast4",
+          message:
+            "OCR read the government ID from the file, and its digits cannot be changed here. If the file is wrong, discard the draft.",
+        },
+      };
+    }
+    return { digits: read, error: null };
+  }
+  return { digits: typed, error: null };
+}
+
 /** What the signed-in role may do with an intake draft now. */
-export function draftActions(role: Role, status: IntakeDraftStatus): IntakeDraftAction[] {
+export function draftActions(
+  role: Role,
+  status: IntakeDraftStatus,
+  flags: readonly ExtractionFlag[] = [],
+): IntakeDraftAction[] {
   if (role !== Role.LoanOfficer || status !== IntakeDraftStatus.PendingReview) return [];
+  // Several customer records match: it cannot be confirmed to one of them (the API refuses it
+  // too); the officer can only discard it.
+  if (flags.includes(ExtractionFlag.SeveralCustomersMatch)) return ["DISCARD"];
   return ["CONFIRM", "DISCARD"];
 }
 

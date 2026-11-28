@@ -3,6 +3,7 @@ import {
   documentFlags,
   draftActions,
   extractRefusal,
+  idDigits,
   incomeMismatch,
   mismatchTolerance,
   normaliseName,
@@ -82,21 +83,55 @@ describe("intake draft rules (INT-1, INT-4, PRD INT-010)", () => {
   };
 
   it("flags a missing ID, missing terms, no customer match and a payslip that disagrees", () => {
-    expect(rowFlags(complete, true, "0.15")).toEqual([]);
-    expect(rowFlags({ ...complete, governmentIdLast4: null }, false, "0.15")).toEqual([
+    expect(rowFlags(complete, "one", "0.15")).toEqual([]);
+    expect(rowFlags({ ...complete, governmentIdLast4: null }, "none", "0.15")).toEqual([
       "GOVERNMENT_ID_MISSING",
     ]);
-    expect(rowFlags({ ...complete, tenorMonths: null }, true, "0.15")).toEqual(["TERMS_MISSING"]);
-    expect(rowFlags(complete, false, "0.15")).toEqual(["NO_CUSTOMER_MATCH"]);
-    expect(rowFlags({ ...complete, documentMonthlyIncome: m("25000.00") }, true, "0.15")).toEqual([
+    expect(rowFlags({ ...complete, tenorMonths: null }, "one", "0.15")).toEqual(["TERMS_MISSING"]);
+    expect(rowFlags(complete, "none", "0.15")).toEqual(["NO_CUSTOMER_MATCH"]);
+    expect(rowFlags({ ...complete, documentMonthlyIncome: m("25000.00") }, "one", "0.15")).toEqual([
       "INCOME_MISMATCH",
     ]);
+  });
+
+  it("INT-9 flags terms outside the product (₱20,000–₱500,000, 6–36 months), exactly at the edges", () => {
+    const at = (amount: string, tenorMonths: number) =>
+      rowFlags({ ...complete, amount: m(amount), tenorMonths }, "one", "0.15");
+    expect(at("20000.00", 6)).toEqual([]);
+    expect(at("500000.00", 36)).toEqual([]);
+    expect(at("19999.99", 12)).toEqual(["TERMS_OUTSIDE_PRODUCT"]);
+    expect(at("500000.01", 12)).toEqual(["TERMS_OUTSIDE_PRODUCT"]);
+    expect(at("50000.00", 37)).toEqual(["TERMS_OUTSIDE_PRODUCT"]);
+    expect(at("50000.00", 5)).toEqual(["TERMS_OUTSIDE_PRODUCT"]);
+  });
+
+  it("flags several customers matching apart from none (never read as not on record)", () => {
+    expect(rowFlags(complete, "many", "0.15")).toEqual(["SEVERAL_CUSTOMERS_MATCH"]);
+  });
+
+  it("keeps the ID digits OCR read: the officer's digits only fill a gap, different ones are a field error", () => {
+    expect(idDigits("4417", null)).toEqual({ digits: "4417", error: null });
+    expect(idDigits("4417", "4417")).toEqual({ digits: "4417", error: null });
+    expect(idDigits("4417", "9999")).toMatchObject({
+      digits: null,
+      error: { field: "governmentIdLast4" },
+    });
+    expect(idDigits(null, "6619")).toEqual({ digits: "6619", error: null });
+    expect(idDigits(null, null)).toEqual({ digits: null, error: null });
   });
 
   it("offers confirm and discard only to the loan officer, only while the draft waits", () => {
     expect(draftActions("LOAN_OFFICER", "PENDING_REVIEW")).toEqual(["CONFIRM", "DISCARD"]);
     expect(draftActions("LOAN_OFFICER", "CONFIRMED")).toEqual([]);
     expect(draftActions("COMPLIANCE", "PENDING_REVIEW")).toEqual([]);
+    // Several customer records match: discard only (the API refuses a confirm with 409).
+    expect(draftActions("LOAN_OFFICER", "PENDING_REVIEW", ["SEVERAL_CUSTOMERS_MATCH"])).toEqual([
+      "DISCARD",
+    ]);
+    expect(draftActions("LOAN_OFFICER", "PENDING_REVIEW", ["NO_CUSTOMER_MATCH"])).toEqual([
+      "CONFIRM",
+      "DISCARD",
+    ]);
   });
 });
 

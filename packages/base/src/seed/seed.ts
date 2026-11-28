@@ -758,6 +758,23 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     screening: CLEAR,
     documents: { salaryCredit: "54800.00" },
   },
+  // The second email bundle's applicant (intake batch 2): on record with the income she
+  // declares, ₱52,000; the payslip in her bundle shows ₱41,000, so OCR flags the draft.
+  {
+    id: "APL-LORNA-ABAD",
+    fullName: "Lorna Abad",
+    birthDate: "1986-03-18",
+    governmentIdLast4: "2950",
+    employer: "Quezon City Medical Center",
+    employmentMonths: 72,
+    relationshipMonths: 30,
+    monthlyIncome: "52000.00",
+    monthlyObligations: "8000.00",
+    depositAccount: "WB-SAV-0412-2950",
+    bureau: GOOD_BUREAU,
+    screening: CLEAR,
+    documents: { salaryCredit: "41000.00" },
+  },
 ];
 
 /**

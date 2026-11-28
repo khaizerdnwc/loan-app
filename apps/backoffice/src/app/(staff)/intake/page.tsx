@@ -3,6 +3,7 @@
 import {
   EXTRACTION_FLAG_LABEL,
   INTAKE_DRAFT_STATUS_LABEL,
+  INTAKE_SAMPLE_FILES,
   type IntakeDraftStatus,
   type IntakeDraftView,
   type IntakeSource,
@@ -15,11 +16,13 @@ import {
   Card,
   type Column,
   ConfirmDialog,
+  Field,
   formatNumber,
   formatPeso,
   Pill,
   ROW_LINK,
   SegmentedFilter,
+  Select,
   SimulatedLabel,
   Table,
   type Tone,
@@ -45,7 +48,7 @@ const UPLOAD: Record<IntakeSource, { button: string; title: string; file: string
   PARTNER_SPREADSHEET: {
     button: "Upload partner spreadsheet",
     title: "Upload the partner spreadsheet?",
-    file: "a payroll partner's spreadsheet of salary loan requests (Cordillera Foods HR)",
+    file: "a payroll partner's spreadsheet of loan requests",
   },
   EMAIL_BUNDLE: {
     button: "Upload email bundle",
@@ -80,7 +83,13 @@ function Intake() {
   const setView = (next: "pending" | "all") =>
     router.replace(next === "all" ? "/intake?view=all" : "/intake", { scroll: false });
   const list = useApi<IntakeDraftView[]>("/intake/drafts?view=all");
-  const [uploading, setUploading] = useState<IntakeSource | null>(null);
+  const [uploading, setUploadingSource] = useState<IntakeSource | null>(null);
+  const [sampleFile, setSampleFile] = useState("");
+  // Opening the dialog for a source preselects its first synthetic file.
+  const setUploading = (source: IntakeSource | null) => {
+    setUploadingSource(source);
+    setSampleFile(INTAKE_SAMPLE_FILES.find((f) => f.source === source)?.key ?? "");
+  };
   const [busy, setBusy] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [lastUpload, setLastUpload] = useState<IntakeUploadView | null>(null);
@@ -96,7 +105,7 @@ function Intake() {
     try {
       const done = await api<IntakeUploadView>("/intake/uploads", {
         method: "POST",
-        body: { source: uploading },
+        body: { source: uploading, sampleFile },
       });
       setLastUpload(done);
       setUploading(null);
@@ -165,13 +174,18 @@ function Intake() {
       header: "Status",
       render: (d) =>
         d.case ? (
-          <Link
-            {...ROW_LINK}
-            href={`/cases/${d.case.id}`}
-            className="font-mono text-xs underline-offset-2 hover:underline"
-          >
-            {d.case.reference}
-          </Link>
+          <div>
+            <Link
+              {...ROW_LINK}
+              href={`/cases/${d.case.id}`}
+              className="font-mono text-xs underline-offset-2 hover:underline"
+            >
+              {d.case.reference}
+            </Link>
+            {d.applicantCaptured && (
+              <p className="text-xs text-mist-500">Customer captured from the draft</p>
+            )}
+          </div>
         ) : (
           <Pill tone={STATUS_TONE[d.status]}>{INTAKE_DRAFT_STATUS_LABEL[d.status]}</Pill>
         ),
@@ -180,7 +194,7 @@ function Intake() {
       key: "action",
       header: "Action",
       render: (d) =>
-        d.actions.includes("CONFIRM") ? (
+        d.actions.length > 0 ? (
           <Button
             size="sm"
             variant="secondary"
@@ -267,7 +281,17 @@ function Intake() {
             setUploading(null);
             setUploadError(null);
           }}
-        />
+        >
+          <Field label="Synthetic file">
+            <Select value={sampleFile} onChange={(e) => setSampleFile(e.target.value)}>
+              {INTAKE_SAMPLE_FILES.filter((f) => f.source === uploading).map((f) => (
+                <option key={f.key} value={f.key}>
+                  {f.label}
+                </option>
+              ))}
+            </Select>
+          </Field>
+        </ConfirmDialog>
       )}
       {reviewing && (
         <ReviewDraftDialog

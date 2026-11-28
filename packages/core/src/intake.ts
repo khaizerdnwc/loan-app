@@ -38,7 +38,9 @@ export const INTAKE_DRAFT_STATUS_LABEL: Record<IntakeDraftStatus, string> = {
 export const ExtractionFlag = {
   GovernmentIdMissing: "GOVERNMENT_ID_MISSING",
   TermsMissing: "TERMS_MISSING",
+  TermsOutsideProduct: "TERMS_OUTSIDE_PRODUCT",
   NoCustomerMatch: "NO_CUSTOMER_MATCH",
+  SeveralCustomersMatch: "SEVERAL_CUSTOMERS_MATCH",
   IncomeMismatch: "INCOME_MISMATCH",
   EmployerMismatch: "EMPLOYER_MISMATCH",
   ObligationsHigher: "OBLIGATIONS_HIGHER",
@@ -48,7 +50,9 @@ export type ExtractionFlag = (typeof ExtractionFlag)[keyof typeof ExtractionFlag
 export const EXTRACTION_FLAG_LABEL: Record<ExtractionFlag, string> = {
   GOVERNMENT_ID_MISSING: "Government ID number missing",
   TERMS_MISSING: "Amount or tenor missing",
+  TERMS_OUTSIDE_PRODUCT: "Amount or tenor outside the product",
   NO_CUSTOMER_MATCH: "No customer record matches",
+  SEVERAL_CUSTOMERS_MATCH: "Several customer records match",
   INCOME_MISMATCH: "Income differs from the declared figure",
   EMPLOYER_MISMATCH: "Employer differs from the application",
   OBLIGATIONS_HIGHER: "Recurring obligations above those on record",
@@ -89,13 +93,48 @@ export interface IntakeDraftView {
   uploadedAt: string;
   /** The case draft created from it, once confirmed. */
   case: { id: string; reference: string } | null;
+  /** The applicant was captured from this draft when it was confirmed (no customer matched). */
+  applicantCaptured: boolean;
   review: { byName: string; at: string; discardReason: string | null } | null;
   /** What the signed-in user may do with it now. */
   actions: IntakeDraftAction[];
 }
 
+/**
+ * The synthetic files the simulated upload can "receive" (no real file exists): each source has
+ * a default file and may have others. The simulator holds what OCR reads from each.
+ */
+export const INTAKE_SAMPLE_FILES: readonly {
+  key: string;
+  source: IntakeSource;
+  label: string;
+}[] = [
+  {
+    key: "CORDILLERA_FOODS",
+    source: "PARTNER_SPREADSHEET",
+    label: "Cordillera Foods HR – salary loan requests (3 rows)",
+  },
+  {
+    key: "MAKATI_LOGISTICS",
+    source: "PARTNER_SPREADSHEET",
+    label: "Makati Logistics HR – loan requests (2 rows, people not on record)",
+  },
+  {
+    key: "VILLAMOR",
+    source: "EMAIL_BUNDLE",
+    label: "Application form, government ID and payslip (Grace Villamor)",
+  },
+  {
+    key: "ABAD",
+    source: "EMAIL_BUNDLE",
+    label: "Application form, government ID and payslip (Lorna Abad)",
+  },
+];
+
 export interface IntakeUploadRequest {
   source: IntakeSource;
+  /** Which synthetic file (INTAKE_SAMPLE_FILES); the source's first file when left out. */
+  sampleFile?: string;
 }
 
 export interface IntakeUploadView {
@@ -115,6 +154,20 @@ export interface ConfirmIntakeDraftRequest {
   tenorMonths: number;
   purpose: string;
   governmentIdLast4?: string;
+  /**
+   * When no customer on record matches the draft: capture them as an applicant in the same step,
+   * with what the file does not carry. Name, birth date, ID, employer and declared income come
+   * from the draft; with a customer number, identity and account come from core banking and
+   * must be the draft's person.
+   */
+  newCustomer?: NewCustomerFromDraft;
+}
+
+export interface NewCustomerFromDraft {
+  /** Required: the API answers a field error when it is left out (a blank is never 0). */
+  employmentMonths?: number;
+  monthlyObligations: string;
+  customerNumber?: string;
 }
 
 export interface DiscardIntakeDraftRequest {

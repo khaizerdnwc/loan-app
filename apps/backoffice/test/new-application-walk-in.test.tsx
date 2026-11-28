@@ -81,6 +81,52 @@ const renderPage = () =>
 const applicantSelect = () => screen.getByLabelText("Applicant", { selector: "select" });
 
 describe("New application: a newly captured applicant is selected (WI-1)", () => {
+  it("a blank months-with-employer field is sent as nothing, never 0, and the API's officer wording shows under it without the field token", async () => {
+    const posted: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
+        if (url === "/api/applicants" && init?.method === "POST") {
+          posted.push(JSON.parse(String(init.body)));
+          return json(
+            {
+              type: "about:blank",
+              title: "Bad Request",
+              status: 400,
+              code: "VALIDATION_FAILED",
+              detail: "Check the highlighted fields.",
+              errors: [
+                {
+                  field: "employmentMonths",
+                  message:
+                    "employmentMonths Enter the months with the employer as a whole number, 0 to 600.",
+                },
+              ],
+            },
+            400,
+          );
+        }
+        return json([MARIA]);
+      }),
+    );
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "New or walk-in customer" }));
+    const dialog = screen.getByRole("dialog");
+    await userEvent.click(within(dialog).getByRole("button", { name: "New to the bank" }));
+    await userEvent.type(within(dialog).getByLabelText("Full name"), "Rogelio Santiago");
+    await userEvent.type(within(dialog).getByLabelText("Birth date"), "1990-02-03");
+    await userEvent.type(within(dialog).getByLabelText(/Government ID/), "1234");
+    await userEvent.type(within(dialog).getByLabelText("Employer"), "Synthetic Co.");
+    await userEvent.type(within(dialog).getByLabelText(/income/i), "30000");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Add applicant" }));
+    expect(
+      await within(dialog).findByText(
+        "Enter the months with the employer as a whole number, 0 to 600.",
+      ),
+    ).toBeVisible();
+    expect(posted[0]).not.toHaveProperty("employmentMonths");
+  });
+
   it("selects the applicant just added from core, by id and by name", async () => {
     vi.stubGlobal("fetch", serveApi([MARIA], CELESTE));
     renderPage();

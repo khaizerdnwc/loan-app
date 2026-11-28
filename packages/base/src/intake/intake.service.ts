@@ -7,15 +7,19 @@ import {
   type ProviderUnavailableError,
 } from "@loan/contracts";
 import {
+  Channel,
   type ConfirmIntakeDraftRequest,
   type DiscardIntakeDraftRequest,
   type FieldError,
+  INTAKE_SAMPLE_FILES,
   INTAKE_SOURCE_LABEL,
   IntakeDraftStatus,
   type IntakeDraftView,
   IntakeSource,
   type IntakeUploadView,
   Money,
+  type NewApplicantRequest,
+  type NewCustomerFromDraft,
   ProblemCode,
   Role,
 } from "@loan/core";
@@ -23,6 +27,7 @@ import { Inject, Injectable } from "@nestjs/common";
 import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
 import { ActivityService } from "../cases/activity.service";
+import { ApplicantsService, CUSTOMER_NUMBER_INDEX } from "../cases/applicants.service";
 import { CasesRepository } from "../cases/cases.repository";
 import { CasesService, duplicateApplication, OPEN_APPLICATION_INDEX } from "../cases/cases.service";
 import {
@@ -33,11 +38,12 @@ import {
   notFound,
   validation,
 } from "../cases/domain-error";
+import type { ApplicantEntity } from "../cases/entities/applicant.entity";
 import { PERSONAL_LOAN, termErrors } from "../cases/product";
 import { TransactionRunner } from "../database/transaction-runner";
 import type { IntakeDraftEntity } from "./intake.entities";
 import { IntakeRepository } from "./intake.repository";
-import { draftActions, mismatchTolerance, rowFlags } from "./intake-rules";
+import { draftActions, idDigits, mismatchTolerance, normaliseName, rowFlags } from "./intake-rules";
 
 /** The partial unique index that keeps one pending draft per file row (migration 1764300004000). */
 export const PENDING_ROW_INDEX = "UQ_intake_draft_pending_row";
@@ -64,6 +70,7 @@ export class IntakeService {
     private readonly casesRepo: CasesRepository,
     private readonly activity: ActivityService,
     private readonly audit: AuditService,
+    private readonly applicants: ApplicantsService,
     @Inject(DOCUMENT_EXTRACTION) private readonly ocr: DocumentExtraction,
   ) {}
 
@@ -88,11 +95,23 @@ export class IntakeService {
    * new key; the duplicate check runs inside it (and the partial unique index holds it under
    * a race), so the same file is never waiting for review twice.
    */
-  async upload(user: SessionUser, source: IntakeSource): Promise<IntakeUploadView> {
+  async upload(
+    user: SessionUser,
+    source: IntakeSource,
+    sampleFile?: string,
+  ): Promise<IntakeUploadView> {
     this.officerOnly(user);
+    if (
+      sampleFile !== undefined &&
+      !INTAKE_SAMPLE_FILES.some((f) => f.key === sampleFile && f.source === source)
+    ) {
+      throw validation("Choose one of the synthetic files for this source.", [
+        { field: "sampleFile", message: "Choose one of the synthetic files for this source." },
+      ]);
+    }
     let bundle: ExtractedBundle;
     try {
-      bundle = await this.ocr.extractBundle({ idempotencyKey: randomUUID(), source });
+      bundle = await this.ocr.extractBundle({ idempotencyKey: randomUUID(), source, sampleFile });
     } catch (err) {
       if (!isProviderUnavailable(err)) throw err;
       throw new DomainError(
@@ -127,7 +146,7 @@ export class IntakeService {
                   },
                   m,
                 )
-              : null;
+              : ({ kind: "none" } as const);
           const d = this.repo.newDraft(m);
           Object.assign(d, {
             batchId: batch.id,
@@ -143,8 +162,8 @@ export class IntakeService {
             amount: row.amount,
             tenorMonths: row.tenorMonths,
             purpose: row.purpose,
-            matchedApplicantId: match?.id ?? null,
-            flags: rowFlags(row, match !== null, tolerance),
+            matchedApplicantId: match.kind === "one" ? match.applicant.id : null,
+            flags: rowFlags(row, match.kind, tolerance),
             providerMode: bundle.mode,
             status: IntakeDraftStatus.PendingReview,
             caseId: null,
@@ -209,6 +228,11 @@ export class IntakeService {
     }
     if (errors.length || !amount) throw validation("Check the highlighted fields.", errors);
 
+    // A customer to capture from the draft is built before the transaction: building may ask
+    // core banking (no provider call inside a transaction). Under the lock the draft is matched
+    // again first, so a customer captured meanwhile is used rather than captured twice.
+    const toCapture = body.newCustomer ? await this.customerFromDraft(id, typedId, body) : null;
+
     let applicantName = "";
     let applicantId: string | null = null;
     await this.tx
@@ -218,7 +242,10 @@ export class IntakeService {
         if (draft.status !== IntakeDraftStatus.PendingReview) {
           throw invalidState("This draft has already been reviewed. Reload the list.");
         }
-        const last4 = typedId ?? draft.governmentIdLast4;
+        // Checked again under the lock: OCR's digits stand; the officer's only fill a gap.
+        const ids = idDigits(draft.governmentIdLast4, typedId);
+        if (ids.error) throw validation("Check the government ID.", [ids.error]);
+        const last4 = ids.digits;
         if (!last4) {
           throw validation("Complete the government ID.", [
             {
@@ -227,28 +254,63 @@ export class IntakeService {
             },
           ]);
         }
-        const applicant =
-          draft.fullName && draft.birthDate
-            ? await this.repo.matchApplicant(
-                { fullName: draft.fullName, birthDate: draft.birthDate, governmentIdLast4: last4 },
-                m,
-              )
-            : null;
-        if (!applicant) {
-          throw validation("No customer record matches this draft.", [
+        if (!draft.fullName || !draft.birthDate) {
+          throw validation("The file has no name or birth date for this row.", [
             {
-              field: "governmentIdLast4",
-              message: `No customer on record matches ${draft.fullName ?? "this name"} with this birth date and an ID ending ${last4}. Capture the customer first (New application, New or walk-in customer) with this name, birth date and ID, then confirm the draft again.`,
+              field: "newCustomer",
+              message:
+                "OCR could not read the name or birth date, so no customer can be matched or captured: discard the draft and capture the application by hand.",
             },
           ]);
         }
+        const identity = {
+          fullName: draft.fullName,
+          birthDate: draft.birthDate,
+          governmentIdLast4: last4,
+        };
+        // One capture per identity at a time, then match again: a customer captured meanwhile
+        // (by hand, or by another draft for the same person) is used, never captured twice.
+        await this.repo.lockIdentity(m, identity);
+        const match = await this.repo.matchApplicant(identity, m);
+        if (match.kind === "many") throw severalMatch();
+        let applicant = match.kind === "one" ? match.applicant : null;
+        if (!applicant && toCapture) {
+          if (!sameIdentity(toCapture, identity)) {
+            throw invalidState("The draft changed meanwhile. Reload the list.");
+          }
+          await this.applicants.insertApplicant(m, user, toCapture);
+          applicant = toCapture;
+        }
+        if (!applicant) {
+          throw validation(
+            "No customer record matches this draft.",
+            typedId !== null
+              ? [
+                  {
+                    field: "governmentIdLast4",
+                    message:
+                      "No customer on record has this name, birth date and ID ending. Check the last 4 digits; if they are right, capture the customer with New or walk-in customer.",
+                  },
+                ]
+              : [
+                  {
+                    field: "newCustomer",
+                    message:
+                      "No customer on record matches this draft. Capture them from it: enter their months with the employer and monthly obligations (and their core customer number if they already bank with WhiteBank).",
+                  },
+                ],
+          );
+        }
+        const captured = applicant === toCapture;
         applicantName = applicant.fullName;
         applicantId = applicant.id;
-        const c = await this.cases.captureDraft(m, user, applicant, {
-          amount,
-          tenorMonths: body.tenorMonths,
-          purpose,
-        });
+        const c = await this.cases.captureDraft(
+          m,
+          user,
+          applicant,
+          { amount, tenorMonths: body.tenorMonths, purpose },
+          Channel.FileIntake,
+        );
         const before = {
           amount: draft.amount?.toString() ?? null,
           tenorMonths: draft.tenorMonths,
@@ -264,6 +326,7 @@ export class IntakeService {
         draft.status = IntakeDraftStatus.Confirmed;
         draft.caseId = c.id;
         draft.matchedApplicantId = applicant.id;
+        draft.applicantCaptured = captured;
         draft.reviewedBy = user.id;
         draft.reviewedAt = new Date();
         await this.repo.saveDraft(m, draft);
@@ -277,6 +340,7 @@ export class IntakeService {
             batchReference: draft.batch?.reference ?? null,
             sourceDetail: draft.sourceDetail,
             flags: draft.flags,
+            applicantCaptured: captured,
             before,
             after,
           },
@@ -290,13 +354,92 @@ export class IntakeService {
         });
       })
       .catch(async (err: unknown) => {
-        // A capture for the same applicant committed meanwhile: the INT-007 index refused this
-        // one. Mapped after the transaction rolled back, so the lookup holds no second connection.
+        // Both mapped after the transaction rolled back, so the lookup holds no second connection.
+        // The core customer was captured as an applicant meanwhile (one per core customer).
+        if (toCapture && isUniqueViolation(err, CUSTOMER_NUMBER_INDEX)) {
+          throw await this.applicants.alreadyOnFile(toCapture);
+        }
+        // A capture for the same applicant committed meanwhile: the INT-007 index refused this one.
         if (!isUniqueViolation(err, OPEN_APPLICATION_INDEX) || !applicantId) throw err;
         const open = await this.casesRepo.findOpenCase(applicantId, PERSONAL_LOAN.code);
         throw duplicateApplication(applicantName, open?.reference ?? "another case");
       });
     return this.get(user, id);
+  }
+
+  /**
+   * The applicant to capture from a draft no customer matches: the draft's name, birth date, ID
+   * (the officer's digits when the file had none), employer and declared income, with what the
+   * officer adds. With a core customer number, core supplies identity, account and verified
+   * income, and it must be the draft's person. Built before the transaction (it may call core);
+   * validated, never written here. Null when a customer on record already matches the draft.
+   */
+  private async customerFromDraft(
+    id: string,
+    typedId: string | null,
+    body: ConfirmIntakeDraftRequest,
+  ): Promise<ApplicantEntity | null> {
+    const extra = body.newCustomer as NewCustomerFromDraft;
+    const draft = await this.repo.findDraft(id);
+    if (!draft) throw notFound("intake draft");
+    if (draft.status !== IntakeDraftStatus.PendingReview) {
+      throw invalidState("This draft has already been reviewed. Reload the list.");
+    }
+    // Before any core call: OCR's digits stand; the officer's only fill a gap.
+    const ids = idDigits(draft.governmentIdLast4, typedId);
+    if (ids.error) throw validation("Check the government ID.", [ids.error]);
+    const last4 = ids.digits;
+    if (!draft.fullName || !draft.birthDate || !last4) return null;
+    const identity = {
+      fullName: draft.fullName,
+      birthDate: draft.birthDate,
+      governmentIdLast4: last4,
+    };
+    const match = await this.repo.matchApplicant(identity);
+    if (match.kind === "many") throw severalMatch();
+    if (match.kind === "one") return null;
+    if (!draft.employer || !draft.declaredMonthlyIncome) {
+      throw validation("The file is missing what a new customer needs.", [
+        {
+          field: "newCustomer",
+          message:
+            "The file has no employer or declared income, so the customer cannot be captured from it: capture them with New or walk-in customer instead.",
+        },
+      ]);
+    }
+    const request: NewApplicantRequest = {
+      ...(extra.customerNumber?.trim() ? { customerNumber: extra.customerNumber.trim() } : {}),
+      ...identity,
+      employer: draft.employer,
+      employmentMonths: extra.employmentMonths,
+      monthlyIncome: draft.declaredMonthlyIncome.toString(),
+      monthlyObligations: extra.monthlyObligations,
+    };
+    let a: ApplicantEntity;
+    try {
+      a = await this.applicants.buildApplicant(request);
+    } catch (err) {
+      // Its field errors name the new customer's own fields, as the dialog shows them.
+      if (err instanceof DomainError && err.errors) {
+        throw new DomainError(
+          err.status,
+          err.code,
+          err.detail,
+          err.errors.map((e) => ({ ...e, field: NEW_CUSTOMER_FIELD[e.field] ?? e.field })),
+        );
+      }
+      throw err;
+    }
+    if (!sameIdentity(a, identity)) {
+      throw validation("That core customer is not the person in this draft.", [
+        {
+          field: "newCustomer.customerNumber",
+          message:
+            "Core banking's customer with this number has another name, birth date or ID than the draft. Check the number, or leave it empty for a customer new to the bank.",
+        },
+      ]);
+    }
+    return a;
   }
 
   async discard(
@@ -371,6 +514,7 @@ export class IntakeService {
       uploadedByName: staff.get(d.batch?.uploadedBy ?? "") ?? "",
       uploadedAt: (d.batch?.uploadedAt ?? new Date(0)).toISOString(),
       case: d.caseId ? { id: d.caseId, reference: refs.get(d.caseId) ?? "" } : null,
+      applicantCaptured: d.applicantCaptured,
       review:
         d.reviewedBy && d.reviewedAt
           ? {
@@ -379,7 +523,7 @@ export class IntakeService {
               discardReason: d.discardReason,
             }
           : null,
-      actions: draftActions(user.role, d.status),
+      actions: draftActions(user.role, d.status, d.flags),
     }));
   }
 
@@ -411,6 +555,33 @@ function withoutId<T extends { governmentIdLast4: string | null }>(
 ): Omit<T, "governmentIdLast4"> {
   const { governmentIdLast4: _id, ...rest } = terms;
   return rest;
+}
+
+/** The walk-in capture's fields the officer types on the draft, named as the request names them. */
+const NEW_CUSTOMER_FIELD: Record<string, string> = {
+  employmentMonths: "newCustomer.employmentMonths",
+  monthlyObligations: "newCustomer.monthlyObligations",
+  customerNumber: "newCustomer.customerNumber",
+};
+
+/** The same person: name (as compared everywhere in intake), birth date and ID ending. */
+function sameIdentity(
+  a: { fullName: string; birthDate: string; governmentIdLast4: string },
+  b: { fullName: string; birthDate: string; governmentIdLast4: string },
+): boolean {
+  return (
+    normaliseName(a.fullName) === normaliseName(b.fullName) &&
+    a.birthDate === b.birthDate &&
+    a.governmentIdLast4 === b.governmentIdLast4
+  );
+}
+
+function severalMatch(): DomainError {
+  return new DomainError(
+    409,
+    ProblemCode.Conflict,
+    "Several customer records match this draft's name, birth date and ID ending, so it cannot be confirmed. Nothing was recorded: discard the draft and start the application from the right customer under New application.",
+  );
 }
 
 function alreadyWaiting(fileName: string, count: number): DomainError {

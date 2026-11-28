@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role data`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [data-20261128-capture-only-on-no-match] paths: packages/base/src/intake/**, packages/base/src/cases/applicants.service.ts · shape: test-candidate · "Capture if no match" tells none from ambiguous; 2+ matches refuse, never insert another. Check: 3-way match result; a test with two identical records.
 - [data-20261128-queue-filter-before-limit] paths: packages/base/src/**/*.repository.ts, packages/base/src/**/*.service.ts · shape: test-candidate · A queue's status filter goes in the SQL WHERE before take(); never filter in memory after a capped query. Check: every caller filtering a take()-limited result.
 - [data-20261128-updated-at-is-a-clock] paths: packages/base/src/cases/** · shape: test-candidate · updated_at is the draft-expiry and queue-age clock; a non-business save() (routing, flags) moves it. Check: such a write refuses an expired draft and keeps updated_at, or the clock has its own column.
 - [data-20261128-outage-refer-survives-override] paths: packages/base/src/decisioning/engine/** · shape: test-candidate · A step that lets another answer replace the engine's outcome still refers when any input provider was unavailable. Check: each outage × replacing DECLINE gives REFER.

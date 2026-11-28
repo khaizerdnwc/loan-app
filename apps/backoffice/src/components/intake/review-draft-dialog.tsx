@@ -25,6 +25,13 @@ import { ApiError, api, errorMessage, fieldErrorsOf } from "@/lib/api";
 /** Refusals that mean the draft moved on since the list was loaded. */
 const STALE = new Set<string>([ProblemCode.InvalidTransition, ProblemCode.NotFound]);
 
+/** The new-customer inputs this dialog renders for a draft no customer matches. */
+const NEW_CUSTOMER_FIELDS = [
+  "newCustomer.employmentMonths",
+  "newCustomer.monthlyObligations",
+  "newCustomer.customerNumber",
+];
+
 /** What OCR could not read from the file (it is a field of the synthetic file, not a provider outage). */
 const NOT_READ = "Not in the file";
 
@@ -52,14 +59,23 @@ export function ReviewDraftDialog({
   const [tenor, setTenor] = useState(x.tenorMonths === null ? "" : String(x.tenorMonths));
   const [purpose, setPurpose] = useState(x.purpose ?? "");
   const [govId, setGovId] = useState("");
-  const [discarding, setDiscarding] = useState(false);
+  const [employmentMonths, setEmploymentMonths] = useState("");
+  const [obligations, setObligations] = useState("");
+  const [customerNumber, setCustomerNumber] = useState("");
+  // A draft the API will not let be confirmed opens straight in discard mode.
+  const [discarding, setDiscarding] = useState(!draft.actions.includes("CONFIRM"));
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fields, setFields] = useState<Record<string, string>>({});
   const name = x.fullName ?? "Unnamed applicant";
   const noMatch = draft.flags.includes("NO_CUSTOMER_MATCH");
-  const otherFlags = draft.flags.filter((f) => f !== "NO_CUSTOMER_MATCH");
+  // The API lists what it accepts: a draft several customer records match offers discard only.
+  const canConfirm = draft.actions.includes("CONFIRM");
+  const severalMatch = draft.flags.includes("SEVERAL_CUSTOMERS_MATCH");
+  const otherFlags = draft.flags.filter(
+    (f) => f !== "NO_CUSTOMER_MATCH" && f !== "SEVERAL_CUSTOMERS_MATCH",
+  );
   // The fields this dialog renders an input for, now; any other field error goes in the callout.
   const shown = discarding
     ? ["reason"]
@@ -68,6 +84,7 @@ export function ReviewDraftDialog({
         "tenorMonths",
         "purpose",
         ...(x.governmentIdLast4 === null ? ["governmentIdLast4"] : []),
+        ...(noMatch ? NEW_CUSTOMER_FIELDS : []),
       ];
   const unplaced = Object.entries(fields)
     .filter(([field]) => !shown.includes(field))
@@ -97,6 +114,18 @@ export function ReviewDraftDialog({
       tenorMonths: Number(tenor),
       purpose,
       ...(x.governmentIdLast4 === null && govId.trim() ? { governmentIdLast4: govId.trim() } : {}),
+      // No customer on record matches: capture them from the draft in the same step.
+      ...(noMatch
+        ? {
+            newCustomer: {
+              // Blank is not 0 months: leave it out, and the API asks for it.
+              employmentMonths:
+                employmentMonths.trim() === "" ? undefined : Number(employmentMonths),
+              monthlyObligations: obligations.trim(),
+              ...(customerNumber.trim() ? { customerNumber: customerNumber.trim() } : {}),
+            },
+          }
+        : {}),
     };
     void run(
       () => api<IntakeDraftView>(`/intake/drafts/${draft.id}/confirm`, { method: "POST", body }),
@@ -121,9 +150,15 @@ export function ReviewDraftDialog({
 
   const footer = discarding ? (
     <>
-      <Button variant="secondary" onClick={() => setDiscarding(false)} disabled={busy}>
-        Back
-      </Button>
+      {canConfirm ? (
+        <Button variant="secondary" onClick={() => setDiscarding(false)} disabled={busy}>
+          Back
+        </Button>
+      ) : (
+        <Button variant="secondary" onClick={onClose} disabled={busy}>
+          Cancel
+        </Button>
+      )}
       <Button variant="danger" onClick={discard} busy={busy}>
         Discard draft
       </Button>
@@ -136,9 +171,11 @@ export function ReviewDraftDialog({
       <Button variant="danger" onClick={() => setDiscarding(true)} disabled={busy}>
         Discard…
       </Button>
-      <Button variant="primary" onClick={confirm} busy={busy}>
-        Create application draft
-      </Button>
+      {canConfirm && (
+        <Button variant="primary" onClick={confirm} busy={busy}>
+          {noMatch ? "Capture customer and create draft" : "Create application draft"}
+        </Button>
+      )}
     </>
   );
 
@@ -146,7 +183,11 @@ export function ReviewDraftDialog({
     <Modal
       open
       title={`Review draft · ${name}`}
-      description={`Extracted by OCR (simulated) from ${draft.sourceDetail} in "${draft.fileName}". Check the values and complete anything missing. Creating the draft does not submit it: record the applicant's consent and submit it from the case.`}
+      description={
+        canConfirm
+          ? `Extracted by OCR (simulated) from ${draft.sourceDetail} in "${draft.fileName}". Check the values and complete anything missing. Creating the draft does not submit it: record the applicant's consent and submit it from the case.`
+          : `Extracted by OCR (simulated) from ${draft.sourceDetail} in "${draft.fileName}". This draft cannot be confirmed, so it can only be discarded, with the reason it is not taken forward.`
+      }
       onClose={onClose}
       busy={busy}
       footer={footer}
@@ -171,14 +212,23 @@ export function ReviewDraftDialog({
               : []),
             {
               label: "Customer on record",
-              value: draft.matchedApplicant?.fullName ?? "No match yet",
+              value:
+                draft.matchedApplicant?.fullName ??
+                (severalMatch ? "Several records match" : "No match yet"),
             },
           ]}
         />
+        {severalMatch && (
+          <Callout tone="warn" lead="Several customer records match this draft.">
+            It cannot be confirmed while several records have this name, birth date and ID. Discard
+            it, then start the application from the right customer under New application.
+          </Callout>
+        )}
         {noMatch && (
           <Callout tone="warn" lead="No customer on record matches this draft.">
-            Capture the customer first: in New application, choose New or walk-in customer and enter
-            the name, birth date and ID shown here. Then come back and create the draft.
+            Creating the draft also captures them as a new applicant from the file's name, birth
+            date, ID, employer and declared income. Add what the file does not carry below; give
+            their core customer number only if they already bank with WhiteBank.
           </Callout>
         )}
         {otherFlags.length > 0 && (
@@ -211,6 +261,42 @@ export function ReviewDraftDialog({
             <Field label="Purpose" error={fields.purpose}>
               <Input value={purpose} onChange={(e) => setPurpose(e.target.value)} />
             </Field>
+            {noMatch && (
+              <>
+                <FormGrid>
+                  <Field
+                    label="Months with employer"
+                    error={fields["newCustomer.employmentMonths"]}
+                  >
+                    <Input
+                      inputMode="numeric"
+                      value={employmentMonths}
+                      onChange={(e) => setEmploymentMonths(e.target.value)}
+                    />
+                  </Field>
+                  <Field
+                    label="Monthly obligations (pesos)"
+                    error={fields["newCustomer.monthlyObligations"]}
+                  >
+                    <Input
+                      inputMode="decimal"
+                      value={obligations}
+                      onChange={(e) => setObligations(e.target.value)}
+                    />
+                  </Field>
+                </FormGrid>
+                <Field
+                  label="Core customer number (optional)"
+                  hint="Only for an existing WhiteBank customer: core banking then supplies their identity and account (simulated)."
+                  error={fields["newCustomer.customerNumber"]}
+                >
+                  <Input
+                    value={customerNumber}
+                    onChange={(e) => setCustomerNumber(e.target.value)}
+                  />
+                </Field>
+              </>
+            )}
             {x.governmentIdLast4 === null && (
               <Field
                 label="Government ID, last 4 digits"

@@ -16,6 +16,19 @@ without keys. `NotificationRepository.pending()` silently skips a delivery whose
 missing, and that row then stays PENDING at the head of the oldest-first `take(50)`. Nearest
 deterministic gate: an integration assertion over `information_schema.columns` (every `case_id`
 uuid column in `public` has a `pg_constraint` FK), not a named list.
+## data-20261128-capture-only-on-no-match
+
+A path that creates a record when a lookup finds none (capture the applicant when no customer
+matches) must tell "no match" from "more than one match", and refuse the second. Why: a
+matcher that returns null for ambiguity makes the capture path insert yet another duplicate,
+after which the identity is still ambiguous, so every later file for that person adds one
+more. There is no unique key on a walk-in's identity to stop it. Nearest deterministic
+alternative: a test that seeds two applicants with the same name, birth date and ID ending
+and asserts the confirm is refused with the applicant count unchanged.
+
+- 2026-11-28 — Lane D batch 2 (intake capture). `IntakeRepository.matchApplicant` returns
+  null unless exactly one candidate matches. `IntakeService.customerFromDraft` and confirm
+  treat that null as "not on record" and insert a new applicant. Found by the data reviewer.
 
 ## data-20261128-queue-filter-before-limit
 

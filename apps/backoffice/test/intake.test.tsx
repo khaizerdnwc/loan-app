@@ -62,6 +62,7 @@ function draft(patch: Partial<IntakeDraftView> & { name: string }): IntakeDraftV
     uploadedByName: "Paolo Tan",
     uploadedAt: "2026-11-28T01:00:00.000Z",
     case: null,
+    applicantCaptured: false,
     review: null,
     actions: ["CONFIRM", "DISCARD"],
     ...rest,
@@ -125,7 +126,10 @@ describe("Email and file intake screen (INT-5, PRD INT-010)", () => {
   it("uploads only after a dialog that says the file and OCR are simulated, then shows what was extracted", async () => {
     const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input).endsWith("/intake/uploads")) {
-        expect(JSON.parse(String(init?.body))).toEqual({ source: "PARTNER_SPREADSHEET" });
+        expect(JSON.parse(String(init?.body))).toEqual({
+          source: "PARTNER_SPREADSHEET",
+          sampleFile: "MAKATI_LOGISTICS",
+        });
         return json(
           {
             reference: "OCR-B-1A2B3C4D",
@@ -148,6 +152,18 @@ describe("Email and file intake screen (INT-5, PRD INT-010)", () => {
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent("Uploads are simulated");
     expect(dialog).toHaveTextContent("No file is stored and no application is created");
+    // The source's synthetic files, its first one chosen (INT-9).
+    const file = within(dialog).getByLabelText("Synthetic file");
+    expect(
+      within(file)
+        .getAllByRole("option")
+        .map((o) => o.textContent),
+    ).toEqual([
+      "Cordillera Foods HR – salary loan requests (3 rows)",
+      "Makati Logistics HR – loan requests (2 rows, people not on record)",
+    ]);
+    expect(file).toHaveValue("CORDILLERA_FOODS");
+    await userEvent.selectOptions(file, "MAKATI_LOGISTICS");
     await userEvent.click(
       within(dialog).getByRole("button", { name: "Upload partner spreadsheet" }),
     );
@@ -235,13 +251,91 @@ describe("Email and file intake screen (INT-5, PRD INT-010)", () => {
     await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/cases/case-5"));
   });
 
-  it("a draft no customer matches says to capture the customer first, and a field error with no input in the dialog is shown in its callout", async () => {
+  it("INT-6 a draft no customer matches captures the customer from it: the dialog asks for what the file lacks, posts it, and places each field error (one with no input in the callout)", async () => {
     const stranger = draft({
       name: "Marites Dela Paz",
       id: "d-stranger",
       matchedApplicant: null,
       flags: ["NO_CUSTOMER_MATCH"],
     });
+    const push = vi.spyOn(router, "push");
+    const bodies: unknown[] = [];
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+        if (!String(input).endsWith("/confirm")) return json([stranger]);
+        bodies.push(JSON.parse(String(init?.body)));
+        if (bodies.length === 1) {
+          return json(
+            {
+              type: "about:blank",
+              title: "Bad Request",
+              status: 400,
+              code: "VALIDATION_FAILED",
+              detail: "Check the highlighted fields.",
+              errors: [
+                {
+                  field: "newCustomer.employmentMonths",
+                  message:
+                    "newCustomer.employmentMonths Enter the months with the employer as a whole number, 0 to 600.",
+                },
+                { field: "newCustomer", message: "Core banking's customer file is the other." },
+              ],
+            },
+            400,
+          );
+        }
+        return json({
+          ...stranger,
+          status: "CONFIRMED",
+          applicantCaptured: true,
+          case: { id: "case-7", reference: "APP-1007" },
+        });
+      }),
+    );
+    page();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Review draft: Marites Dela Paz" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    // Up front: what creating the draft will also do.
+    expect(dialog).toHaveTextContent("No customer on record matches this draft.");
+    expect(dialog).toHaveTextContent("also captures them as a new applicant");
+    expect(within(dialog).queryByLabelText(/Government ID, last 4 digits/)).toBeNull();
+    // Blank months are left out, never sent as 0; obligations given.
+    await userEvent.type(within(dialog).getByLabelText("Monthly obligations (pesos)"), "4000.00");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Capture customer and create draft" }),
+    );
+    // The validator's field token is not shown: the officer reads the sentence.
+    expect(
+      await within(dialog).findByText(
+        "Enter the months with the employer as a whole number, 0 to 600.",
+      ),
+    ).toBeVisible();
+    expect(bodies[0]).toEqual({
+      amount: "50000.00",
+      tenorMonths: 12,
+      purpose: "Tuition",
+      newCustomer: { monthlyObligations: "4000.00" },
+    });
+    const alert = within(dialog).getByText("Check the highlighted fields.");
+    expect(alert.parentElement).toHaveTextContent("Core banking's customer file is the other.");
+    await userEvent.type(within(dialog).getByLabelText("Months with employer"), "30");
+    await userEvent.type(within(dialog).getByLabelText(/Core customer number/), "CIF-1");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Capture customer and create draft" }),
+    );
+    await vi.waitFor(() => expect(push).toHaveBeenCalledWith("/cases/case-7"));
+    expect(bodies[1]).toEqual({
+      amount: "50000.00",
+      tenorMonths: 12,
+      purpose: "Tuition",
+      newCustomer: { employmentMonths: 30, monthlyObligations: "4000.00", customerNumber: "CIF-1" },
+    });
+  });
+
+  it("INT-7 a draft missing the ID: the typed digits match no one, and the refusal under the ID field says to check them or capture the customer by hand", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn(async (input: RequestInfo | URL) =>
@@ -257,30 +351,114 @@ describe("Email and file intake screen (INT-5, PRD INT-010)", () => {
                   {
                     field: "governmentIdLast4",
                     message:
-                      "Capture the customer first (New application, New or walk-in customer), then confirm the draft again.",
+                      "No customer on record has this name, birth date and ID ending. Check the last 4 digits; if they are right, capture the customer with New or walk-in customer.",
                   },
                 ],
               },
               400,
             )
-          : json([stranger]),
+          : json([elmer]),
       ),
     );
     page();
     await userEvent.click(
-      await screen.findByRole("button", { name: "Review draft: Marites Dela Paz" }),
+      await screen.findByRole("button", { name: "Review draft: Elmer Santos" }),
     );
     const dialog = screen.getByRole("dialog");
-    // Up front, before any refusal: the next step, naming the walk-in capture.
-    expect(dialog).toHaveTextContent("No customer on record matches this draft.");
-    expect(dialog).toHaveTextContent("choose New or walk-in customer");
-    // The ID was read, so there is no ID input for the API's field error to sit under.
-    expect(within(dialog).queryByLabelText(/Government ID, last 4 digits/)).toBeNull();
+    // Not a no-match draft: no new-customer inputs, the usual button.
+    expect(within(dialog).queryByLabelText("Months with employer")).toBeNull();
+    await userEvent.type(within(dialog).getByLabelText(/Government ID, last 4 digits/), "1111");
     await userEvent.click(within(dialog).getByRole("button", { name: "Create application draft" }));
-    const alert = await within(dialog).findByText(/No customer record matches this draft\./);
-    expect(alert.closest("[role=alert]") ?? alert.parentElement).toHaveTextContent(
-      "Capture the customer first (New application, New or walk-in customer)",
+    const id = within(dialog).getByLabelText(/Government ID, last 4 digits/);
+    expect(
+      await within(dialog).findByText(
+        /Check the last 4 digits; if they are right, capture the customer with New or walk-in customer\./,
+      ),
+    ).toBeVisible();
+    expect(id).toHaveAccessibleDescription(/Check the last 4 digits/);
+  });
+
+  it("INT-7 a draft several customer records match offers only Discard, saying what to do instead", async () => {
+    const several = draft({
+      name: "Lorna Abad",
+      id: "d-several",
+      matchedApplicant: null,
+      flags: ["SEVERAL_CUSTOMERS_MATCH"],
+      actions: ["DISCARD"],
+    });
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json([several])),
     );
+    page();
+    await userEvent.click(await screen.findByRole("button", { name: "Review draft: Lorna Abad" }));
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent("Several customer records match this draft.");
+    expect(dialog).toHaveTextContent(
+      "Discard it, then start the application from the right customer under New application.",
+    );
+    expect(
+      within(dialog).queryByRole("button", { name: /create draft|Create application draft/ }),
+    ).toBeNull();
+    expect(within(dialog).queryByLabelText("Amount (pesos)")).toBeNull();
+    // Straight in discard mode, with a description that fits, and the right facts.
+    expect(dialog).toHaveTextContent("This draft cannot be confirmed, so it can only be discarded");
+    expect(dialog).toHaveTextContent("Several records match");
+    expect(dialog).not.toHaveTextContent("No match yet");
+    expect(within(dialog).getByLabelText(/Why is this draft not taken forward/)).toBeVisible();
+    expect(within(dialog).getByRole("button", { name: "Cancel" })).toBeEnabled();
+    expect(within(dialog).getByRole("button", { name: "Discard draft" })).toBeEnabled();
+    expect(within(dialog).queryByRole("button", { name: "Discard…" })).toBeNull();
+  });
+
+  it("a decimal field error the API words for officers shows under its field without the field token", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (input: RequestInfo | URL) =>
+        String(input).endsWith("/confirm")
+          ? json(
+              {
+                type: "about:blank",
+                title: "Bad Request",
+                status: 400,
+                code: "VALIDATION_FAILED",
+                detail: "Check the highlighted fields.",
+                errors: [
+                  {
+                    field: "amount",
+                    message: "amount Enter the amount in pesos, with at most 2 decimals.",
+                  },
+                ],
+              },
+              400,
+            )
+          : json([ramil]),
+      ),
+    );
+    page();
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Review draft: Ramil Ocampo" }),
+    );
+    const dialog = screen.getByRole("dialog");
+    const amount = within(dialog).getByLabelText("Amount (pesos)");
+    await userEvent.clear(amount);
+    await userEvent.type(amount, "50000.123");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Create application draft" }));
+    expect(
+      await within(dialog).findByText("Enter the amount in pesos, with at most 2 decimals."),
+    ).toBeVisible();
+    expect(amount).toHaveAccessibleDescription(/Enter the amount in pesos/);
+    expect(dialog).not.toHaveTextContent("amount Enter");
+  });
+
+  it("INT-6 a confirmed draft whose customer was captured from it says so under its case", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => json([{ ...confirmed, applicantCaptured: true }])),
+    );
+    url.search = "?view=all";
+    page();
+    expect(await screen.findByText("Customer captured from the draft")).toBeVisible();
   });
 
   it("discarding asks for a reason before calling the API", async () => {

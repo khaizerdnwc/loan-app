@@ -55,6 +55,44 @@ describe("problem bodies with missing parts", () => {
   });
 });
 
+describe("fieldErrorsOf — the leading field token (INT-7, WI-1)", () => {
+  it("drops the token before an officer sentence, keeps a validator phrase whole", () => {
+    const e = toApiError(400, {
+      type: "about:blank",
+      title: "Bad Request",
+      status: 400,
+      code: "VALIDATION_FAILED",
+      detail: "Check the highlighted fields.",
+      errors: [
+        {
+          field: "employmentMonths",
+          message:
+            "employmentMonths Enter the months with the employer as a whole number, 0 to 600.",
+        },
+        {
+          field: "newCustomer.employmentMonths",
+          message:
+            "newCustomer.employmentMonths Enter the months with the employer as a whole number, 0 to 600.",
+        },
+        { field: "amount", message: "amount Enter the amount in pesos, with at most 2 decimals." },
+        { field: "tenorMonths", message: "tenorMonths must not be greater than 600" },
+        { field: "purpose", message: "Enter the purpose of the loan." },
+        { field: "reason", message: "reasonable text without the token" },
+      ],
+    });
+    expect(fieldErrorsOf(e)).toEqual({
+      employmentMonths: "Enter the months with the employer as a whole number, 0 to 600.",
+      "newCustomer.employmentMonths":
+        "Enter the months with the employer as a whole number, 0 to 600.",
+      amount: "Enter the amount in pesos, with at most 2 decimals.",
+      // A validator phrase keeps its subject (a DTO not yet worded for officers).
+      tenorMonths: "tenorMonths must not be greater than 600",
+      purpose: "Enter the purpose of the loan.",
+      reason: "reasonable text without the token",
+    });
+  });
+});
+
 describe("api()", () => {
   it("calls /api with JSON and returns the parsed body", async () => {
     const fetchMock = vi.fn(
