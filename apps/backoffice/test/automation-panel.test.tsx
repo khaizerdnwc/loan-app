@@ -14,6 +14,7 @@ const view = (patch: Partial<AutomationView>): AutomationView => ({
   killSwitch: false,
   killSwitchSetByName: null,
   killSwitchSetAt: null,
+  externalEngine: "NONE",
   updatedAt: "2026-11-28T01:00:00.000Z",
   pendingChange: null,
   allowedActions: [
@@ -72,6 +73,8 @@ describe("AutomationPanel (AU-1, AU-3)", () => {
           kind: "SET_MODE",
           requestedMode: "OFF",
           fromMode: "LIVE",
+          requestedExternalEngine: null,
+          fromExternalEngine: "NONE",
           reason: "Incident",
           status: "PENDING",
           requestedBy: "STF-LEO",
@@ -140,6 +143,8 @@ describe("AutomationPanel (AU-1, AU-3)", () => {
       kind: "SET_MODE" as const,
       requestedMode: "OFF" as const,
       fromMode: "LIVE" as const,
+      requestedExternalEngine: null,
+      fromExternalEngine: "NONE" as const,
       reason: "Incident",
       status: "PENDING" as const,
       requestedBy: "STF-LEO",
@@ -207,6 +212,88 @@ describe("AutomationPanel (AU-1, AU-3)", () => {
     await vi.waitFor(() => expect(onChanged).toHaveBeenCalledWith([fresh]));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(screen.getByRole("alert")).toHaveTextContent("already shadow mode");
+  });
+
+  it("EX-2: shows the external engine's role (simulated) and drafts a role change with a reason", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([view({})]), { status: 201 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const onChanged = vi.fn();
+    renderPanel(
+      [
+        view({
+          allowedActions: [
+            { action: "REQUEST_MODE_CHANGE", enabled: true },
+            { action: "REQUEST_EXTERNAL_ENGINE_CHANGE", enabled: true },
+          ],
+        }),
+      ],
+      onChanged,
+    );
+    expect(
+      screen.getByText("External decision engine", { selector: "dt" }).parentElement,
+    ).toHaveTextContent(/Not used.*Client decision engine \(simulated\)/);
+
+    const draft = screen.getByRole("button", { name: "Draft engine change…" });
+    expect(draft).toBeDisabled();
+    expect(screen.getByText("The built-in engine decides alone.")).toBeInTheDocument();
+    await userEvent.selectOptions(
+      screen.getByLabelText("External decision engine for Personal loan"),
+      "ALONGSIDE",
+    );
+    // The effect of the role chosen, before the dialog opens.
+    expect(
+      screen.getByText(/^If changed: The client's decision engine is asked as well/),
+    ).toBeInTheDocument();
+    await userEvent.click(draft);
+    const dialog = screen.getByRole("dialog");
+    expect(dialog).toHaveTextContent(/disagrees with the built-in engine/);
+    expect(dialog).toHaveTextContent(/never declined for that/);
+    await userEvent.type(screen.getByLabelText("Reason"), "Client engine pilot");
+    await userEvent.click(screen.getByRole("button", { name: "Draft change" }));
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled());
+    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    expect(url).toBe("/api/automation/PL/changes");
+    expect(JSON.parse(String(init.body))).toEqual({
+      kind: "SET_EXTERNAL_ENGINE",
+      externalEngine: "ALONGSIDE",
+      reason: "Client engine pilot",
+    });
+  });
+
+  it("EX-2: a pending role change reads in words for the approver", () => {
+    renderPanel([
+      view({
+        pendingChange: {
+          id: "c2",
+          productCode: "PL",
+          kind: "SET_EXTERNAL_ENGINE",
+          requestedMode: null,
+          fromMode: "LIVE",
+          requestedExternalEngine: "INSTEAD",
+          fromExternalEngine: "NONE",
+          reason: "Client owns its engine",
+          status: "PENDING",
+          requestedBy: "STF-LEO",
+          requestedByName: "Leo Santiago",
+          requestedAt: "2026-11-28T01:00:00.000Z",
+          decidedBy: null,
+          decidedByName: null,
+          decidedAt: null,
+        },
+        allowedActions: [
+          { action: "APPROVE_CHANGE", enabled: true },
+          { action: "REJECT_CHANGE", enabled: true },
+        ],
+      }),
+    ]);
+    expect(
+      screen.getByText(
+        /change the external decision engine from “Not used” to “Instead of the built-in engine”/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("offers compliance nothing to change", () => {

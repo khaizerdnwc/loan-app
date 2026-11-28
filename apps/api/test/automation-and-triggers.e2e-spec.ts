@@ -37,7 +37,7 @@ afterEach(async () => {
   await truncateGuarded(h.ds, ["automation_change", "automation_event"]);
   await h.ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
-      kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
+      kill_switch_set_by = NULL, kill_switch_set_at = NULL, external_engine = 'NONE'`);
 });
 
 const pl = async (persona: Persona = "leo"): Promise<AutomationView> => {
@@ -382,6 +382,7 @@ describe("AU-3 the kill switch: on at once by one administrator, off only with a
       expect(await automation.forDecision(qr.manager, "PL")).toEqual({
         mode: "LIVE",
         killSwitch: false,
+        externalEngine: "NONE",
       });
       let settled = false;
       const on = h
@@ -398,6 +399,7 @@ describe("AU-3 the kill switch: on at once by one administrator, off only with a
       expect(await automation.forDecision(qr.manager, "PL")).toEqual({
         mode: "LIVE",
         killSwitch: false,
+        externalEngine: "NONE",
       });
       await qr.commitTransaction();
       expect((await on).status).toBe(200);
@@ -431,7 +433,7 @@ describe("TR-1 RS-PL-2 referral triggers through the API", () => {
         outcome: "REFER",
         score: 742,
         grade: "A",
-        ruleSetVersion: "RS-PL-3",
+        ruleSetVersion: "RS-PL-4",
       });
       expect(d.reasonCodes.map((r) => r.code)).toEqual([code]);
       expect(d.ruleResults.find((r) => r.id === ruleId)?.result).toBe("FAIL");

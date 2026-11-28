@@ -126,10 +126,11 @@ export async function resetData(ds: DataSource): Promise<void> {
     "intake_batch",
     "document_extraction",
   ]);
-  // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
+  // Automation back to how the migrations leave it: PL live, kill switch off, no external
+  // decision engine, no changes.
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
-      kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
+      kill_switch_set_by = NULL, kill_switch_set_at = NULL, external_engine = 'NONE'`);
 }
 
 /**

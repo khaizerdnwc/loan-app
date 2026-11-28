@@ -23,7 +23,7 @@ afterEach(async () => {
   await truncateGuarded(h.ds, ["automation_change", "automation_event"]);
   await h.ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
-      kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
+      kill_switch_set_by = NULL, kill_switch_set_at = NULL, external_engine = 'NONE'`);
 });
 
 const overrides = async () =>
@@ -44,7 +44,8 @@ describe("MG-2 the model registry lists every version, its use and the prohibite
     expect(r.ruleSets.map((x) => [x.version, x.current])).toEqual([
       ["RS-PL-1", false],
       ["RS-PL-2", false],
-      ["RS-PL-3", true],
+      ["RS-PL-3", false],
+      ["RS-PL-4", true],
     ]);
     expect(r.prohibitedFeatures).toEqual(
       expect.arrayContaining(["applicant.gender", "applicant.ageYears"]),

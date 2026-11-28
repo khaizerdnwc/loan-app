@@ -35,7 +35,13 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
       title="Decision summary"
       aside={
         <span className="flex items-center gap-2">
-          <SimulatedLabel what="bureau, screening and fraud check data" />
+          <SimulatedLabel
+            what={
+              decision.externalEngine
+                ? "bureau, screening, fraud check and client decision engine data"
+                : "bureau, screening and fraud check data"
+            }
+          />
           <span className="font-mono">
             {decision.ruleSetVersion} · {decision.scorecardVersion}
           </span>
@@ -86,6 +92,9 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
           ]}
         />
       </div>
+      {decision.externalEngine && (
+        <p className="mt-3 text-sm text-ink-900">{whoDecided(decision)}</p>
+      )}
       {decision.recommendedAmount && (
         <p className="mt-3 text-xs text-mist-500">
           {nothingAffordable(decision.recommendedAmount)
@@ -174,7 +183,11 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
                     {rule.kind === "KNOCKOUT" && <Pill>Knockout</Pill>}
                   </span>
                   <span className="text-right text-xs text-mist-500 tabular-nums">
-                    {formatAmountsInText(rule.value)}
+                    {rule.id === "EX-ENGINE" ? (
+                      <ExternalAnswer value={rule.value} />
+                    ) : (
+                      formatAmountsInText(rule.value)
+                    )}
                   </span>
                 </li>
               );
@@ -205,6 +218,38 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
         )}
       </div>
     </Card>
+  );
+}
+
+/**
+ * Who decided, when the client's decision engine took part (PRD DEC-008): instead of the
+ * score, the head of the panel would otherwise show a built-in score that did not decide.
+ */
+function whoDecided(decision: DecisionRecordView): string {
+  const ext = decision.externalEngine;
+  if (!ext) return "";
+  const knockedOut = decision.ruleResults.some((r) => r.kind === "KNOCKOUT" && r.result === "FAIL");
+  if (knockedOut) {
+    return "A knockout rule declined this application; the client's decision engine (simulated) cannot overrule it.";
+  }
+  if (ext.outcome === null) {
+    return "The client's decision engine (simulated) could not answer, so a person decides this case.";
+  }
+  if (ext.role === "INSTEAD") {
+    return "Decided by the client's decision engine (simulated), instead of the score; the built-in score and grade are shown for pricing.";
+  }
+  return `Checked alongside the client's decision engine (simulated): ${ext.agreed ? "agreed" : "disagreed"}.`;
+}
+
+/** The EX-ENGINE rule's value, with the client engine's reference set in monospace. */
+function ExternalAnswer({ value }: { value: string }) {
+  const match = /^(.*?); ref ([^\s;]+)(.*)$/.exec(value);
+  if (!match) return <>{value}</>;
+  return (
+    <>
+      {match[1]}; ref <span className="font-mono">{match[2]}</span>
+      {match[3]}
+    </>
   );
 }
 

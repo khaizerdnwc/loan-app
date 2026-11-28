@@ -12,6 +12,7 @@ import { ReconciliationRuns1764300002001 } from "./1764300002001-ReconciliationR
 import { BusinessHolidays1764300002002 } from "./1764300002002-BusinessHolidays";
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
 import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
+import { ExternalDecisionEngine1764300003002 } from "./1764300003002-ExternalDecisionEngine";
 import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtraction";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
 
@@ -36,6 +37,7 @@ export const MIGRATIONS = [
   BusinessHolidays1764300002002,
   AutomationAndTriggers1764300003000,
   ProviderResilienceAndEstimates1764300003001,
+  ExternalDecisionEngine1764300003002,
   IntakeAndExtraction1764300004000,
   ForeignKeysAndTruncateGuards1764300009000,
 ];

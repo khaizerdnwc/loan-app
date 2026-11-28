@@ -39,7 +39,7 @@ describe("EL-2 the pre-check answers from stated figures and the current rule se
     const view = res.body as EligibilityPreCheckView;
     expect(view).toMatchObject({
       productCode: "PL",
-      ruleSetVersion: "RS-PL-3",
+      ruleSetVersion: "RS-PL-4",
       outcome: "LIKELY_ELIGIBLE",
       monthlyRateRange: { from: "0.0120", to: "0.0200" },
       affordable: { atBestRate: "150000.00", atWorstRate: "150000.00" },

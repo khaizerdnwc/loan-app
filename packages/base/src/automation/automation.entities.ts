@@ -2,9 +2,11 @@ import type {
   AutomationChangeKind,
   AutomationChangeStatus,
   AutomationMode,
+  ExternalEngineRole,
   Role,
 } from "@loan/core";
 import {
+  Check,
   Column,
   CreateDateColumn,
   Entity,
@@ -22,6 +24,10 @@ import {
  * replaced. A product with no row is treated as OFF (fail safe).
  */
 @Entity({ name: "product_automation" })
+@Check(
+  "CHK_product_automation_external_engine",
+  `"external_engine" IN ('NONE', 'ALONGSIDE', 'INSTEAD')`,
+)
 export class ProductAutomationEntity {
   @PrimaryColumn({ name: "product_code", type: "varchar", length: 10 })
   productCode!: string;
@@ -38,6 +44,10 @@ export class ProductAutomationEntity {
   @Column({ name: "kill_switch_set_at", type: "timestamptz", nullable: true })
   killSwitchSetAt!: Date | null;
 
+  /** Whether, and how, a decision calls the external decision engine (PRD DEC-008). */
+  @Column({ name: "external_engine", type: "varchar", length: 10, default: "NONE" })
+  externalEngine!: ExternalEngineRole;
+
   @Column({ name: "updated_at", type: "timestamptz", default: () => "now()" })
   updatedAt!: Date;
 }
@@ -52,6 +62,11 @@ export class ProductAutomationEntity {
   unique: true,
   where: `"status" = 'PENDING'`,
 })
+/** A role change names the role it asks for; no other change does. */
+@Check(
+  "CHK_automation_change_external_engine",
+  `("kind" = 'SET_EXTERNAL_ENGINE') = ("requested_external_engine" IS NOT NULL)`,
+)
 export class AutomationChangeEntity {
   @PrimaryGeneratedColumn("uuid")
   id!: string;
@@ -72,6 +87,13 @@ export class AutomationChangeEntity {
   /** The mode when the change was drafted: approval is refused if it has moved since. */
   @Column({ name: "from_mode", type: "varchar", length: 10 })
   fromMode!: AutomationMode;
+
+  @Column({ name: "requested_external_engine", type: "varchar", length: 10, nullable: true })
+  requestedExternalEngine!: ExternalEngineRole | null;
+
+  /** The external engine's role when drafted: approval is refused if it has moved since. */
+  @Column({ name: "from_external_engine", type: "varchar", length: 10 })
+  fromExternalEngine!: ExternalEngineRole;
 
   @Column({ type: "text" })
   reason!: string;

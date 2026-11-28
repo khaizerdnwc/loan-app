@@ -88,3 +88,20 @@ which point rule sets would be stored as published, immutable data.
   shown: its view carries no score band and the API logs a warning, instead of failing the
   case view.
 
+
+## Amendment — the external decision engine (28 Nov 2026)
+
+- **An external engine's answer is an input, not a call at replay.** RS-PL-4 adds the external
+  decision engine step (PRD DEC-008). The product's role (not used, alongside, instead) and, when
+  it is used, the engine's answer, reason codes and reference (or why it gave none) are stored in
+  the snapshot and covered by the hash; `decide` combines that stored answer with the built-in
+  outcome, so reproduce never calls the engine and stays pure. RS-PL-4 refuses a snapshot without
+  the step and earlier versions refuse one with it; thirteen RS-PL-4 decisions are frozen (EX-4).
+- **A delegated decline needs every bank provider.** Under "instead", a client decline made
+  while the bank's bureau, screening or fraud check could not answer refers (outage reason
+  first, then R25): NFR-005 covers the bank's providers whoever decides.
+- **The role is read under the decision's lock.** The engine is called while the inputs are
+  gathered; the role is read again in the decision's transaction, and a role that changed in
+  between never lets an uncalled engine count as answering (it refers as unavailable).
+- **Forward-only**, as before: migration 1764300003002's down() refuses once an RS-PL-4 record,
+  a role change or a product using the engine exists.

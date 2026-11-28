@@ -139,6 +139,18 @@ export interface DecisionRecordView {
    * Null only if the record names a rule set this API does not know (it is shown without a band).
    */
   scoreBand: { declineBelow: number; approveFrom: number } | null;
+  /**
+   * The external decision engine's part in this decision (PRD DEC-008), from the stored
+   * inputs; null when none was used (role NONE, or a record from before RS-PL-4). `outcome` and
+   * `reference` are null when the engine could not answer. `agreed` (ALONGSIDE only) says
+   * whether it agreed with the built-in engine; null for INSTEAD, unanswered or knocked out.
+   */
+  externalEngine: {
+    role: "ALONGSIDE" | "INSTEAD";
+    outcome: DecisionOutcome | null;
+    reference: string | null;
+    agreed: boolean | null;
+  } | null;
 }
 
 export interface ReproduceResult {

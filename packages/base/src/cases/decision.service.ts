@@ -1,5 +1,5 @@
 import { type ApplicantIdentity, isProviderUnavailable } from "@loan/contracts";
-import { Money, type ReproduceResult } from "@loan/core";
+import { ExternalEngineRole, Money, type ReproduceResult } from "@loan/core";
 import { Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
 import { AutomationService } from "../automation/automation.service";
@@ -10,6 +10,7 @@ import {
   type DecisionInputs,
   type DecisionResult,
   decide,
+  type ExternalEngineInput,
   hashInputs,
 } from "../decisioning/engine";
 import { ProviderGateway } from "../providers/provider-gateway.service";
@@ -75,6 +76,36 @@ export class DecisionService {
         (err: unknown) => unavailable(err),
       ),
     ]);
+    // The external decision engine (PRD DEC-008), only where the product uses one. It reads the
+    // bureau score, so it is called after the bureau. decideAndRecord re-reads the role under
+    // the decision's lock and reconciles (reconcileExternal).
+    const role = await this.automation.externalEngineFor(c.productCode);
+    const external: ExternalEngineInput =
+      role === ExternalEngineRole.None
+        ? { role }
+        : await this.providers
+            .evaluateExternally(
+              {
+                applicantId: a.id,
+                productCode: c.productCode,
+                amount: c.requestedAmount.toString(),
+                tenorMonths: c.requestedTenorMonths,
+                monthlyIncome: a.monthlyIncome.toString(),
+                monthlyObligations: a.monthlyObligations.toString(),
+                bureauScore: bureau.status === "OK" ? bureau.bureauScore : null,
+              },
+              c.id,
+            )
+            .then(
+              (r) => ({
+                role,
+                status: "OK" as const,
+                decision: r.decision,
+                reasonCodes: [...r.reasonCodes],
+                reference: r.reference,
+              }),
+              (err: unknown) => ({ role, ...unavailable(err) }),
+            );
     const inputs: DecisionInputs = {
       asOfDate,
       application: {
@@ -94,6 +125,7 @@ export class DecisionService {
       screening,
       bureau,
       fraud,
+      external,
     };
     this.started.set(inputs, startedAt);
     return inputs;
@@ -110,7 +142,32 @@ export class DecisionService {
     if (inputs.bureau.status === "UNAVAILABLE") return "The credit bureau";
     if (inputs.screening.status === "UNAVAILABLE") return "KYC/AML screening";
     if (inputs.fraud?.status === "UNAVAILABLE") return "The fraud check";
+    if (
+      inputs.external &&
+      inputs.external.role !== "NONE" &&
+      inputs.external.status === "UNAVAILABLE"
+    )
+      return "The external decision engine";
     return null;
+  }
+
+  /**
+   * The external engine's input under the role read in the decision's transaction. The role
+   * can change between gathering and deciding: to NONE, nothing is applied; from NONE (no call
+   * was made), the engine counts as unavailable, so the case refers (NFR-005); between
+   * ALONGSIDE and INSTEAD, the answer already obtained is applied under the role in force.
+   */
+  static reconcileExternal(
+    gathered: ExternalEngineInput | undefined,
+    role: ExternalEngineRole,
+  ): ExternalEngineInput {
+    if (role === ExternalEngineRole.None) return { role };
+    if (gathered && gathered.role !== ExternalEngineRole.None) return { ...gathered, role };
+    return {
+      role,
+      status: "UNAVAILABLE",
+      reason: "not called: the product's external engine role changed while this decision ran",
+    };
   }
 
   /**
@@ -134,8 +191,15 @@ export class DecisionService {
     decidedBy: string,
   ): Promise<{ record: DecisionRecordEntity; result: DecisionResult }> {
     const versions = { ruleSet: CURRENT_RULE_SET, scorecard: CURRENT_SCORECARD };
-    const automation = await this.automation.forDecision(manager, c.productCode);
-    const inputs: DecisionInputs = { ...gathered, automation };
+    const { externalEngine, ...automation } = await this.automation.forDecision(
+      manager,
+      c.productCode,
+    );
+    const inputs: DecisionInputs = {
+      ...gathered,
+      automation,
+      external: DecisionService.reconcileExternal(gathered.external, externalEngine),
+    };
     const result = decide(inputs, versions);
     const record = await this.repo.insertDecision(manager, {
       caseId: c.id,

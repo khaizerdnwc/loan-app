@@ -1,4 +1,4 @@
-import type { CreditBureau, FraudCheck, KycAml } from "@loan/contracts";
+import type { CreditBureau, ExternalDecisionEngine, FraudCheck, KycAml } from "@loan/contracts";
 import type { LendingModuleOptions } from "../../src/lending.options";
 import { ProviderGateway } from "../../src/providers/provider-gateway.service";
 import type { ProvidersRepository } from "../../src/providers/providers.repository";
@@ -31,6 +31,7 @@ it("caches a bureau report under the gateway's mode, not the mode the reply name
     bureau as unknown as CreditBureau,
     port as unknown as KycAml,
     port as unknown as FraudCheck,
+    port as unknown as ExternalDecisionEngine,
     repo as unknown as ProvidersRepository,
     { jwtSecret: "x", cookieSecure: false } as LendingModuleOptions,
   );

@@ -225,5 +225,6 @@ export const ServiceName = {
   DocumentIntake: "DOCUMENT_INTAKE",
   CustomerLookup: "CUSTOMER_LOOKUP",
   DocumentExtraction: "DOCUMENT_EXTRACTION",
+  ExternalDecision: "EXTERNAL_DECISION",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

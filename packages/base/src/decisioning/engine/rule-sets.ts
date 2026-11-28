@@ -47,6 +47,13 @@ export interface RuleSet {
    * instalment absorbs rounding (ADR 0019) and may exceed the average by a few centavos.
    */
   recommendedAmount?: { maxDebtServiceRatio: string; roundDownTo: number };
+  /**
+   * The external decision engine (PRD DEC-008) is an input, applied after the rules and the
+   * score and before the automation mode: alongside, a disagreement refers; instead, its
+   * outcome replaces the score and credit rules, and the bank's knockouts and mandatory
+   * referrals (amount limit, related party, fraud, screening unavailable) still apply.
+   */
+  externalEngine?: boolean;
 }
 
 const RS_PL_1: RuleSet = {
@@ -72,18 +79,25 @@ const RS_PL_2: RuleSet = {
   automationModes: true,
 };
 
+/** RS-PL-2 plus a recommended amount (PRD AIS-001); every rule and trigger is unchanged. */
+const RS_PL_3: RuleSet = {
+  ...RS_PL_2,
+  version: "RS-PL-3",
+  recommendedAmount: { maxDebtServiceRatio: "0.50", roundDownTo: 1000 },
+};
+
 export const RULE_SETS: Readonly<Record<string, RuleSet>> = {
   "RS-PL-1": RS_PL_1,
   "RS-PL-2": RS_PL_2,
-  /** RS-PL-2 plus a recommended amount (PRD AIS-001); every rule and trigger is unchanged. */
-  "RS-PL-3": {
-    ...RS_PL_2,
-    version: "RS-PL-3",
-    recommendedAmount: { maxDebtServiceRatio: "0.50", roundDownTo: 1000 },
-  },
+  "RS-PL-3": RS_PL_3,
+  /**
+   * RS-PL-3 plus the external decision engine step (PRD DEC-008). With the product's role
+   * NONE every outcome is RS-PL-3's.
+   */
+  "RS-PL-4": { ...RS_PL_3, version: "RS-PL-4", externalEngine: true },
 };
 
-export const CURRENT_RULE_SET = "RS-PL-3";
+export const CURRENT_RULE_SET = "RS-PL-4";
 
 export function ruleSet(version: string): RuleSet {
   const rs = RULE_SETS[version];

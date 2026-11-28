@@ -6,6 +6,8 @@ import {
   type AutomationEventView,
   AutomationMode,
   type AutomationView,
+  EXTERNAL_ENGINE_ROLE_LABEL,
+  ExternalEngineRole,
   ProblemCode,
   productLabel,
   Role,
@@ -25,10 +27,11 @@ import { TransactionRunner } from "../database/transaction-runner";
 import type { AutomationChangeEntity, ProductAutomationEntity } from "./automation.entities";
 import { AutomationRepository } from "./automation.repository";
 
-/** What a decision runs under: the product's mode and kill switch. */
+/** What a decision runs under: the product's mode and kill switch, and the external engine's role. */
 export interface AutomationSnapshot {
   mode: AutomationMode;
   killSwitch: boolean;
+  externalEngine: ExternalEngineRole;
 }
 
 /**
@@ -61,8 +64,23 @@ export class AutomationService {
    */
   async forDecision(m: EntityManager, productCode: string): Promise<AutomationSnapshot> {
     const row = await this.repo.readForDecision(m, productCode);
-    if (!row) return { mode: AutomationMode.Off, killSwitch: false };
-    return { mode: row.mode, killSwitch: row.killSwitch };
+    if (!row) {
+      return {
+        mode: AutomationMode.Off,
+        killSwitch: false,
+        externalEngine: ExternalEngineRole.None,
+      };
+    }
+    return { mode: row.mode, killSwitch: row.killSwitch, externalEngine: row.externalEngine };
+  }
+
+  /**
+   * The external engine's role, read without a lock while the decision's inputs are gathered
+   * (before its transaction): `forDecision` reads it again under the share lock, and the
+   * decision reconciles the two (DecisionService.reconcileExternal).
+   */
+  async externalEngineFor(productCode: string): Promise<ExternalEngineRole> {
+    return (await this.repo.find(productCode))?.externalEngine ?? ExternalEngineRole.None;
   }
 
   // --- reads ---------------------------------------------------------------------------------
@@ -86,6 +104,7 @@ export class AutomationService {
           ? (names.get(row.killSwitchSetBy) ?? row.killSwitchSetBy)
           : null,
         killSwitchSetAt: row.killSwitchSetAt?.toISOString() ?? null,
+        externalEngine: row.externalEngine,
         updatedAt: row.updatedAt.toISOString(),
         pendingChange: change ? changeView(change, names) : null,
         allowedActions: allowedActions(user, row, change),
@@ -120,9 +139,21 @@ export class AutomationService {
         { field: "reason", message: "Enter a reason." },
       ]);
     }
-    if (body.kind === "KILL_SWITCH_OFF" && "mode" in body && body.mode !== undefined) {
-      throw validation("Turning the kill switch off does not change the mode.", [
+    if (body.kind !== "SET_MODE" && "mode" in body && body.mode !== undefined) {
+      throw validation("This change does not change the mode.", [
         { field: "mode", message: "Leave the mode out, or request a mode change instead." },
+      ]);
+    }
+    if (
+      body.kind !== "SET_EXTERNAL_ENGINE" &&
+      "externalEngine" in body &&
+      body.externalEngine !== undefined
+    ) {
+      throw validation("This change does not change the external decision engine.", [
+        {
+          field: "externalEngine",
+          message: "Leave it out, or request an external engine change instead.",
+        },
       ]);
     }
     await this.tx.run(async (m) => {
@@ -138,12 +169,21 @@ export class AutomationService {
       if (body.kind === "KILL_SWITCH_OFF" && !row.killSwitch) {
         throw invalidState("The kill switch is already off.");
       }
+      if (body.kind === "SET_EXTERNAL_ENGINE" && body.externalEngine === row.externalEngine) {
+        throw validation(
+          `The external decision engine is already ${roleWords(row.externalEngine)} for ${productLabel(productCode)}.`,
+          [{ field: "externalEngine", message: "Choose a different role." }],
+        );
+      }
 
       const change = this.repo.newChange(m);
       change.productCode = productCode;
       change.kind = body.kind;
       change.requestedMode = body.kind === "SET_MODE" ? body.mode : null;
       change.fromMode = row.mode;
+      change.requestedExternalEngine =
+        body.kind === "SET_EXTERNAL_ENGINE" ? body.externalEngine : null;
+      change.fromExternalEngine = row.externalEngine;
       change.reason = reason;
       change.status = "PENDING";
       change.requestedBy = user.id;
@@ -157,17 +197,16 @@ export class AutomationService {
         actorId: user.id,
         actorName: user.fullName,
         actorRole: user.role,
-        action: body.kind === "SET_MODE" ? "MODE_CHANGE_REQUESTED" : "KILL_SWITCH_OFF_REQUESTED",
-        summary:
-          body.kind === "SET_MODE"
-            ? `Asked to change ${productLabel(productCode)} from ${modeWords(row.mode)} to ${modeWords(body.mode)}; waiting for a second administrator.`
-            : `Asked to turn the ${productLabel(productCode)} kill switch off; waiting for a second administrator.`,
+        action: REQUESTED_ACTION[body.kind],
+        summary: `Asked to ${describeChange(change)} for ${productLabel(productCode)}; waiting for a second administrator.`,
         details: {
-          before: { mode: row.mode, killSwitch: row.killSwitch },
-          requested:
-            body.kind === "SET_MODE"
-              ? { mode: body.mode, killSwitch: row.killSwitch }
-              : { mode: row.mode, killSwitch: false },
+          before: stateOf(row),
+          requested: {
+            ...stateOf(row),
+            ...(body.kind === "SET_MODE" ? { mode: body.mode } : {}),
+            ...(body.kind === "KILL_SWITCH_OFF" ? { killSwitch: false } : {}),
+            ...(body.kind === "SET_EXTERNAL_ENGINE" ? { externalEngine: body.externalEngine } : {}),
+          },
           reason,
         },
       });
@@ -188,7 +227,7 @@ export class AutomationService {
       if (change.requestedBy === user.id) {
         throw makerChecker("You drafted this change; a different administrator must approve it.");
       }
-      const before = { mode: row.mode, killSwitch: row.killSwitch };
+      const before = stateOf(row);
       if (change.kind === "SET_MODE") {
         if (row.mode !== change.fromMode || !change.requestedMode) {
           throw invalidState(
@@ -196,6 +235,13 @@ export class AutomationService {
           );
         }
         row.mode = change.requestedMode;
+      } else if (change.kind === "SET_EXTERNAL_ENGINE") {
+        if (row.externalEngine !== change.fromExternalEngine || !change.requestedExternalEngine) {
+          throw invalidState(
+            "The external decision engine's role changed after this request was drafted. Reject it and draft a new one.",
+          );
+        }
+        row.externalEngine = change.requestedExternalEngine;
       } else {
         if (!row.killSwitch) throw invalidState("The kill switch is already off.");
         row.killSwitch = false;
@@ -213,14 +259,16 @@ export class AutomationService {
         actorId: user.id,
         actorName: user.fullName,
         actorRole: user.role,
-        action: change.kind === "SET_MODE" ? "MODE_CHANGED" : "KILL_SWITCH_OFF",
+        action: APPROVED_ACTION[change.kind],
         summary:
           change.kind === "SET_MODE"
             ? `Approved ${requester}'s change: ${productLabel(productCode)} automation is now ${modeWords(row.mode)} (was ${modeWords(before.mode)}).`
-            : `Approved ${requester}'s request: the ${productLabel(productCode)} kill switch is off; automated decisions follow the mode (${modeWords(row.mode)}).`,
+            : change.kind === "SET_EXTERNAL_ENGINE"
+              ? `Approved ${requester}'s change: the external decision engine is now ${roleWords(row.externalEngine)} for ${productLabel(productCode)} (was ${roleWords(before.externalEngine)}).`
+              : `Approved ${requester}'s request: the ${productLabel(productCode)} kill switch is off; automated decisions follow the mode (${modeWords(row.mode)}).`,
         details: {
           before,
-          after: { mode: row.mode, killSwitch: row.killSwitch },
+          after: stateOf(row),
           requestedBy: change.requestedBy,
           reason: change.reason,
           note: change.decisionNote,
@@ -244,7 +292,7 @@ export class AutomationService {
       this.close(change, own ? "WITHDRAWN" : "REJECTED", user, note);
       await this.repo.saveChange(m, change);
       const requester = await this.nameOf(m, change.requestedBy);
-      const state = { mode: row.mode, killSwitch: row.killSwitch };
+      const state = stateOf(row);
       await this.repo.insertEvent(m, {
         productCode,
         changeId: change.id,
@@ -296,8 +344,8 @@ export class AutomationService {
         action: "KILL_SWITCH_ON",
         summary: `Turned the ${productLabel(productCode)} kill switch on: every new application goes to manual review.`,
         details: {
-          before: { mode: row.mode, killSwitch: false },
-          after: { mode: row.mode, killSwitch: true },
+          before: { ...stateOf(row), killSwitch: false },
+          after: stateOf(row),
           reason,
         },
       });
@@ -348,10 +396,36 @@ function modeWords(mode: AutomationMode): string {
   return AUTOMATION_MODE_LABEL[mode].toLowerCase();
 }
 
+function roleWords(role: ExternalEngineRole): string {
+  return EXTERNAL_ENGINE_ROLE_LABEL[role].toLowerCase();
+}
+
+/** A product's automation state for the history's before and after. */
+function stateOf(row: ProductAutomationEntity) {
+  return { mode: row.mode, killSwitch: row.killSwitch, externalEngine: row.externalEngine };
+}
+
+const REQUESTED_ACTION: Record<AutomationChangeEntity["kind"], string> = {
+  SET_MODE: "MODE_CHANGE_REQUESTED",
+  KILL_SWITCH_OFF: "KILL_SWITCH_OFF_REQUESTED",
+  SET_EXTERNAL_ENGINE: "EXTERNAL_ENGINE_CHANGE_REQUESTED",
+};
+
+const APPROVED_ACTION: Record<AutomationChangeEntity["kind"], string> = {
+  SET_MODE: "MODE_CHANGED",
+  KILL_SWITCH_OFF: "KILL_SWITCH_OFF",
+  SET_EXTERNAL_ENGINE: "EXTERNAL_ENGINE_CHANGED",
+};
+
+/** What a change asks for, as a verb phrase ("change the mode from live to off"). */
 function describeChange(change: AutomationChangeEntity): string {
-  return change.kind === "SET_MODE" && change.requestedMode
-    ? `${modeWords(change.fromMode)} to ${modeWords(change.requestedMode)}`
-    : "turn the kill switch off";
+  if (change.kind === "SET_MODE" && change.requestedMode) {
+    return `change the mode from ${modeWords(change.fromMode)} to ${modeWords(change.requestedMode)}`;
+  }
+  if (change.kind === "SET_EXTERNAL_ENGINE" && change.requestedExternalEngine) {
+    return `change the external decision engine from ${roleWords(change.fromExternalEngine)} to ${roleWords(change.requestedExternalEngine)}`;
+  }
+  return "turn the kill switch off";
 }
 
 function changePending(
@@ -373,6 +447,8 @@ function changeView(c: AutomationChangeEntity, names: Map<string, string>): Auto
     kind: c.kind,
     requestedMode: c.requestedMode,
     fromMode: c.fromMode,
+    requestedExternalEngine: c.requestedExternalEngine,
+    fromExternalEngine: c.fromExternalEngine,
     reason: c.reason,
     status: c.status,
     requestedBy: c.requestedBy,
@@ -403,6 +479,9 @@ function allowedActions(
     pending
       ? blocked("REQUEST_MODE_CHANGE", ProblemCode.Conflict, WAITING)
       : { action: "REQUEST_MODE_CHANGE", enabled: true },
+    pending
+      ? blocked("REQUEST_EXTERNAL_ENGINE_CHANGE", ProblemCode.Conflict, WAITING)
+      : { action: "REQUEST_EXTERNAL_ENGINE_CHANGE", enabled: true },
   ];
   if (!row.killSwitch) {
     actions.push({ action: "KILL_SWITCH_ON", enabled: true });

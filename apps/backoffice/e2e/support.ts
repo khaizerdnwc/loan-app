@@ -175,6 +175,7 @@ export async function resetModes(page: Page): Promise<void> {
       "DOCUMENT_INTAKE",
       "CUSTOMER_LOOKUP",
       "DOCUMENT_EXTRACTION",
+      "EXTERNAL_DECISION",
     ];
     const out: number[] = [];
     for (const s of services) {
@@ -185,7 +186,14 @@ export async function resetModes(page: Page): Promise<void> {
       });
       out.push(res.status);
     }
-    return out;
+    // Every service the API lists must be in the list above: a new one fails here.
+    const listed = (await (await fetch("/api/simulation/services")).json()) as {
+      service: string;
+    }[];
+    const missing = listed.map((l) => l.service).filter((name) => !services.includes(name));
+    return { statuses: out, missing };
   });
-  expect(statuses.every((s) => s === 200)).toBe(true);
+  expect(statuses.missing).toEqual([]);
+  expect(statuses.statuses).toHaveLength(10);
+  expect(statuses.statuses.every((s) => s === 200)).toBe(true);
 }

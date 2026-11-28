@@ -72,7 +72,7 @@ export function recommendationRefusal(
   knockedOut: boolean,
 ): string | null {
   if (decidedDuringOutage) {
-    return "This case was decided while a provider could not answer (no score, no sanctions screening, or no fraud check), so it cannot be recommended for approval. Decide it again once the provider is back, or recommend a decline.";
+    return "This case was decided while a provider could not answer (no score, no sanctions screening, no fraud check, or no answer from the external decision engine), so it cannot be recommended for approval. Decide it again once the provider is back, or recommend a decline.";
   }
   if (knockedOut) {
     return "A policy knockout failed for this application (see the policy rules), so it can only be recommended for decline.";
@@ -228,7 +228,7 @@ export function allowedActions(
           enabled: false,
           blockedBy: ProblemCode.InvalidTransition,
           detail:
-            "This case was decided while a provider could not answer (no score, no sanctions screening, or no fraud check), so it cannot be approved. Return it so the loan officer can decide it again.",
+            "This case was decided while a provider could not answer (no score, no sanctions screening, no fraud check, or no answer from the external decision engine), so it cannot be approved. Return it so the loan officer can decide it again.",
         });
         continue;
       }

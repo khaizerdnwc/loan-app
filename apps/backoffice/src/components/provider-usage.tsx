@@ -22,6 +22,7 @@ const SERVICE_LABEL: Partial<Record<ServiceName, string>> = {
   CREDIT_BUREAU: "Credit bureau",
   KYC_AML: "KYC / AML screening",
   FRAUD: "Fraud signals",
+  EXTERNAL_DECISION: "Client decision engine",
 };
 
 const CIRCUIT: Record<CircuitState, { label: string; tone: Tone }> = {

@@ -42,6 +42,12 @@ export interface DecisionInputs {
    * before automation modes existed: those ran live.
    */
   automation?: { mode: AutomationMode; killSwitch: boolean };
+  /**
+   * The external decision engine (PRD DEC-008): the product's role for it when the decision
+   * was made and, unless the role is NONE, its answer or why it gave none. Present from
+   * RS-PL-4 (absent on earlier records, which never called one).
+   */
+  external?: ExternalEngineInput;
   /** KYC/AML screening, or `unavailable` when the provider could not answer. */
   screening:
     | { status: "OK"; sanctionsMatch: boolean; kycVerified: boolean }
@@ -64,6 +70,18 @@ export interface DecisionInputs {
       }
     | { status: "UNAVAILABLE"; reason: string };
 }
+
+/** The external engine's part of a snapshot: its role, and its answer when it was called. */
+export type ExternalEngineInput =
+  | { role: "NONE" }
+  | {
+      role: "ALONGSIDE" | "INSTEAD";
+      status: "OK";
+      decision: "APPROVE" | "REFER" | "DECLINE";
+      reasonCodes: string[];
+      reference: string;
+    }
+  | { role: "ALONGSIDE" | "INSTEAD"; status: "UNAVAILABLE"; reason: string };
 
 export type RuleKind = "KNOCKOUT" | "REFERRAL";
 export type RuleOutcome = "PASS" | "FAIL" | "NOT_EVALUATED";

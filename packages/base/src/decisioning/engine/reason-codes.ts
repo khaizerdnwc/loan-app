@@ -107,4 +107,30 @@ export const REASONS = {
     staff: "Kill switch on: every new application goes to manual review",
     borrower: "Your application needs a review by our credit team.",
   },
+  externalUnavailable: {
+    code: "R22",
+    staff: "External decision engine unavailable: routed to manual review instead of declining",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  externalDisagrees: {
+    code: "R23",
+    staff: "The external decision engine and the built-in engine disagree",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  externalReferred: {
+    code: "R24",
+    staff: "The external decision engine referred the application",
+    borrower: "Your application needs a review by our credit team.",
+  },
+  externalDeclined: {
+    code: "R25",
+    staff: "The external decision engine declined the application",
+    borrower: "Your application does not meet our lending requirements.",
+  },
+  externalNoGrade: {
+    code: "R26",
+    staff:
+      "The external decision engine approved, but there is no built-in grade (not scored) to price the loan: a person sets the terms",
+    borrower: "Your application needs a review by our credit team.",
+  },
 } as const satisfies Record<string, ReasonCode>;

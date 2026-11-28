@@ -19,7 +19,7 @@ import type {
   LoanAccountView,
   ProblemCode,
 } from "@loan/core";
-import { CaseStatus, Money } from "@loan/core";
+import { CaseStatus, DecisionOutcome, Money } from "@loan/core";
 import { Inject, Injectable, Logger } from "@nestjs/common";
 import type { SessionUser } from "../auth/session";
 import { StaffRepository } from "../auth/staff.repository";
@@ -410,6 +410,33 @@ function decisionView(r: DecisionRecordEntity): DecisionRecordView {
     recommendedAmount: r.recommendedAmount?.toString() ?? null,
     latencyMs: r.latencyMs,
     scoreBand: scoreBandOf(r.ruleSetVersion),
+    externalEngine: externalEngineOf(r),
+  };
+}
+
+const EXTERNAL_OUTCOME = {
+  APPROVE: DecisionOutcome.Approve,
+  REFER: DecisionOutcome.Refer,
+  DECLINE: DecisionOutcome.Decline,
+} as const;
+
+/**
+ * Who else decided (PRD DEC-008), from the stored snapshot: the role, the client engine's
+ * answer and reference, and for ALONGSIDE whether it agreed (its EX-ENGINE rule passed).
+ */
+function externalEngineOf(r: DecisionRecordEntity): DecisionRecordView["externalEngine"] {
+  const ext = r.inputs.external;
+  if (!ext || ext.role === "NONE") return null;
+  const rule = r.ruleResults.find((x) => x.id === "EX-ENGINE");
+  const answered = ext.status === "OK";
+  return {
+    role: ext.role,
+    outcome: answered ? EXTERNAL_OUTCOME[ext.decision] : null,
+    reference: answered ? ext.reference : null,
+    agreed:
+      ext.role === "ALONGSIDE" && answered && rule && rule.result !== "NOT_EVALUATED"
+        ? rule.result === "PASS"
+        : null,
   };
 }
 

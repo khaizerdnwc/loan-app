@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 35 built, 40 partly built, 64 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
+Summary: 36 built, 40 partly built, 63 not built (139 IDs, counted from the table below). Of the 8 flows, 4 are partly built
 (F1, F2, F4, F6) and 4 are not built.
 
 ## 1. Coverage table
@@ -192,7 +192,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | DEC-005 | Decision bands, max auto-approval amount | built | `rule-sets.ts` (approveFrom, declineBelow, autoApprovalLimit), D-4, D-6 | Defined in code per product, not configurable from a screen. |
 | DEC-006 | Configurable referral triggers | partly built | `decide.ts`, D-5, D-6, D-9, B-7, D-10..D-12, TR-1 | Grey zone, over limit, thin file or no hit, DTI, bureau unavailable, KYC/AML unavailable, and (RS-PL-2) declared vs verified income mismatch, fraud or identity flag, fraud check unavailable, related party. Missing: policy exception, low confidence. Not configurable: a change is a new rule-set version in code. |
 | DEC-007 | Borrower-safe decline reason codes | built | `reason-codes.ts` (staff and borrower wording), D-7 | |
-| DEC-008 | External decision engine option | not built | — | A simulated port is possible. |
+| DEC-008 | External decision engine option | built | `ExternalDecisionEngine` port, simulated client engine, `applyExternal` in `decide.ts` (RS-PL-4), automation controls, EX-1..EX-4 | Per product, maker-checker: not used, alongside (a disagreement refers) or instead (its outcome replaces the score and credit rules; the bank's knockouts and mandatory referrals stay). Called through the provider gateway; its answer is in the snapshot, so decisions replay; a failure refers. Simulated only: no real client engine, and it returns an outcome, not terms (pricing stays on the built-in grade). |
 | DEC-009 | Champion/challenger (P2) | not built | — | Phase 2. |
 
 ### 7.3 AI credit scoring (AIS)
@@ -318,7 +318,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 30 | ✅ Done (INT-1..INT-5, OCR-1..OCR-4; a new customer is captured as a walk-in first, WI-1). Email and file intake with simulated OCR producing drafts; OCR on captured documents; statement analysis | INT-010, DOC-002, DOC-007, F4 | L | Needs #5 first. |
 | 31 | Collections: simulated core delinquency feed, buckets, strategies, collector queue, PTP, contact rules, restructuring and write-off workflows | CLX-001..005, CLX-007, CLX-008, CMP-009, F7 | L | Third Phase 1 wave in the PRD ("then collections"). |
 | 32 | Remaining reports and exports: portfolio quality, collections performance, scheduled exports, regulatory extracts, bureau submission file (generated, not submitted) | RPT-004..007, CMP-003 | L | Depends on #31 and on booked-loan history. |
-| 33 | Eligibility pre-check ✅ done (EL-1, EL-2, lane C batch 4); the rest open. Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
+| 33 | Eligibility pre-check ✅ done (EL-1, EL-2, lane C batch 4); external decision engine port ✅ done (EX-1..EX-4, lane C batch 5); the rest open. Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
 | 34 | Observability: structured logs, metrics, tracing, dashboards; load test to NFR-004 volumes | NFR-012, NFR-004, NFR-002 | M | Needed before a pilot, not before the demo. |
 
 **Out of reach under the challenge mechanics (simulated only):**

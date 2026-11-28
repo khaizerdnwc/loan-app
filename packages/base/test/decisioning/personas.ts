@@ -8,8 +8,9 @@ const okScreening = { status: "OK", sanctionsMatch: false, kycVerified: true } a
 
 /**
  * The inputs RS-PL-2 adds (no separate income declaration, not a related party, no fraud
- * signals, automation live). The personas below are RS-PL-2 snapshots; `fixtures/rs-pl-1-records.json` holds
- * records made under RS-PL-1, before these inputs existed.
+ * signals, automation live) and the one RS-PL-4 adds (no external decision engine). The
+ * personas below are current (RS-PL-4) snapshots; `asRsPl3` strips them back for the earlier
+ * versions, and `fixtures/rs-pl-1-records.json` holds records made before any of these existed.
  */
 export function withRsPl2Inputs(inputs: DecisionInputs): DecisionInputs {
   return {
@@ -17,7 +18,14 @@ export function withRsPl2Inputs(inputs: DecisionInputs): DecisionInputs {
     applicant: { declaredMonthlyIncome: null, relatedParty: false, ...inputs.applicant },
     fraud: inputs.fraud ?? { status: "OK", flagged: false, signals: [] },
     automation: inputs.automation ?? { mode: "LIVE", killSwitch: false },
+    external: inputs.external ?? { role: "NONE" },
   };
+}
+
+/** A persona as an RS-PL-2 / RS-PL-3 snapshot: without the external engine input. */
+export function asRsPl3(inputs: DecisionInputs): DecisionInputs {
+  const { external: _external, ...rest } = inputs;
+  return rest;
 }
 
 export const MARIA_F1: DecisionInputs = withRsPl2Inputs({

@@ -18,8 +18,34 @@ export const AUTOMATION_MODE_LABEL: Record<AutomationMode, string> = {
   LIVE: "Live",
 };
 
-/** What a change request asks for: a new mode, or turning the kill switch back off. */
-export type AutomationChangeKind = "SET_MODE" | "KILL_SWITCH_OFF";
+/**
+ * Where an external decision engine (PRD DEC-008: a client's own engine) sits for a product:
+ *   NONE       not called; the built-in engine decides.
+ *   ALONGSIDE  called in addition: where the two disagree, the case goes to a person.
+ *   INSTEAD    its outcome replaces the built-in score and credit rules; the bank's own
+ *              knockouts and mandatory referrals still apply.
+ * Either way a call that fails refers, never declines (NFR-005).
+ */
+export const ExternalEngineRole = {
+  None: "NONE",
+  Alongside: "ALONGSIDE",
+  Instead: "INSTEAD",
+} as const;
+export type ExternalEngineRole = (typeof ExternalEngineRole)[keyof typeof ExternalEngineRole];
+export const EXTERNAL_ENGINE_ROLES: readonly ExternalEngineRole[] =
+  Object.values(ExternalEngineRole);
+
+export const EXTERNAL_ENGINE_ROLE_LABEL: Record<ExternalEngineRole, string> = {
+  NONE: "Not used",
+  ALONGSIDE: "Alongside the built-in engine",
+  INSTEAD: "Instead of the built-in engine",
+};
+
+/**
+ * What a change request asks for: a new mode, turning the kill switch back off, or a new role
+ * for the external decision engine.
+ */
+export type AutomationChangeKind = "SET_MODE" | "KILL_SWITCH_OFF" | "SET_EXTERNAL_ENGINE";
 export type AutomationChangeStatus = "PENDING" | "APPROVED" | "REJECTED" | "WITHDRAWN";
 
 /** A change to a product's automation, drafted by one administrator for another to approve. */
@@ -31,6 +57,10 @@ export interface AutomationChangeView {
   requestedMode: AutomationMode | null;
   /** The mode when the change was drafted. */
   fromMode: AutomationMode;
+  /** The external engine's role asked for (SET_EXTERNAL_ENGINE), or null. */
+  requestedExternalEngine: ExternalEngineRole | null;
+  /** The external engine's role when the change was drafted. */
+  fromExternalEngine: ExternalEngineRole;
   reason: string;
   status: AutomationChangeStatus;
   requestedBy: string;
@@ -45,6 +75,7 @@ export type AutomationAction =
   | "REQUEST_MODE_CHANGE"
   | "KILL_SWITCH_ON"
   | "REQUEST_KILL_SWITCH_OFF"
+  | "REQUEST_EXTERNAL_ENGINE_CHANGE"
   | "APPROVE_CHANGE"
   /** Close another administrator's request unchanged. */
   | "REJECT_CHANGE"
@@ -62,6 +93,8 @@ export interface AutomationView {
   killSwitch: boolean;
   killSwitchSetByName: string | null;
   killSwitchSetAt: string | null;
+  /** Whether, and how, a decision also calls the external decision engine (PRD DEC-008). */
+  externalEngine: ExternalEngineRole;
   updatedAt: string;
   /** At most one change waits for approval per product. */
   pendingChange: AutomationChangeView | null;
@@ -82,7 +115,8 @@ export interface AutomationEventView {
 
 export type AutomationChangeRequest =
   | { kind: "SET_MODE"; mode: AutomationMode; reason: string }
-  | { kind: "KILL_SWITCH_OFF"; reason: string };
+  | { kind: "KILL_SWITCH_OFF"; reason: string }
+  | { kind: "SET_EXTERNAL_ENGINE"; externalEngine: ExternalEngineRole; reason: string };
 
 export interface KillSwitchRequest {
   reason: string;
