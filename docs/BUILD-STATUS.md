@@ -63,6 +63,11 @@ commit passed the review loop. Blocked items carry the evidence.
   (autoContinueAtUsageLimit); lanes B and C relaunched in their worktrees per rule 11.
 - 28 Nov 05:33–09:32 — paused at the 5-hour usage limit; continued automatically; all six
   lanes relaunched in their worktrees per rule 11, no lost work.
+- 28 Nov — process slip: the integrator's stamp check on the lane C merge (e8bf482) failed
+  for one data lesson (insert-only guards, arrived with H7) but was piped through `tail`,
+  so the merge commit went in (merge commits are exempt from the commit lock). The data
+  reviewer then judged the merge against that lesson: ✅, no change needed. The stamp check
+  is now run on its own with its exit status checked.
 
 ## Blocked / waiting
 
