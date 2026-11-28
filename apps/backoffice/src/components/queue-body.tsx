@@ -5,6 +5,7 @@ import {
   type CaseStatus,
   type CaseSummary,
   type Role,
+  type SlaView,
   STATUS_LABEL,
 } from "@loan/core";
 import { SegmentedFilter, StatCard } from "@loan/ui";
@@ -18,8 +19,8 @@ export function stagesIn(items: CaseSummary[]): CaseStatus[] {
 export type StageFilter = CaseStatus | "ALL";
 
 /**
- * Counts and a stage filter from the queue the page already loaded (no team or SLA figures:
- * the API does not provide them in this release), then the table filtered to that stage.
+ * Counts and a stage filter from the queue the page already loaded, with the stage clocks
+ * (PRD WF-003) when the page has them, then the table filtered to that stage.
  *
  * - One card per stage only when the queue holds more than one (otherwise it repeats the
  *   total), and the filter likewise.
@@ -38,6 +39,7 @@ export function QueueBody({
   empty,
   onPick,
   pickingId = null,
+  sla,
 }: {
   staffRole: Role;
   items: CaseSummary[];
@@ -48,6 +50,8 @@ export function QueueBody({
   onPick?: (c: CaseSummary) => void;
   /** The case whose Pick is in flight. */
   pickingId?: string | null;
+  /** Stage clocks by case id (business time); figures and a column appear when given. */
+  sla?: ReadonlyMap<string, SlaView>;
 }) {
   const stages = stagesIn(items);
   const filtering = stages.length > 1;
@@ -72,6 +76,15 @@ export function QueueBody({
               <StatCard label={STATUS_LABEL[s]} value={count(s)} />
             </li>
           ))}
+        {sla && (
+          <li>
+            <StatCard
+              label="Past SLA"
+              value={items.filter((c) => sla.get(c.id)?.state === "BREACHED").length}
+              note={`${items.filter((c) => sla.get(c.id)?.state === "AT_RISK").length} at risk (2 business hours or less)`}
+            />
+          </li>
+        )}
         {staffRole === "APPROVER" && (
           <li>
             <StatCard
@@ -95,7 +108,7 @@ export function QueueBody({
           />
         </div>
       )}
-      <CaseTable cases={shown} empty={empty} onPick={onPick} busyId={pickingId} />
+      <CaseTable cases={shown} empty={empty} onPick={onPick} busyId={pickingId} sla={sla} />
     </>
   );
 }

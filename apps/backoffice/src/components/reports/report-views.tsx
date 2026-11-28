@@ -7,18 +7,24 @@ import {
   OVERRIDE_REASON_LABEL,
   type OverrideReason,
   STATUS_LABEL,
+  type TurnaroundReport,
+  type TurnaroundStage,
 } from "@loan/core";
 import {
   type Bar,
   BarList,
   type BarTone,
   Card,
+  type Column,
   EmptyState,
   formatDate,
   formatNumber,
   formatPeso,
+  StagePill,
   StatCard,
+  Table,
 } from "@loan/ui";
+import { businessDuration, calendarNote } from "@/components/sla";
 import { PERIODS, percent } from "@/lib/reports";
 
 const OUTCOME: Record<string, { label: string; tone: BarTone }> = {
@@ -203,6 +209,71 @@ export function FunnelView({ report: r }: { report: OriginationFunnelReport }) {
           )}
         </Card>
       </div>
+    </div>
+  );
+}
+
+const businessTime = (m: number | null) => (m === null ? "—" : businessDuration(m));
+
+const TURNAROUND_COLUMNS: Column<TurnaroundStage>[] = [
+  { key: "stage", header: "Stage", render: (s) => <StagePill status={s.status} /> },
+  { key: "visits", header: "Visits", numeric: true, render: (s) => formatNumber(s.visits) },
+  { key: "median", header: "Median", numeric: true, render: (s) => businessTime(s.medianMinutes) },
+  {
+    key: "p90",
+    header: "90th percentile",
+    numeric: true,
+    render: (s) => businessTime(s.p90Minutes),
+  },
+  { key: "target", header: "SLA", numeric: true, render: (s) => businessTime(s.targetMinutes) },
+  {
+    key: "within",
+    header: "Within SLA",
+    numeric: true,
+    render: (s) => (s.withinTargetShare === null ? "—" : percent(s.withinTargetShare)),
+  },
+];
+
+/** RPT-002: business time per stage for the stage visits that ended in the period. */
+export function TurnaroundView({ report: r }: { report: TurnaroundReport }) {
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Open past SLA"
+          value={formatNumber(r.openNow.breached)}
+          note="Right now, in a stage with an SLA"
+        />
+        <StatCard
+          label="Open at risk"
+          value={formatNumber(r.openNow.atRisk)}
+          note="2 business hours or less left"
+        />
+        <StatCard label="Open on track" value={formatNumber(r.openNow.onTrack)} />
+      </div>
+      <Card title="Time per stage">
+        <p className="mb-3 text-sm text-mist-500">
+          Business time: Monday to Friday, {r.businessDay.start}–{r.businessDay.end} Manila, less
+          holidays. Stage visits that ended {periodLine(r.period)}.
+        </p>
+        <Table
+          caption="Business time per stage"
+          columns={TURNAROUND_COLUMNS}
+          rows={r.stages}
+          rowKey={(s) => s.status}
+          empty="No stages with an SLA."
+        />
+        {r.holidays.length > 0 && (
+          <p className="mt-3 text-xs text-mist-500">
+            Holidays skipped: {r.holidays.map((h) => `${formatDate(h.date)} ${h.name}`).join(" · ")}
+          </p>
+        )}
+        {calendarNote(r.holidayCalendarEnds, r.period.to) && (
+          <p className="mt-2 text-xs text-gold-700">
+            {calendarNote(r.holidayCalendarEnds, r.period.to)}
+          </p>
+        )}
+      </Card>
     </div>
   );
 }

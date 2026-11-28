@@ -66,7 +66,13 @@ const mixed = [
 function stubList(items: CaseSummary[]) {
   vi.stubGlobal(
     "fetch",
-    vi.fn(async () => new Response(JSON.stringify({ items }), { status: 200 })),
+    // The page also reads the stage clocks (/sla/cases): none here.
+    vi.fn(
+      async (url: string) =>
+        new Response(JSON.stringify(String(url).includes("/sla/") ? [] : { items }), {
+          status: 200,
+        }),
+    ),
   );
 }
 

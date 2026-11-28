@@ -4,6 +4,7 @@ import type { DataSource } from "typeorm";
 import { hashPassword } from "../auth/password";
 import { StaffEntity } from "../auth/staff.entity";
 import { ApplicantEntity } from "../cases/entities/applicant.entity";
+import { BusinessHolidayEntity } from "../sla/entities/business-holiday.entity";
 
 /**
  * Synthetic demo data only (mechanics: "use synthetic data only, and create it yourself").
@@ -635,6 +636,29 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+  // Joel's thin-file profile (Refer, 612 C), for the SLA and turnaround journey.
+  {
+    id: "APL-RENATO",
+    fullName: "Renato Navarro",
+    birthDate: "1999-04-02",
+    governmentIdLast4: "5836",
+    employer: "Pasig Digital Studio",
+    employmentMonths: 40,
+    relationshipMonths: 0,
+    monthlyIncome: "56000.00",
+    monthlyObligations: "11000.00",
+    depositAccount: "WB-SAV-0087-5836",
+    bureau: {
+      fileDepth: "THIN",
+      bureauScore: 640,
+      tradeLines: 1,
+      utilisationPct: 42,
+      delinquencies12m: 0,
+      existingDefault: false,
+      monthsOnFile: 7,
+    },
+    screening: CLEAR,
+  },
   // Maria's profile again (742, A), for the booking-exceptions and reconciliation journey.
   {
     id: "APL-HERNAN",
@@ -658,6 +682,31 @@ export const SEED_APPLICANTS: ApplicantSeed[] = [
     },
     screening: CLEAR,
   },
+];
+
+/**
+ * A small Philippine holiday calendar for the business clock (PRD PLT-005): the regular and
+ * special non-working days of late 2026 and early 2027, as commonly proclaimed. Synthetic
+ * demo data: a deployment would load the official proclamation each year.
+ */
+export const SEED_HOLIDAYS: { date: string; name: string }[] = [
+  { date: "2026-08-21", name: "Ninoy Aquino Day" },
+  { date: "2026-08-31", name: "National Heroes Day" },
+  { date: "2026-11-01", name: "All Saints' Day" },
+  { date: "2026-11-02", name: "All Souls' Day" },
+  { date: "2026-11-30", name: "Bonifacio Day" },
+  { date: "2026-12-08", name: "Feast of the Immaculate Conception" },
+  { date: "2026-12-24", name: "Christmas Eve" },
+  { date: "2026-12-25", name: "Christmas Day" },
+  { date: "2026-12-30", name: "Rizal Day" },
+  { date: "2026-12-31", name: "Last day of the year" },
+  { date: "2027-01-01", name: "New Year's Day" },
+  { date: "2027-02-25", name: "EDSA People Power Revolution Anniversary" },
+  { date: "2027-03-25", name: "Maundy Thursday" },
+  { date: "2027-03-26", name: "Good Friday" },
+  { date: "2027-04-09", name: "Araw ng Kagitingan" },
+  { date: "2027-05-01", name: "Labor Day" },
+  { date: "2027-06-12", name: "Independence Day" },
 ];
 
 /** Upsert the demo staff, applicants and the simulators' persona profiles. */
@@ -690,6 +739,7 @@ export async function seed(ds: DataSource): Promise<{ staff: number; applicants:
         [a.id, a.bureau, a.screening, a.fraud ?? null, identityKey(a)],
       );
     }
+    await m.getRepository(BusinessHolidayEntity).upsert(SEED_HOLIDAYS, ["date"]);
   });
   return { staff: SEED_STAFF.length, applicants: SEED_APPLICANTS.length };
 }

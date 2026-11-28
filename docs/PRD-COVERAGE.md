@@ -25,7 +25,7 @@ only the docs.
   because it needs a real external provider, a borrower mobile app, real infrastructure or
   non-synthetic data.
 
-Summary: 28 built, 37 partly built, 74 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
+Summary: 31 built, 37 partly built, 71 not built (139 IDs, counted from the table below). Of the 8 flows, 3 are partly built
 (F1, F2, F6) and 5 are not built.
 
 ## 1. Coverage table
@@ -77,7 +77,7 @@ Summary: 28 built, 37 partly built, 74 not built (139 IDs, counted from the tabl
 |---|---|---|---|---|
 | WF-001 | Configurable stages per product | partly built | `packages/base/src/cases/lifecycle.ts`, L-1 | One fixed transition table, enforced at both ends. It is not configurable, and there is no "closed" stage. |
 | WF-002 | Work queues by role/branch/product/priority | partly built | QR-1, `routing.service.ts`, queue Mine/Team/Unassigned | Owner, channel, priority and top reason on every case; pick, reassign with a reason, high priority first. Missing: branch and product routing (one branch, one product) and automatic round robin (the reassign dialog shows each officer's load instead). |
-| WF-003 | SLA timers and escalation | not built | — | `queue-body.tsx` states that no SLA figures are shown. |
+| WF-003 | SLA timers and escalation | partly built | SLA-1..SLA-4, `/sla/cases`, queue SLA column | Stage clocks in Philippine business time (review 8 business hours, approval and booking stages 4), from the activity history; Past SLA and At risk on queue rows, All applications and the case page. Missing: automatic escalation or reassignment on breach, notifications (#23), and SLAs configurable per product (in code). |
 | WF-004 | Approval matrix | partly built | `case-access.ts` `authorityProblem`, R-6 | Authority is amount AND grade per approver, read from the staff table. No product or exception-type dimension, delegated levels or committee level. |
 | WF-005 | Maker-checker on approval, override, booking, disbursement | built | R-4, R-5, R-6, `booking.service.ts` | The officer recommends and a different approver approves (overrides included). Booking maker ≠ checker. Disbursement runs in the checker's booking step, not as a separate checker step. |
 | WF-006 | Unified case view | partly built | `cases/[id]/page.tsx`, `decision-panel.tsx`, F2-2 | Applicant, rule results, score, grade, reasons, decision record, recommendation, booking and history. No bureau detail card, documents, or full relationship data (only relationship months). |
@@ -155,7 +155,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | ID | Title | Status | Evidence | Notes |
 |---|---|---|---|---|
 | RPT-001 | Origination funnel | built | RPT-2..RPT-4, `/reports/funnel` | Started, submitted, approved, disbursed with conversions, disbursed principal and current status, by business-date period. One product and one channel, so no product or channel split. |
-| RPT-002 | Turnaround and SLA | not built | — | `activity_event` timestamps would support it. |
+| RPT-002 | Turnaround and SLA | built | TAT-1, TAT-2, `/reports/turnaround` | Business time per stage (median, 90th percentile, share within SLA) for visits ending in the period, and open cases by SLA state. No team or branch split (one team). |
 | RPT-003 | Decision mix with reason codes | built | RPT-1, RPT-3, RPT-4, `/reports/decisions` | Outcome mix, straight-through rate, reason codes, referral triggers, override rate and override reasons, by business-date period. No model or product split (one scorecard, one product). |
 | RPT-004 | Portfolio quality | not built | — | Needs repayment history (simulated core only). |
 | RPT-005 | Collections performance | not built | — | Depends on CLX. |
@@ -178,7 +178,7 @@ Every SS requirement is a borrower-app feature, so each is not built and **OOR**
 | PLT-002 | Multi-tenant isolation (P2) | not built | — | Phase 2. |
 | PLT-003 | Branding and localisation from WhiteBank theming | partly built | `apps/backoffice/src/app/globals.css`, `packages/ui` | The prototype's tokens are used. No per-tenant theming or localisation. |
 | PLT-004 | Immutable, searchable audit log | built | AUD-1..AUD-8, `audit_event`, `/audit` screen | Sign-ins (success, failure, sign-out), simulation mode changes and every case activity event (consent, decisions, approvals, booking, AML work) in one insert-only log, searchable by actor, action, business-date range and case, for Compliance and the administrator. Configuration changes are not logged because there is no configuration to change yet. |
-| PLT-005 | Holiday calendars, business days | not built | ASSUMPTIONS "Business date" | Only a UTC+8 business date. No holidays, so due dates are not shifted. |
+| PLT-005 | Holiday calendars, business days | partly built | SLA-4, `business_holiday`, `sla/business-time.ts` | Philippine business time (Mon–Fri 09:00–17:00 Manila, less a seeded holiday calendar) drives SLAs and turnaround. Missing: maintaining the calendar from a screen, and shifting repayment due dates (core owns the schedule). |
 | PLT-006 | Feature flags | not built | — | |
 
 ### 7.2 Rules engine (DEC)
@@ -300,7 +300,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 12 | ✅ Done (WI-1; branch officer role not added, see ASSUMPTIONS). Walk-in and new-customer capture (name, birth date, employer, income, obligations) with pre-fill from a simulated core customer lookup; branch officer role | INT-005, INT-002, F3 | M | F3's entry point. |
 | 13 | ✅ Done (IR-1). Indicative repayment before submission, from the core quote | INT-004 | S | The quote port already exists. It is shown after approval today. |
 | 14 | ✅ Done (RPT-1..RPT-4). Decision-mix and origination-funnel reports (outcome, override and reason-code counts; stage drop-off) | RPT-003, RPT-001 | S | Measures the PRD's straight-through-processing metric. The data is already stored. |
-| 15 | SLA timers per stage with breach flags in the queues and a turnaround report | WF-003, RPT-002 | M | Measures the PRD's "referred decision within 1 business day" metric. Needs holiday-aware business time (PLT-005). |
+| 15 | ✅ Done (SLA-1..SLA-4, TAT-1, TAT-2; flags, no automatic escalation). SLA timers per stage with breach flags in the queues and a turnaround report | WF-003, RPT-002 | M | Measures the PRD's "referred decision within 1 business day" metric. Needs holiday-aware business time (PLT-005). |
 | 16 | ✅ Done (QR-1; no automatic round robin). Queue routing: pick, reassign, priority, round robin | WF-002 | M | Team operations. |
 | 17 | Credit memo generated from the case, editable by the analyst, stored with versions | WF-008 | M | Part of F2 review in the PRD. |
 | 18 | Disclosure statement generated from approved terms and acknowledged before the simulated signature; templates | CMP-002, DOC-004, SS-002 (staff side) | M | Truth in Lending requirement for the PH release. Needs a fee model (PC-002). |
@@ -349,7 +349,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Case view, Decision record button | Stored inputs and versions | NFR-011, AIS-001 | Built, with reproduce (F1-2). |
 | Case actions: Request information, Recommend decision, Credit memo, Reassign, Withdraw (reasons include "Duplicate application"), Resume draft | Review tools | WF-007, WF-008, WF-002, WF-012, INT-003 | Recommend built (F2-3..F2-5). Withdraw built (W-1). Request information built (DC-1). Others not built (#17, #16). |
 | Approval panel: recommendation, override above or below threshold, authority line, Approve, Return, Decline | Approver | §7.4, WF-004, WF-005 | Built (F2-5, R-6, R-8). |
-| Work queues (Mine, Team, Unassigned with Pick), SLA watch, KPIs | Queues | WF-002, WF-003 | Role queue, Mine/Team/Unassigned, Pick, Reassign and priority built (QR-1). SLA watch not built (#15). |
+| Work queues (Mine, Team, Unassigned with Pick), SLA watch, KPIs | Queues | WF-002, WF-003 | Role queue, Mine/Team/Unassigned, Pick, Reassign and priority built (QR-1). SLA column with Past SLA and At risk built (SLA-1); no separate SLA watch screen. |
 | Approvals, Credit committee | Approver and committee lists | WF-004, WF-010 | Approvals queue built. Committee not built (#22). |
 | All applications (in progress, closed, all; channel column) | Case list | WF-001, RPT-001 | List built. No channels. |
 | Email and file intake | Bundle or spreadsheet upload, OCR drafts | INT-010, F4 | Not built (#30). |
@@ -358,7 +358,7 @@ operations and supervisor, collections, risk, compliance, admin) and the screens
 | Booking exceptions with retry and a "Reconciliation · today" panel | Exceptions | BKG-005 | Built (REC-1..REC-7): exceptions list and a reconciliation panel with a run history. |
 | Collateral register, collateral detail, Deposit holds | Secured lending | COL-001..006, PC-009 | Not built (#29). |
 | Delinquency overview, Collector queue, Restructuring, Write-off and recovery, Agency assignment (P2) | Collections | CLX-001..008 | Not built (#31). |
-| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Origination funnel and Decisioning dashboard built (RPT-1..RPT-4). Turnaround and SLA, portfolio, collections, scheduled and regulatory reports not built (#15, #32). |
+| Reports: Origination funnel, Turnaround and SLA, Decisioning dashboard, Portfolio quality, Collections performance, Scheduled reports, Regulatory extracts | Reports | RPT-001..007, CMP-003 | Origination funnel, Decisioning dashboard and Turnaround and SLA built (RPT-1..RPT-4, TAT-1). Portfolio, collections, scheduled and regulatory reports not built (#32). |
 | Compliance: Audit log (searchable, tamper-evident) | Audit | PLT-004, CMP-010 | Built (AUD-1..AUD-8): `/audit` with filters and chain verification, for compliance and admin. |
 | Compliance: Consent records | Consent register | CMP-001 | Not built (#2). |
 | Compliance: AML escalations (mark reviewed and export) | AML | CMP-005, F6 | Built without export (CMP-1..CMP-5): list and detail, acknowledge, close with outcome and notes. |

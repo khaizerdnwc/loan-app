@@ -20,6 +20,7 @@ export const ALLOWED_ROOTS: ReadonlySet<string> = new Set([
   "automation",
   "operations",
   "reports",
+  "sla",
   "providers",
 ]);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { CaseDetail, CaseList, CaseSummary, Role } from "@loan/core";
+import type { CaseDetail, CaseList, CaseSummary, Role, SlaView } from "@loan/core";
 import { buttonClass, Icon, SegmentedFilter, useToast } from "@loan/ui";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -8,6 +8,7 @@ import { useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { LoadState } from "@/components/load-state";
 import { QueueBody, type StageFilter } from "@/components/queue-body";
+import { SlaUnavailable } from "@/components/sla";
 import { api, errorMessage } from "@/lib/api";
 import { landingFor } from "@/lib/navigation";
 import { useSession } from "@/lib/session";
@@ -66,6 +67,9 @@ export default function QueuePage() {
   const toast = useToast();
   const hasQueue = landingFor(me.role) === "/queue";
   const queue = useApi<CaseList>(hasQueue ? "/cases?view=queue" : null);
+  // Stage clocks (PRD WF-003); the queue still works if they cannot be read.
+  const clocks = useApi<SlaView[]>(hasQueue ? "/sla/cases?view=queue" : null);
+  const sla = clocks.data ? new Map(clocks.data.map((s) => [s.caseId, s])) : undefined;
   // Roles without a queue (admin, compliance) land on their own screen instead.
   useEffect(() => {
     if (!hasQueue) router.replace(landingFor(me.role));
@@ -124,6 +128,7 @@ export default function QueuePage() {
           />
         </div>
       )}
+      {queue.data && clocks.error && <SlaUnavailable what="queue" />}
       {queue.data && (
         <QueueBody
           staffRole={me.role}
@@ -133,6 +138,7 @@ export default function QueuePage() {
           empty={officer && ownership !== "ALL" ? OWNERSHIP_EMPTY[ownership] : copy.empty}
           onPick={officer ? pick : undefined}
           pickingId={picking}
+          sla={sla}
         />
       )}
     </>

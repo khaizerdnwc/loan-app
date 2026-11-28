@@ -42,6 +42,9 @@ import { ReportsController } from "./reports/reports.controller";
 import { ReportsRepository } from "./reports/reports.repository";
 import { ReportsService } from "./reports/reports.service";
 import { SimulationController } from "./simulation/simulation.controller";
+import { SlaController, TurnaroundController } from "./sla/sla.controller";
+import { SlaRepository } from "./sla/sla.repository";
+import { SlaService } from "./sla/sla.service";
 
 export type { LendingModuleOptions };
 
@@ -76,6 +79,8 @@ export class LendingModule {
         AutomationController,
         OperationsController,
         ReportsController,
+        SlaController,
+        TurnaroundController,
         ProvidersController,
       ],
       providers: [
@@ -103,6 +108,8 @@ export class LendingModule {
         OperationsService,
         ReportsRepository,
         ReportsService,
+        SlaRepository,
+        SlaService,
         ProvidersRepository,
         ProviderGateway,
       ],

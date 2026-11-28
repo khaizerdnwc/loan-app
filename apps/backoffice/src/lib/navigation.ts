@@ -61,6 +61,7 @@ export function navFor(role: Role): NavGroup[] {
       items: [
         { href: "/reports/funnel", label: "Origination funnel", icon: "chart" },
         { href: "/reports/decisions", label: "Decisioning", icon: "chart" },
+        { href: "/reports/turnaround", label: "Turnaround and SLA", icon: "chart" },
       ],
     });
   }

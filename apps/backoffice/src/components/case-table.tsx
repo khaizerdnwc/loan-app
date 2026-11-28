@@ -1,6 +1,6 @@
 "use client";
 
-import { type CaseSummary, CHANNEL_LABEL, productLabel } from "@loan/core";
+import { type CaseSummary, CHANNEL_LABEL, productLabel, type SlaView } from "@loan/core";
 import {
   Avatar,
   Button,
@@ -15,6 +15,7 @@ import {
   Table,
 } from "@loan/ui";
 import Link from "next/link";
+import { SlaPill } from "@/components/sla";
 
 /** Whether a row offers Pick: a referral in the team queue (the API decides on the click). */
 export function pickable(c: CaseSummary): boolean {
@@ -142,11 +143,28 @@ function ownerColumn(
   };
 }
 
+/** The SLA column (PRD WF-003), shown when the page has the clocks for its cases. */
+function slaColumn(sla: ReadonlyMap<string, SlaView>): Column<CaseSummary> {
+  return {
+    key: "sla",
+    header: "SLA (business hours)",
+    render: (c) => {
+      const clock = sla.get(c.id);
+      return clock ? (
+        <SlaPill sla={clock} />
+      ) : (
+        <span className="text-xs text-mist-500">No SLA</span>
+      );
+    },
+  };
+}
+
 export function CaseTable({
   cases,
   empty,
   onPick,
   busyId = null,
+  sla,
 }: {
   cases: CaseSummary[];
   empty: string;
@@ -154,6 +172,8 @@ export function CaseTable({
   onPick?: (c: CaseSummary) => void;
   /** The case whose Pick is in flight: its button is busy and every Pick waits for it. */
   busyId?: string | null;
+  /** Each case's stage clock; when given, the table shows an SLA column. */
+  sla?: ReadonlyMap<string, SlaView>;
 }) {
   // The owner goes after the amount, found by its key (not its position).
   const at = COLUMNS.findIndex((col) => col.key === "amount") + 1;
@@ -161,7 +181,7 @@ export function CaseTable({
   return (
     <Table
       caption="Loan applications"
-      columns={columns}
+      columns={sla ? [...columns, slaColumn(sla)] : columns}
       rows={cases}
       rowKey={(c) => c.id}
       empty={empty}

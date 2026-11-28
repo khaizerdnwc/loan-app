@@ -1,6 +1,6 @@
 "use client";
 
-import type { CaseList } from "@loan/core";
+import type { CaseList, SlaView } from "@loan/core";
 import { buttonClass, Icon } from "@loan/ui";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/app-shell";
 import { type CaseScope, CaseScopeFilter, inScope, parseScope } from "@/components/case-scope";
 import { CaseTable } from "@/components/case-table";
 import { LoadState } from "@/components/load-state";
+import { SlaUnavailable } from "@/components/sla";
 import { useSession } from "@/lib/session";
 import { useApi } from "@/lib/use-api";
 
@@ -37,6 +38,9 @@ function AllCases() {
   const me = useSession();
   const router = useRouter();
   const cases = useApi<CaseList>("/cases?view=all");
+  // Stage clocks (PRD WF-003); the list still works if they cannot be read.
+  const clocks = useApi<SlaView[]>("/sla/cases?view=all");
+  const sla = clocks.data ? new Map(clocks.data.map((s) => [s.caseId, s])) : undefined;
   const scope = parseScope(useSearchParams().get("scope"));
   const setScope = (next: CaseScope) =>
     router.replace(next === "open" ? "/cases" : `/cases?scope=${next}`, { scroll: false });
@@ -61,12 +65,14 @@ function AllCases() {
       />
       {cases.data && (
         <>
+          {clocks.error && <SlaUnavailable what="list" />}
           <div className="mb-4">
             <CaseScopeFilter items={cases.data.items} value={scope} onChange={setScope} />
           </div>
           <CaseTable
             cases={cases.data.items.filter((c) => inScope(c.status, scope))}
             empty={EMPTY[scope]}
+            sla={sla}
           />
         </>
       )}

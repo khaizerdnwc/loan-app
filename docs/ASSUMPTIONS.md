@@ -67,6 +67,7 @@ project team's prototype; values marked *ours* are our own.
 | Ernesto Lacson | Same profile as Ramon (sanctions match) | Auto-decline, no score (R11); AML escalation |
 | Dario Mercado | Same profile as Maria; the simulated list adds him after onboarding | Auto-approve, 742 A; screening before disbursement matches and holds the booking |
 | Hernan Salazar | Same profile as Maria (742, A); the booking-exceptions and reconciliation browser journey | Auto-approve, 742 A |
+| Renato Navarro | Same profile as Joel (thin file); the SLA and turnaround browser journey | Refer, 612 C |
 
 ## Roles and authority
 
@@ -144,5 +145,16 @@ project team's prototype; values marked *ours* are our own.
 | Decision mix | Counts every decision record made in the period (a case decided again after an outage counts twice, as two decisions). Straight-through = (auto-approve + auto-decline) ÷ all decisions. Overrides come from the recommendation events in the history (insert-only), not the case row, which a re-decision clears | ours (PRD RPT-003; prototype Decisioning dashboard) |
 | Origination funnel | Cohort by application start date: started, submitted (has a decision), approved (has approved terms: automatically or by an approver), disbursed, each with its conversion from the stage before. Booked value is the sum of disbursed principals. There is one product and one channel, so no product or channel split | ours (PRD RPT-001; prototype Origination funnel) |
 | Who reads reports | Counts only, no applicant data: loan officers, approvers, Compliance and the administrator (the prototype's Reports group); not loan operations | ours |
+
+## Stage SLAs, business time and turnaround
+
+| Item | Choice | Source |
+|---|---|---|
+| Business time | Monday to Friday, 09:00–17:00 Manila (UTC+8, no daylight saving), less the holidays in `business_holiday`. Eight business hours make one business day (the PRD's "referred decision within 1 business day") | ours (PRD PLT-005) |
+| Holiday calendar | A small seeded calendar of Philippine regular and special non-working days for late 2026 and 2027 (`SEED_HOLIDAYS`), synthetic demo data; a deployment would load the official proclamation each year. Repayment due dates are not shifted for holidays (core banking owns the schedule). The calendar ends on 12 Jun 2027: the turnaround report and the case clock say so once a period or a due date runs past it, so a missing year is visible, not silent | ours |
+| Stage SLAs | Review 8 business hours (loan officer); approval 4 (approver); booking, pending checker and booking failed 4 each (loan operations, the supervisor). No clock in draft (the officer's own), information requested (waiting on the borrower; the review clock starts again when the case comes back), offer (its own expiry, WF-012) or closed stages. At risk: two business hours or less left. From the prototype's workflow table | prototype + ours |
+| Where the clock starts | When the case last entered its current status, read from the activity history (insert-only), never from `loan_case.updated_at`, which any edit moves. A re-decision into Review starts a new review clock | ours |
+| Breach handling | Flags only: the queue, All applications and the case page show Past SLA and At risk, and the turnaround report counts them. No automatic reassignment or escalation to a team lead, and no notification yet (notifications are backlog #23) | ours |
+| Turnaround | Per stage, the stage visits that ended in the period (a visit ends at the case's next status change), in business minutes: median and 90th percentile (nearest rank), and the share within the SLA | ours (PRD RPT-002; prototype Turnaround and SLA) |
 
 Add a row whenever the build makes a choice the materials do not dictate.

@@ -39,6 +39,7 @@ import { IndicativeRepayment } from "@/components/case/indicative-repayment";
 import { LoanAccountPanel } from "@/components/case/loan-account-panel";
 import { OutcomeBanner } from "@/components/case/outcome-banner";
 import { LoadState } from "@/components/load-state";
+import { CaseSla } from "@/components/sla";
 import { useApi } from "@/lib/use-api";
 
 export default function CasePage() {
@@ -97,6 +98,7 @@ export default function CasePage() {
           <StagePill status={c.status} />
           {c.escalated && <Pill tone="bad">Escalated</Pill>}
           {c.priority === "HIGH" && <Pill tone="bad">High priority</Pill>}
+          <CaseSla caseId={c.id} status={c.status} />
           {c.decision && (
             <Button variant="secondary" onClick={() => setShowRecord(true)}>
               Decision record

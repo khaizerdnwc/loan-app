@@ -23,9 +23,13 @@ export class ReportPeriodQueryDto {
  * Counts only (no applicant data or case reference), so the roles that read decisions see
  * them, and the administrator too, as in the prototype's Reports group.
  */
-const REPORT_READERS = [Role.LoanOfficer, Role.Approver, Role.Compliance, Role.Admin];
+export const REPORT_READERS = [Role.LoanOfficer, Role.Approver, Role.Compliance, Role.Admin];
 
-/** The decision-mix and origination-funnel reports (PRD RPT-003, RPT-001). Read-only. */
+/**
+ * The decision-mix and origination-funnel reports (PRD RPT-003, RPT-001). Read-only. The
+ * turnaround report (RPT-002) shares the /reports path but lives in sla/ (TurnaroundController),
+ * so reports/ never imports sla/.
+ */
 @ApiTags("reports")
 @Controller("reports")
 export class ReportsController {
