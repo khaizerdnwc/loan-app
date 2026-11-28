@@ -78,6 +78,33 @@ describe("ProviderUsage (PR-4, PR-5)", () => {
     expect(screen.getByText("0.4 s")).toBeInTheDocument();
     expect(screen.getByText("Within target")).toBeInTheDocument();
     expect(screen.getByText(/Simulated · providers/)).toBeInTheDocument();
+    // The shared facts block: each figure under its label (docs/ui-parity.md row 59).
+    expect(screen.getByText("Median").tagName).toBe("DT");
+    expect(screen.getByText("Median").parentElement).toHaveTextContent(/^Median\s*0\.4 s$/);
+    expect(screen.getByText("95th percentile").parentElement).toHaveTextContent(
+      /^95th percentile\s*1\.9 s$/,
+    );
+    expect(screen.getByText("Decisions measured").parentElement).toHaveTextContent(
+      /^Decisions measured\s*39$/,
+    );
+  });
+
+  it("with no decision in the window, says so in the shared empty state, with no figures", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url: string) => {
+        const body = url.includes("/providers/usage")
+          ? usage
+          : { ...latency, decisions: 0, p50Ms: null, p95Ms: null, maxMs: null };
+        return new Response(JSON.stringify(body), { status: 200 });
+      }),
+    );
+    render(<ProviderUsage />);
+    const title = await screen.findByText("No decisions measured yet");
+    expect(title.className).toMatch(/font-bold/);
+    expect(screen.getByText("Decisions made in the last 30 days appear here.")).toBeInTheDocument();
+    expect(screen.queryByText("Median")).toBeNull();
+    expect(screen.queryByText("Within target")).toBeNull();
   });
 
   it("says when the 95th percentile is over the target", async () => {

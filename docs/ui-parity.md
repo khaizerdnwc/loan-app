@@ -96,6 +96,21 @@ The rules that came out of this, and the component list, are in
 | 51 | Request information dialog | The "Documents" group's legend used its own bold style, unlike every form label | **fixed** — the one label style (small, uppercase, tracked), like `Field` |
 | 52 | Request information dialog | Prototype offers a free-text list of documents; ours checkboxes of the document types, due in 3 or 5 days | **kept** (typed documents feed the checklist) |
 
+## Operations, reports, providers and decision estimates (lanes B and C)
+
+| # | Screen | Difference | Status |
+|---|---|---|---|
+| 53 | Booking exceptions | "Last error" and "Retry" showed server sentences with raw amounts | **fixed** — through `formatAmountsInText` |
+| 54 | Booking exceptions | Prototype has a "Retry booking" button on each row; ours sends the user to the case | **kept** — a retry runs on the case under the booking rules (maker-checker, the same booking key); the whole row opens the case |
+| 55 | Reconciliation panel | Findings: only the case reference opened the case, and "What it means" showed raw amounts | **fixed** — a finding about a case opens it from its row (`rowClickable`; findings with no case stay plain); amounts through `formatAmountsInText`. The prototype's summary facts (bookings sent, confirmed, exceptions, duplicates) match our `KeyValues` |
+| 56 | Reports (Decisioning, Origination funnel) | Empty periods showed one muted sentence | **fixed** — the shared `EmptyState`, with a hint to choose a longer period only when a longer one exists (none at 90 days) |
+| 57 | Reports | The period filter was component state | **fixed** — kept in the URL (`?days=7\|90`; none means 30), so Back and a shared link keep it |
+| 58 | Reports | Prototype funnel adds "Submitted by channel" and "By product"; the decisioning dashboard adds "Automation by product" and a 30+ DPD figure | **later** — one product and one channel in this release; no repayment data for DPD |
+| 59 | Provider usage and latency cards | Latency figures were a two-column list with right-aligned values; the empty window was a muted sentence | **fixed** — `KeyValues` and `EmptyState`. The usage table, circuit pills and "Simulated · prices" label already follow the shared parts |
+| 60 | Decision panel estimates | Debt-to-income, rate, probability of default, affordable amount and "decided in" were a two-column list; the prototype shows label-over-value facts beside the score (`dl.kv`) | **fixed** — `KeyValues` beside the score; the engine wording ("Affordable amount (engine)", "None" in words, the indicative caption) is unchanged |
+| 61 | BarList | Prototype `.hbar` prints the figure in monospace with a 140px label column | **kept** — figures in the body font with tabular numbers (monospace is for identifiers); labels wrap rather than truncate |
+| 62 | Reports | Reason codes are shown as "R11 · Sanctions or watchlist match" in the body font | **kept** — the code stays readable as part of the label; a bar label is not an identifier field |
+
 ## States checked on every screen
 
 Hover (rows, buttons, nav), keyboard focus (rows via their link, buttons, fields, dialogs),

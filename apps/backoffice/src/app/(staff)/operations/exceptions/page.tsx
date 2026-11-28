@@ -4,6 +4,7 @@ import { type BookingExceptionView, RECONCILIATION_KIND_LABEL } from "@loan/core
 import {
   type Column,
   EmptyState,
+  formatAmountsInText,
   formatDateTime,
   formatPeso,
   Pill,
@@ -40,7 +41,7 @@ const COLUMNS: Column<BookingExceptionView>[] = [
     header: "Last error",
     render: (e) => (
       <div className="text-xs">
-        <p>{e.lastError ?? "No error recorded"}</p>
+        <p>{e.lastError ? formatAmountsInText(e.lastError) : "No error recorded"}</p>
         <p className="mt-1 text-mist-500">{formatDateTime(e.lastAttemptAt)}</p>
       </div>
     ),
@@ -59,7 +60,7 @@ const COLUMNS: Column<BookingExceptionView>[] = [
         {e.blockedReason ? (
           <>
             <Pill tone="bad">Blocked</Pill>
-            <span>{e.blockedReason}</span>
+            <span>{formatAmountsInText(e.blockedReason)}</span>
           </>
         ) : (
           <Pill tone="info">Can retry</Pill>

@@ -43,6 +43,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | B14 | PRD backlog #14: decision-mix and origination-funnel reports (RPT-003, RPT-001) | done | RPT-1..RPT-4 (integration with exact counts, unit for periods and shares, component) · Reports group: Origination funnel, Decisioning · BarList in packages/ui |
 | P27 | PRD backlog #27: PD and recommended amount; decision latency (AIS-001, NFR-003) | done (lane C, batch 2) | D-16, D-17 (unit; eleven frozen RS-PL-3 records replay; RS-PL-1 and RS-PL-2 fixtures still pass), PR-5 (integration), component · RS-PL-3 and SC-PL-2 · `pd`, `recommended_amount`, `latency_ms` on the decision record |
 | P28 | PRD backlog #28: provider resilience — retry with backoff, circuit breaker, 30-day bureau reuse, per-call cost counter (IH-003, IH-005, IH-006) | done (lane C, batch 2) | PR-1..PR-4 (integration, unit, component) · `packages/base/src/providers/` · migration 1764300003001 (provider_call insert-only, bureau_report_cache, three nullable decision_record columns) rehearsed on the populated loan_c_test (revert, migrate, revert, migrate) |
+| U5 | Prototype UI/UX parity, batch 5: pass over booking exceptions and reconciliation, the reports, the provider usage and latency cards and the decision panel's estimate rows (53–62) | done | U-12 (component) · no API or schema change |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 

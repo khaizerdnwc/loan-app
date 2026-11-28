@@ -10,6 +10,7 @@ import {
   formatRatioPercent,
   formatSeconds,
   GradeTile,
+  KeyValues,
   OUTCOME_LABEL,
   OutcomePill,
   Pill,
@@ -55,36 +56,35 @@ export function DecisionPanel({ decision }: { decision: DecisionRecordView }) {
             Not scored: a knockout rule or an unavailable service ended the decision before scoring.
           </span>
         )}
-        <dl className="ml-auto grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-          <dt className="text-mist-500">Debt-to-income</dt>
-          <dd className="text-right text-ink-900">{formatRatioPercent(decision.debtToIncome)}</dd>
-          <dt className="text-mist-500">Rate for grade</dt>
-          <dd className="text-right text-ink-900">{formatMonthlyRate(decision.monthlyRate)}</dd>
-          {decision.pd && (
-            <>
-              <dt className="text-mist-500">
-                Probability of default, grade {decision.grade} (12 months)
-              </dt>
-              <dd className="text-right text-ink-900">{formatRatioPercent(decision.pd)}</dd>
-            </>
-          )}
-          {decision.recommendedAmount && (
-            <>
-              <dt className="text-mist-500">Affordable amount (engine)</dt>
-              <dd className="text-right text-ink-900">
-                {nothingAffordable(decision.recommendedAmount)
-                  ? "None"
-                  : formatPeso(decision.recommendedAmount)}
-              </dd>
-            </>
-          )}
-          {typeof decision.latencyMs === "number" && (
-            <>
-              <dt className="text-mist-500">Decided in</dt>
-              <dd className="text-right text-ink-900">{formatSeconds(decision.latencyMs)}</dd>
-            </>
-          )}
-        </dl>
+        {/* The prototype's facts beside the score (dl.kv): label over value. */}
+        <KeyValues
+          className="min-w-0 flex-1 basis-80"
+          items={[
+            { label: "Debt-to-income", value: formatRatioPercent(decision.debtToIncome) },
+            { label: "Rate for grade", value: formatMonthlyRate(decision.monthlyRate) },
+            ...(decision.pd
+              ? [
+                  {
+                    label: `Probability of default, grade ${decision.grade} (12 months)`,
+                    value: formatRatioPercent(decision.pd),
+                  },
+                ]
+              : []),
+            ...(decision.recommendedAmount
+              ? [
+                  {
+                    label: "Affordable amount (engine)",
+                    value: nothingAffordable(decision.recommendedAmount)
+                      ? "None"
+                      : formatPeso(decision.recommendedAmount),
+                  },
+                ]
+              : []),
+            ...(typeof decision.latencyMs === "number"
+              ? [{ label: "Decided in", value: formatSeconds(decision.latencyMs) }]
+              : []),
+          ]}
+        />
       </div>
       {decision.recommendedAmount && (
         <p className="mt-3 text-xs text-mist-500">
