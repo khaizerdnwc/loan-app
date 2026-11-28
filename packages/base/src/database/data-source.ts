@@ -19,6 +19,11 @@ import { ConsentRecordEntity } from "../cases/entities/consent-record.entity";
 import { DecisionRecordEntity } from "../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { AmlEscalationEntity } from "../compliance/entities/aml-escalation.entity";
+import {
+  DocumentExtractionEntity,
+  IntakeBatchEntity,
+  IntakeDraftEntity,
+} from "../intake/intake.entities";
 import { ReconciliationRunEntity } from "../operations/entities/reconciliation-run.entity";
 import { BureauReportCacheEntity, ProviderCallEntity } from "../providers/providers.entities";
 import { BusinessHolidayEntity } from "../sla/entities/business-holiday.entity";
@@ -46,6 +51,9 @@ export const ENTITIES = [
   BusinessHolidayEntity,
   ProviderCallEntity,
   BureauReportCacheEntity,
+  IntakeBatchEntity,
+  IntakeDraftEntity,
+  DocumentExtractionEntity,
 ];
 
 /**

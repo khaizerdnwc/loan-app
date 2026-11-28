@@ -48,7 +48,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
   hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
   (booking exceptions, reconciliation), `reports/` (read-only aggregates), `sla/` (stage SLAs,
-  business time), `providers/` (the
+  business time), `intake/` (email and file intake drafts and OCR readings, which only feed the
+  case aggregate), `providers/` (the
   decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
   (model registry, override and drift monitoring, read-only) and the pure
   `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
@@ -60,7 +61,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   `audit/` but never `compliance/` (that would be a cycle). Folder dependencies stay one-way:
   `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `reports/` ← `sla/` (sla/ uses
   the report period rules; reports/ never imports sla/, and the turnaround route, though under
-  /reports, is declared in sla/). It exports only `SessionGuard`,
+  /reports, is declared in sla/); `cases/` ← `intake/` (intake/ uses cases/; nothing in cases/
+  imports intake/). It exports only `SessionGuard`,
   `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.

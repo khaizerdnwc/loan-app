@@ -3,6 +3,7 @@ export * from "./core-banking.port";
 export * from "./credit-bureau.port";
 export * from "./customer-lookup.port";
 export * from "./disbursement.port";
+export * from "./document-extraction.port";
 export * from "./document-intake.port";
 export * from "./e-signature.port";
 export * from "./errors";

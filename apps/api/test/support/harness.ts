@@ -122,6 +122,9 @@ export async function resetData(ds: DataSource): Promise<void> {
     "sim.service_mode",
     "sim.document_upload",
     "case_document",
+    "intake_draft",
+    "intake_batch",
+    "document_extraction",
   ]);
   // Automation back to how the migration leaves it: PL live, kill switch off, no changes.
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
@@ -177,6 +180,11 @@ export async function twin(h: Harness, seededId: string): Promise<string> {
   await h.ds.query(
     `INSERT INTO sim.persona_profile (applicant_id, bureau, screening, fraud)
      SELECT $2, bureau, screening, fraud FROM sim.persona_profile WHERE applicant_id = $1`,
+    [seededId, id],
+  );
+  await h.ds.query(
+    `INSERT INTO sim.document_profile (applicant_id, payload)
+     SELECT $2, payload FROM sim.document_profile WHERE applicant_id = $1`,
     [seededId, id],
   );
   return id;

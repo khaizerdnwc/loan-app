@@ -29,6 +29,10 @@ export function navFor(role: Role): NavGroup[] {
   if (role === "LOAN_OFFICER")
     work.push({ href: "/cases/new", label: "New application", icon: "plus" });
   if (role !== "ADMIN") work.push({ href: "/cases", label: "All applications", icon: "file" });
+  // Email and file intake (PRD INT-010, F4): the loan officer reviews OCR drafts; compliance reads.
+  if (role === "LOAN_OFFICER" || role === "COMPLIANCE") {
+    work.push({ href: "/intake", label: "Email and file intake", icon: "send" });
+  }
   // Booking exceptions and reconciliation (PRD BKG-005): loan operations' own screen.
   if (role === "LOAN_OPERATIONS" || role === "LOAN_OPERATIONS_SUPERVISOR") {
     work.push({ href: "/operations/exceptions", label: "Booking exceptions", icon: "alert" });

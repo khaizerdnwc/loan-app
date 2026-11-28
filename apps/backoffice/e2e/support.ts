@@ -174,6 +174,7 @@ export async function resetModes(page: Page): Promise<void> {
       "FRAUD",
       "DOCUMENT_INTAKE",
       "CUSTOMER_LOOKUP",
+      "DOCUMENT_EXTRACTION",
     ];
     const out: number[] = [];
     for (const s of services) {

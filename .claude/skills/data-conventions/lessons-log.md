@@ -4,6 +4,19 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-queue-filter-before-limit
+
+A work queue's filter (status = pending, owner, product) is part of the query, applied before
+`take()`/`LIMIT`; the service never narrows a capped result in memory. Why: the cap is chosen
+over the whole table, so once more rows exist than the cap, the oldest matching rows (the
+ones most overdue for review) silently fall off the queue while the screen looks complete.
+Nearest deterministic alternative: a test that inserts cap+1 reviewed rows newer than one
+pending row and asserts the pending row is listed.
+
+- 2026-11-28 — Lane D batch 1 (email and file intake, #30). `IntakeService.list` filters
+  `IntakeRepository.drafts()` (newest 500 of every status) to PENDING_REVIEW in memory.
+  Found by the data reviewer.
+
 ## data-20261128-reconcile-every-feed-record
 
 A reconciliation accounts for every record in every feed exactly once: it is matched,

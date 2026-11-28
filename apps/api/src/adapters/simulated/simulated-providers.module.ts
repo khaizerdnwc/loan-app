@@ -3,6 +3,7 @@ import {
   CREDIT_BUREAU,
   CUSTOMER_LOOKUP,
   DISBURSEMENT,
+  DOCUMENT_EXTRACTION,
   DOCUMENT_INTAKE,
   E_SIGNATURE,
   FRAUD_CHECK,
@@ -15,6 +16,7 @@ import { SimulatedCoreBanking } from "./core-banking/core-banking.simulator";
 import { SimulatedCreditBureau } from "./credit-bureau.simulator";
 import { SimulatedCustomerLookup } from "./customer-lookup.simulator";
 import { SimulatedDisbursement } from "./disbursement.simulator";
+import { SimulatedDocumentExtraction } from "./document-extraction.simulator";
 import { SimulatedDocumentIntake } from "./document-intake.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
 import { SimulatedFraudCheck } from "./fraud-check.simulator";
@@ -46,6 +48,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedFraudCheck,
     SimulatedDocumentIntake,
     SimulatedCustomerLookup,
+    SimulatedDocumentExtraction,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
     { provide: CORE_BANKING, useExisting: SimulatedCoreBanking },
@@ -54,6 +57,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     { provide: FRAUD_CHECK, useExisting: SimulatedFraudCheck },
     { provide: DOCUMENT_INTAKE, useExisting: SimulatedDocumentIntake },
     { provide: CUSTOMER_LOOKUP, useExisting: SimulatedCustomerLookup },
+    { provide: DOCUMENT_EXTRACTION, useExisting: SimulatedDocumentExtraction },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
   exports: [
@@ -65,6 +69,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     FRAUD_CHECK,
     DOCUMENT_INTAKE,
     CUSTOMER_LOOKUP,
+    DOCUMENT_EXTRACTION,
     SIMULATION_CONTROL,
   ],
 })
