@@ -7,7 +7,20 @@ let h: Harness;
 beforeAll(async () => {
   h = await startHarness();
   await submitCase(h, { applicantId: "APL-MARIA", amount: "60000.00" });
-  await submitCase(h, { applicantId: "APL-JOEL", amount: "200000.00", tenorMonths: 36 });
+  const joel = await submitCase(h, {
+    applicantId: "APL-JOEL",
+    amount: "200000.00",
+    tenorMonths: 36,
+  });
+  // End one review visit (recommended on to an approver), so the turnaround has a REVIEW row
+  // with a visit in it.
+  await h
+    .as("paolo")
+    .post(`/cases/${joel.id}/recommendation`, {
+      type: "APPROVE",
+      rationale: "Reviewed: approve as requested.",
+    })
+    .expect(200);
   await submitCase(h, { applicantId: "APL-RAMON", amount: "50000.00" });
 });
 afterAll(async () => {
@@ -89,7 +102,7 @@ describe("report downloads as CSV (PRD RPT-006)", () => {
     expect(tatCsv).toContain(`At risk,${tat.openNow.atRisk}`);
     // One stage row against the JSON report (a review stage always has its 8-hour SLA).
     const review = tat.stages.find((st) => st.status === "REVIEW");
-    expect(review).toBeDefined();
+    expect(review?.visits).toBeGreaterThanOrEqual(1);
     const cell = (v: number | string | null) => (v === null ? "" : String(v));
     expect(tatCsv).toContain(
       [

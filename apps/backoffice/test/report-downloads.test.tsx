@@ -31,15 +31,15 @@ vi.mock("@/lib/session", () => ({
 
 /** What the page saved: the anchor it clicked (jsdom has no downloads). */
 const saved: { href: string; download: string }[] = [];
+const createObjectURL = vi.fn(() => "blob:report");
+const revokeObjectURL = vi.fn();
 beforeEach(() => {
   saved.length = 0;
-  vi.stubGlobal(
-    "URL",
-    Object.assign(URL, {
-      createObjectURL: vi.fn(() => "blob:report"),
-      revokeObjectURL: vi.fn(),
-    }),
-  );
+  createObjectURL.mockClear();
+  revokeObjectURL.mockClear();
+  // jsdom has neither: define them for the test, and remove them after it.
+  Object.defineProperty(URL, "createObjectURL", { value: createObjectURL, configurable: true });
+  Object.defineProperty(URL, "revokeObjectURL", { value: revokeObjectURL, configurable: true });
   vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (
     this: HTMLAnchorElement,
   ) {
@@ -47,6 +47,8 @@ beforeEach(() => {
   });
 });
 afterEach(() => {
+  Reflect.deleteProperty(URL, "createObjectURL");
+  Reflect.deleteProperty(URL, "revokeObjectURL");
   vi.unstubAllGlobals();
   vi.restoreAllMocks();
   url.search = "";
@@ -96,6 +98,8 @@ describe("report downloads (RPT-006)", () => {
     expect(saved).toEqual([
       { href: "blob:report", download: "origination-funnel-2026-11-01-to-2026-11-30.csv" },
     ]);
+    // The object URL is let go once the download has started (next tick).
+    await vi.waitFor(() => expect(revokeObjectURL).toHaveBeenCalledWith("blob:report"));
     expect(screen.queryByRole("alert")).toBeNull();
 
     // Another period: the button says so and fetches that period.
@@ -122,12 +126,18 @@ describe("report downloads (RPT-006)", () => {
           { status: 403, headers: { "content-type": "application/problem+json" } },
         ),
     );
-    render(<FunnelPage />);
+    const { rerender } = render(<FunnelPage />);
     await userEvent.click(await screen.findByRole("button", { name: "Download CSV · 30 days" }));
     expect(await screen.findByRole("alert")).toHaveTextContent(
       "The file was not downloaded. Your role cannot download this report.",
     );
     expect(saved).toEqual([]);
+    expect(createObjectURL).not.toHaveBeenCalled();
+
+    // The refusal was for that period: choosing another clears it.
+    await userEvent.click(screen.getByRole("button", { name: /^7 days/ }));
+    rerender(<FunnelPage />);
+    await vi.waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 
   it("the decision mix and the turnaround report download their own files", async () => {

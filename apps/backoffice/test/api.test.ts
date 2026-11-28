@@ -1,5 +1,5 @@
 import { afterEach, vi } from "vitest";
-import { ApiError, api, errorMessage, fieldErrorsOf, toApiError } from "@/lib/api";
+import { ApiError, api, apiFile, errorMessage, fieldErrorsOf, toApiError } from "@/lib/api";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -146,5 +146,36 @@ describe("errorMessage — amounts in a refusal read like every other amount (U-
       [],
     );
     expect(errorMessage(e)).toBe("₱120,000.00 is above your approval limit of ₱100,000.00");
+  });
+});
+
+describe("apiFile() (RPT-006 downloads)", () => {
+  it("says the browser is offline when the request cannot be sent", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => {
+        throw new TypeError("Failed to fetch");
+      }),
+    );
+    const err = await apiFile("/reports/funnel.csv", "report.csv").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(ApiError);
+    expect((err as ApiError).code).toBe("NETWORK");
+    expect(errorMessage(err)).toBe(
+      "You appear to be offline. Check your connection and try again.",
+    );
+  });
+
+  it("names the file with the fallback when the reply has no Content-Disposition", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response("a,b\r\n", { status: 200, headers: { "content-type": "text/csv" } }),
+      ),
+    );
+    const { blob, fileName } = await apiFile("/reports/funnel.csv", "report.csv");
+    expect(fileName).toBe("report.csv");
+    // jsdom's Blob has no text(): the size is enough to show the bytes came through.
+    expect(blob.size).toBe(5);
   });
 });
