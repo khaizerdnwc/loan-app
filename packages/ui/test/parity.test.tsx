@@ -165,6 +165,33 @@ describe("Table with clickable rows (the prototype's tr.cl)", () => {
     expect(onOpen).not.toHaveBeenCalled();
   });
 
+  it("draws its own frame by default, and none inside a Card flush (framed={false})", () => {
+    const cols = [{ key: "n", header: "#", render: (r: Row) => r.id }];
+    const { rerender } = render(
+      <Table
+        caption="T"
+        columns={cols}
+        rows={[{ id: "1", name: "x" }]}
+        rowKey={(r) => r.id}
+        empty="None"
+      />,
+    );
+    expect(screen.getByRole("table").parentElement).toHaveAttribute("data-framed", "true");
+    expect(screen.getByRole("table").parentElement?.className).toMatch(/border-line/);
+    rerender(
+      <Table
+        caption="T"
+        columns={cols}
+        rows={[{ id: "1", name: "x" }]}
+        rowKey={(r) => r.id}
+        empty="None"
+        framed={false}
+      />,
+    );
+    expect(screen.getByRole("table").parentElement).not.toHaveAttribute("data-framed");
+    expect(screen.getByRole("table").parentElement?.className).not.toMatch(/border/);
+  });
+
   it("is not clickable unless asked", () => {
     render(
       <Table

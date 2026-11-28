@@ -124,7 +124,7 @@ export function ReviewDraftDialog({
       <Button variant="secondary" onClick={() => setDiscarding(false)} disabled={busy}>
         Back
       </Button>
-      <Button variant="danger" onClick={discard} disabled={busy}>
+      <Button variant="danger" onClick={discard} busy={busy}>
         Discard draft
       </Button>
     </>
@@ -136,7 +136,7 @@ export function ReviewDraftDialog({
       <Button variant="danger" onClick={() => setDiscarding(true)} disabled={busy}>
         Discard…
       </Button>
-      <Button variant="primary" onClick={confirm} disabled={busy}>
+      <Button variant="primary" onClick={confirm} busy={busy}>
         Create application draft
       </Button>
     </>
