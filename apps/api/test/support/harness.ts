@@ -126,6 +126,7 @@ export async function resetData(ds: DataSource): Promise<void> {
     "staff_notification",
     "notification_delivery",
     "sim.notification",
+    "feature_flag_change",
     "intake_draft",
     "intake_batch",
     "document_extraction",
@@ -134,6 +135,8 @@ export async function resetData(ds: DataSource): Promise<void> {
   await ds.query(`INSERT INTO product_automation (product_code, mode) VALUES ('PL', 'LIVE')
     ON CONFLICT (product_code) DO UPDATE SET mode = 'LIVE', kill_switch = false,
       kill_switch_set_by = NULL, kill_switch_set_at = NULL`);
+  // Every module on, as the feature-flag migration leaves them.
+  await ds.query(`UPDATE feature_flag SET enabled = true, updated_by = NULL`);
 }
 
 /**

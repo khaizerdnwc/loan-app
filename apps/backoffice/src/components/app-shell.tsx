@@ -2,6 +2,7 @@
 
 import {
   type CaseList,
+  type FeatureStateView,
   ROLE_LABEL,
   type SimulationServiceView,
   type StaffNotificationList,
@@ -19,6 +20,7 @@ import {
   useState,
 } from "react";
 import { api, errorMessage } from "@/lib/api";
+import { FeaturesContext } from "@/lib/features";
 import { breadcrumbFor, isActive, navFor, pageIconFor } from "@/lib/navigation";
 import { useSession } from "@/lib/session";
 import { MODE_LABEL } from "@/lib/simulation";
@@ -77,6 +79,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const services = useApi<SimulationServiceView[]>("/simulation/services");
   const alerts = useApi<StaffNotificationList>("/notifications");
   const unread = alerts.data?.unread ?? 0;
+  // Which modules the bank has switched on: a switched-off one leaves the sidebar.
+  const features = useApi<FeatureStateView>("/features");
   const degraded = services.data?.filter((s) => s.mode !== "OK") ?? [];
   const reloadQueue = queue.reload;
   const reloadServices = services.reload;
@@ -130,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // A detail page under a list: "<group> / <the list, a link> / <the record>", like the
   // prototype's "Applications / All applications / APP-1042". A case sits under All
   // applications; any other detail (an AML escalation) under the nav item whose path it extends.
-  const groups = navFor(me.role);
+  const groups = navFor(me.role, features.data);
   const casesGroup = groups.find((g) => g.items.some((i) => i.href === "/cases"));
   const parentOf = (): { heading: string; label: string; href: string } | null => {
     if (/^\/cases\/(?!new$)[^/]+$/.test(pathname)) {
@@ -150,7 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const nav = (
     <nav aria-label="Main" className="flex flex-1 flex-col gap-4 overflow-y-auto px-3 py-4">
-      {navFor(me.role).map((group) => (
+      {groups.map((group) => (
         <div key={group.heading}>
           <p className="px-2 text-2xs font-bold tracking-widest text-mist-400 uppercase">
             {group.heading}
@@ -313,7 +317,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <main className="px-4 py-7 min-[860px]:px-8">
         <ShellRefresh.Provider value={refresh}>
-          <ShellCrumb.Provider value={setDetailCrumb}>{children}</ShellCrumb.Provider>
+          <ShellCrumb.Provider value={setDetailCrumb}>
+            <FeaturesContext.Provider value={features.data}>{children}</FeaturesContext.Provider>
+          </ShellCrumb.Provider>
         </ShellRefresh.Provider>
       </main>
     </div>

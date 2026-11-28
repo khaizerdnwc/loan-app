@@ -1,4 +1,4 @@
-import type { Role } from "@loan/core";
+import type { FeatureFlag, FeatureStateView, Role } from "@loan/core";
 import type { IconName } from "@loan/ui";
 
 export interface NavItem {
@@ -23,19 +23,26 @@ const QUEUE: Partial<Record<Role, { label: string; icon: IconName }>> = {
   LOAN_OPERATIONS_SUPERVISOR: { label: "Booking checks", icon: "book" },
 };
 
-/** The sidebar for a role. The API still refuses anything a role cannot do. */
-export function navFor(role: Role): NavGroup[] {
+/**
+ * The sidebar for a role. The API still refuses anything a role cannot do. `features` (from
+ * GET /features) hides a module the bank switched off (PRD PLT-006); while it is unknown
+ * (loading) nothing is hidden, and the module's API refuses requests either way.
+ */
+export function navFor(role: Role, features?: Partial<FeatureStateView> | null): NavGroup[] {
+  const on = (flag: FeatureFlag) => features?.[flag] !== false;
   const work: NavItem[] = [];
   const queue = QUEUE[role];
   if (queue) work.push({ href: "/queue", ...queue, count: true });
   if (role === "LOAN_OFFICER") {
     work.push({ href: "/cases/new", label: "New application", icon: "plus" });
     // Eligibility pre-check (PRD PC-008): stated figures against the policy, before applying.
-    work.push({ href: "/eligibility", label: "Eligibility pre-check", icon: "check" });
+    if (on("ELIGIBILITY_PRECHECK")) {
+      work.push({ href: "/eligibility", label: "Eligibility pre-check", icon: "check" });
+    }
   }
   if (role !== "ADMIN") work.push({ href: "/cases", label: "All applications", icon: "file" });
   // Email and file intake (PRD INT-010, F4): the loan officer reviews OCR drafts; compliance reads.
-  if (role === "LOAN_OFFICER" || role === "COMPLIANCE") {
+  if ((role === "LOAN_OFFICER" || role === "COMPLIANCE") && on("EMAIL_INTAKE")) {
     work.push({ href: "/intake", label: "Email and file intake", icon: "send" });
   }
   // Booking exceptions and reconciliation (PRD BKG-005): loan operations' own screen.
@@ -88,6 +95,8 @@ export function navFor(role: Role): NavGroup[] {
   // compliance read it.
   if (role === "APPROVER" || role === "ADMIN" || role === "COMPLIANCE")
     system.push({ href: "/approval-matrix", label: "Approval matrix", icon: "check" });
+  // Feature flags (PRD PLT-006): administrators switch modules on or off, two at a time.
+  if (role === "ADMIN") system.push({ href: "/features", label: "Feature flags", icon: "sliders" });
   groups.push({ heading: "System", items: system });
   return groups;
 }

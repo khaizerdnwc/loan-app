@@ -22,6 +22,8 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                                     circuit breaker, 30-day bureau reuse, per-call cost
                        automation/  per-product automation mode and kill switch
                                     (maker-checker between two administrators)
+                       features/    feature flags: the bank's optional modules switched on
+                                    or off (maker-checker between two administrators)
                        compliance/  AML escalations, screening again before disbursement
                        audit/       the hash-chained audit log (every case event, sign-ins,
                                     simulation changes) and its verification
@@ -53,6 +55,12 @@ decision reads the product's mode under a share lock inside the case's own trans
 (`DecisionService.decideAndRecord` → `AutomationService.forDecision`), so both need the same
 transaction runner, and a separate module would only re-export it. Split it out if automation
 grows its own consumers (rules editor, model registry).
+
+Feature flags (`features/`, PRD PLT-006) follow the same pattern in `LendingModule`.
+`features/` uses `audit/` (each step's entry), `auth/` (staff names) and
+`cases/domain-error`; `eligibility/` and `intake/` use it (`FeaturesService.assertEnabled`
+at their service entry points); nothing else imports it. A module that becomes switchable
+calls `assertEnabled` in its own service, never only in a controller or the backoffice.
 
 ### Why compliance and audit stay in the lending module
 

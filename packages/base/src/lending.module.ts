@@ -33,6 +33,10 @@ import { ComplianceService } from "./compliance/compliance.service";
 import { TransactionRunner } from "./database/transaction-runner";
 import { EligibilityController } from "./eligibility/eligibility.controller";
 import { EligibilityService } from "./eligibility/eligibility.service";
+import { FeaturesController } from "./features/features.controller";
+import { FeatureFlagEntity } from "./features/features.entities";
+import { FeaturesRepository } from "./features/features.repository";
+import { FeaturesService } from "./features/features.service";
 import { GovernanceController } from "./governance/governance.controller";
 import { GovernanceRepository } from "./governance/governance.repository";
 import { GovernanceService } from "./governance/governance.service";
@@ -78,6 +82,7 @@ export class LendingModule {
           ApplicantEntity,
           LoanCaseEntity,
           ProductAutomationEntity,
+          FeatureFlagEntity,
         ]),
         JwtModule.register({ secret: options.jwtSecret, signOptions: { algorithm: "HS256" } }),
       ],
@@ -90,6 +95,7 @@ export class LendingModule {
         AuditController,
         ComplianceController,
         AutomationController,
+        FeaturesController,
         OperationsController,
         ReportsController,
         SlaController,
@@ -121,6 +127,8 @@ export class LendingModule {
         ComplianceService,
         AutomationRepository,
         AutomationService,
+        FeaturesRepository,
+        FeaturesService,
         OperationsRepository,
         OperationsService,
         ReportsRepository,

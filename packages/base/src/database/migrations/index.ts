@@ -16,6 +16,7 @@ import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAn
 import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
 import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtraction";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
+import { FeatureFlags1764300009001 } from "./1764300009001-FeatureFlags";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -42,4 +43,5 @@ export const MIGRATIONS = [
   ProviderResilienceAndEstimates1764300003001,
   IntakeAndExtraction1764300004000,
   ForeignKeysAndTruncateGuards1764300009000,
+  FeatureFlags1764300009001,
 ];

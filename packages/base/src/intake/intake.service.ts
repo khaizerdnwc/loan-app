@@ -9,6 +9,7 @@ import {
 import {
   type ConfirmIntakeDraftRequest,
   type DiscardIntakeDraftRequest,
+  FeatureFlag,
   type FieldError,
   INTAKE_SOURCE_LABEL,
   IntakeDraftStatus,
@@ -35,6 +36,7 @@ import {
 } from "../cases/domain-error";
 import { PERSONAL_LOAN, termErrors } from "../cases/product";
 import { TransactionRunner } from "../database/transaction-runner";
+import { FeaturesService } from "../features/features.service";
 import type { IntakeDraftEntity } from "./intake.entities";
 import { IntakeRepository } from "./intake.repository";
 import { draftActions, mismatchTolerance, rowFlags } from "./intake-rules";
@@ -65,10 +67,17 @@ export class IntakeService {
     private readonly activity: ActivityService,
     private readonly audit: AuditService,
     @Inject(DOCUMENT_EXTRACTION) private readonly ocr: DocumentExtraction,
+    private readonly features: FeaturesService,
   ) {}
+
+  /** Email and file intake is a module the bank can switch off (PRD PLT-006). */
+  private moduleOn(): Promise<void> {
+    return this.features.assertEnabled(FeatureFlag.EmailIntake);
+  }
 
   async list(user: SessionUser, view: "pending" | "all"): Promise<IntakeDraftView[]> {
     this.readerOnly(user);
+    await this.moduleOn();
     // Filtered in the query, before its limit, so no waiting draft falls off the queue.
     const drafts = await this.repo.drafts(
       view === "pending" ? { status: IntakeDraftStatus.PendingReview } : {},
@@ -78,6 +87,7 @@ export class IntakeService {
 
   async get(user: SessionUser, id: string): Promise<IntakeDraftView> {
     this.readerOnly(user);
+    await this.moduleOn();
     const draft = await this.repo.findDraft(id);
     if (!draft) throw notFound("intake draft");
     return (await this.views(user, [draft]))[0] as IntakeDraftView;
@@ -90,6 +100,7 @@ export class IntakeService {
    */
   async upload(user: SessionUser, source: IntakeSource): Promise<IntakeUploadView> {
     this.officerOnly(user);
+    await this.moduleOn();
     let bundle: ExtractedBundle;
     try {
       bundle = await this.ocr.extractBundle({ idempotencyKey: randomUUID(), source });
@@ -199,6 +210,7 @@ export class IntakeService {
     body: ConfirmIntakeDraftRequest,
   ): Promise<IntakeDraftView> {
     this.officerOnly(user);
+    await this.moduleOn();
     const amount = parseAmount(body.amount);
     const errors: FieldError[] = termErrors(amount, body.tenorMonths);
     const purpose = body.purpose?.trim() ?? "";
@@ -305,6 +317,7 @@ export class IntakeService {
     body: DiscardIntakeDraftRequest,
   ): Promise<IntakeDraftView> {
     this.officerOnly(user);
+    await this.moduleOn();
     const reason = body.reason?.trim() ?? "";
     if (!reason) {
       throw validation("Say why the draft is discarded.", [

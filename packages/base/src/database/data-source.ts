@@ -20,6 +20,7 @@ import { ConsentRecordEntity } from "../cases/entities/consent-record.entity";
 import { DecisionRecordEntity } from "../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { AmlEscalationEntity } from "../compliance/entities/aml-escalation.entity";
+import { FeatureFlagChangeEntity, FeatureFlagEntity } from "../features/features.entities";
 import {
   DocumentExtractionEntity,
   IntakeBatchEntity,
@@ -52,6 +53,8 @@ export const ENTITIES = [
   ProductAutomationEntity,
   AutomationChangeEntity,
   AutomationEventEntity,
+  FeatureFlagEntity,
+  FeatureFlagChangeEntity,
   CaseDocumentEntity,
   ReconciliationRunEntity,
   BusinessHolidayEntity,
