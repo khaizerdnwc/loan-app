@@ -275,6 +275,41 @@ describe("simulated providers conform to their ports", () => {
     expect(unknown).toMatchObject({ monthlyIncome: null, employer: null, statement: null });
   });
 
+  it("OCR reads each synthetic file of a source by its key, and refuses a key of another source (INT-9)", async () => {
+    const ocr = h.app.get<DocumentExtraction>(DOCUMENT_EXTRACTION);
+    const makati = await ocr.extractBundle({
+      idempotencyKey: "conf-ocr-m",
+      source: "PARTNER_SPREADSHEET",
+      sampleFile: "MAKATI_LOGISTICS",
+    });
+    expect(makati.fingerprint).toBe("SYN-SHEET-MAKATI-2026-12");
+    expect(makati.rows.map((r) => [r.rowNumber, r.fullName])).toEqual([
+      [2, "Marites Dela Paz"],
+      [3, "Rodel Pascual"],
+    ]);
+    const abad = await ocr.extractBundle({
+      idempotencyKey: "conf-ocr-a",
+      source: "EMAIL_BUNDLE",
+      sampleFile: "ABAD",
+    });
+    expect(abad.rows[0]?.documentMonthlyIncome?.toString()).toBe("41000.00");
+    const statements = await ocr.readDocument({
+      idempotencyKey: "conf-ocr-a-doc",
+      applicantId: "APL-LORNA-ABAD",
+      documentType: "BANK_STATEMENTS_3M",
+      uploadReference: "DOC-1",
+    });
+    expect(statements.statement?.salaryCredit.toString()).toBe("41000.00");
+    const wrong = await ocr
+      .extractBundle({
+        idempotencyKey: "conf-ocr-w",
+        source: "EMAIL_BUNDLE",
+        sampleFile: "MAKATI_LOGISTICS",
+      })
+      .catch((e: unknown) => e);
+    expect(wrong).toBeInstanceOf(ProviderUnavailableError);
+  });
+
   it.each(["OUTAGE", "TIMEOUT", "MALFORMED"])(
     "OCR in %s fails with ProviderUnavailableError for files and documents, never a wrong answer",
     async (mode) => {

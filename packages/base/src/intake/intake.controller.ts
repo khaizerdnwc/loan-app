@@ -73,7 +73,7 @@ export class IntakeController {
     @CurrentUser() user: SessionUser,
     @Body() body: IntakeUploadDto,
   ): Promise<IntakeUploadView> {
-    return this.intake.upload(user, body.source);
+    return this.intake.upload(user, body.source, body.sampleFile);
   }
 
   @Post("intake/drafts/:id/confirm")

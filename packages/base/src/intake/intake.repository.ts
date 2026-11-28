@@ -9,6 +9,20 @@ import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { DocumentExtractionEntity, IntakeBatchEntity, IntakeDraftEntity } from "./intake.entities";
 import { normaliseName } from "./intake-rules";
 
+export interface Identity {
+  fullName: string;
+  birthDate: string;
+  governmentIdLast4: string;
+}
+
+export type IdentityMatch =
+  | { kind: "none" }
+  | { kind: "one"; applicant: ApplicantEntity }
+  | { kind: "many" };
+
+/** The first key of the two-key advisory lock on an applicant identity (its own key space). */
+const IDENTITY_LOCK_SPACE = 4004;
+
 /** Storage for intake batches, drafts and document readings (house/no-datasource-outside-repository). */
 @Injectable()
 export class IntakeRepository {
@@ -20,11 +34,11 @@ export class IntakeRepository {
 
   // --- intake --------------------------------------------------------------------------------
 
-  /** The customer on record with this name, birth date and ID ending, if exactly one. */
-  async matchApplicant(
-    identity: { fullName: string; birthDate: string; governmentIdLast4: string },
-    manager?: EntityManager,
-  ): Promise<ApplicantEntity | null> {
+  /**
+   * The customers on record with this name, birth date and ID ending: none, exactly one, or
+   * several (an ambiguity a person must resolve; never read as "not on record").
+   */
+  async matchApplicant(identity: Identity, manager?: EntityManager): Promise<IdentityMatch> {
     const candidates = await this.m(manager)
       .getRepository(ApplicantEntity)
       .find({
@@ -34,7 +48,22 @@ export class IntakeRepository {
       });
     const name = normaliseName(identity.fullName);
     const hits = candidates.filter((a) => normaliseName(a.fullName) === name);
-    return hits.length === 1 ? (hits[0] as ApplicantEntity) : null;
+    if (hits.length === 0) return { kind: "none" };
+    if (hits.length > 1) return { kind: "many" };
+    return { kind: "one", applicant: hits[0] as ApplicantEntity };
+  }
+
+  /**
+   * Serialise captures of one identity for the rest of the transaction: a transaction-scoped
+   * advisory lock on (name as compared, birth date, ID ending), in its own key space. Taken before
+   * the re-match, so two drafts for the same new person confirmed at once capture them once.
+   */
+  async lockIdentity(manager: EntityManager, identity: Identity): Promise<void> {
+    const key = `${normaliseName(identity.fullName)}|${identity.birthDate}|${identity.governmentIdLast4}`;
+    await manager.query("SELECT pg_advisory_xact_lock($1, hashtext($2))", [
+      IDENTITY_LOCK_SPACE,
+      key,
+    ]);
   }
 
   pendingCount(fingerprint: string, manager?: EntityManager): Promise<number> {

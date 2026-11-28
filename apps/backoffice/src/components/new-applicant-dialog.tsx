@@ -122,7 +122,11 @@ export function NewApplicantDialog({
       birthDate: facts.birthDate,
       governmentIdLast4: facts.governmentIdLast4.trim(),
       employer: facts.employer.trim(),
-      employmentMonths: Number.parseInt(facts.employmentMonths || "0", 10),
+      // Blank is not 0 months: leave it out, and the API asks for it.
+      employmentMonths:
+        facts.employmentMonths.trim() === ""
+          ? undefined
+          : Number.parseInt(facts.employmentMonths, 10),
       monthlyIncome: toDecimalString(facts.monthlyIncome),
       monthlyObligations: toDecimalString(facts.monthlyObligations || "0"),
     };

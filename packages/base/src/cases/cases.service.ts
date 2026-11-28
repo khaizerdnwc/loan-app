@@ -159,6 +159,7 @@ export class CasesService {
     user: SessionUser,
     applicant: LoanCaseEntity["applicant"],
     terms: { amount: Money; tenorMonths: number; purpose: string },
+    channel: Channel = Channel.Branch,
   ): Promise<LoanCaseEntity> {
     const open = await this.repo.findOpenCase(applicant.id, PERSONAL_LOAN.code, m);
     if (open) throw duplicateApplication(applicant.fullName, open.reference);
@@ -173,7 +174,7 @@ export class CasesService {
     startDraft(c);
     // The draft is the capturing officer's until it is decided (WF-002).
     c.ownerId = user.id;
-    c.channel = Channel.Branch;
+    c.channel = channel;
     c.createdBy = user.id;
     const saved = await this.repo.saveCase(m, c);
     await this.activity.record(m, {

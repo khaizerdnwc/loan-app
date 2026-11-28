@@ -154,6 +154,10 @@ export class IntakeDraftEntity {
   @Column({ name: "reviewed_at", type: "timestamptz", nullable: true })
   reviewedAt!: Date | null;
 
+  /** No customer matched, so the applicant was captured from this draft when it was confirmed. */
+  @Column({ name: "applicant_captured", type: "boolean", default: false })
+  applicantCaptured!: boolean;
+
   @Column({ name: "discard_reason", type: "text", nullable: true })
   discardReason!: string | null;
 

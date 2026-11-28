@@ -4,6 +4,20 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-capture-only-on-no-match
+
+A path that creates a record when a lookup finds none (capture the applicant when no customer
+matches) must tell "no match" from "more than one match", and refuse the second. Why: a
+matcher that returns null for ambiguity makes the capture path insert yet another duplicate,
+after which the identity is still ambiguous, so every later file for that person adds one
+more. There is no unique key on a walk-in's identity to stop it. Nearest deterministic
+alternative: a test that seeds two applicants with the same name, birth date and ID ending
+and asserts the confirm is refused with the applicant count unchanged.
+
+- 2026-11-28 — Lane D batch 2 (intake capture). `IntakeRepository.matchApplicant` returns
+  null unless exactly one candidate matches. `IntakeService.customerFromDraft` and confirm
+  treat that null as "not on record" and insert a new applicant. Found by the data reviewer.
+
 ## data-20261128-queue-filter-before-limit
 
 A work queue's filter (status = pending, owner, product) is part of the query, applied before

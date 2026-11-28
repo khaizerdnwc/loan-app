@@ -15,6 +15,7 @@ import {
   Role,
 } from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
+import type { EntityManager } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
 import { TransactionRunner } from "../database/transaction-runner";
@@ -77,6 +78,35 @@ export class ApplicantsService {
 
   async create(user: SessionUser, body: NewApplicantRequest): Promise<ApplicantView> {
     this.officerOnly(user);
+    const a = await this.buildApplicant(body);
+    try {
+      await this.tx.run((m) => this.insertApplicant(m, user, a));
+    } catch (err) {
+      if (!isUniqueViolation(err, CUSTOMER_NUMBER_INDEX)) throw err;
+      throw await this.alreadyOnFile(a);
+    }
+    return {
+      id: a.id,
+      fullName: a.fullName,
+      birthDate: a.birthDate,
+      ageYears: ageOn(a.birthDate, businessDate()),
+      employer: a.employer,
+      employmentMonths: a.employmentMonths,
+      relationshipMonths: a.relationshipMonths,
+      monthlyIncome: a.monthlyIncome.toString(),
+      monthlyObligations: a.monthlyObligations.toString(),
+      depositAccount: a.depositAccount,
+      governmentIdMasked: `•••• •••• ${a.governmentIdLast4}`,
+    };
+  }
+
+  /**
+   * The applicant a capture would insert: the fields checked, and an existing customer read from
+   * core (identity, account, relationship and verified income from core, never from the
+   * request). Calls core, so callers run it before their transaction. Writes nothing. Also used
+   * by email and file intake to capture the person on a confirmed draft.
+   */
+  async buildApplicant(body: NewApplicantRequest): Promise<ApplicantEntity> {
     const income = parseRequestAmount(body.monthlyIncome);
     const obligations = parseRequestAmount(body.monthlyObligations);
     const errors = fieldErrors(body, income, obligations);
@@ -87,7 +117,8 @@ export class ApplicantsService {
     const a = new ApplicantEntity();
     a.id = `${WALK_IN_ID_PREFIX}${randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase()}`;
     a.employer = body.employer.trim();
-    a.employmentMonths = body.employmentMonths;
+    // Checked above (fieldErrors refuses a missing or negative one).
+    a.employmentMonths = body.employmentMonths as number;
     a.monthlyObligations = obligations;
     a.relatedParty = false;
     if (body.customerNumber?.trim()) {
@@ -121,42 +152,36 @@ export class ApplicantsService {
       a.declaredMonthlyIncome = null;
     }
 
-    try {
-      await this.tx.run(async (m) => {
-        await this.repo.insertApplicant(m, a);
-        await this.audit.append(m, {
-          actor: user,
-          action: "APPLICANT_CAPTURED",
-          summary: a.customerNumber
-            ? `Captured applicant ${a.id} from core customer ${a.customerNumber} (simulated lookup).`
-            : `Captured applicant ${a.id}, new to the bank (walk-in).`,
-          details: { applicantId: a.id, customerNumber: a.customerNumber },
-        });
-      });
-    } catch (err) {
-      if (!isUniqueViolation(err, CUSTOMER_NUMBER_INDEX)) throw err;
-      const existing = a.customerNumber
-        ? await this.repo.findApplicantByCustomerNumber(a.customerNumber)
-        : null;
-      throw new DomainError(
-        409,
-        ProblemCode.DuplicateApplication,
-        `This customer is already on file as applicant ${existing?.id ?? "(another applicant)"}. Choose them from the list instead.`,
-      );
-    }
-    return {
-      id: a.id,
-      fullName: a.fullName,
-      birthDate: a.birthDate,
-      ageYears: ageOn(a.birthDate, businessDate()),
-      employer: a.employer,
-      employmentMonths: a.employmentMonths,
-      relationshipMonths: a.relationshipMonths,
-      monthlyIncome: a.monthlyIncome.toString(),
-      monthlyObligations: a.monthlyObligations.toString(),
-      depositAccount: a.depositAccount,
-      governmentIdMasked: `•••• •••• ${a.governmentIdLast4}`,
-    };
+    return a;
+  }
+
+  /**
+   * Insert a built applicant and its APPLICANT_CAPTURED audit entry, in the caller's transaction.
+   * A second applicant for the same core customer fails on the partial unique index; the caller
+   * maps it with `alreadyOnFile` after its transaction has rolled back.
+   */
+  async insertApplicant(m: EntityManager, user: SessionUser, a: ApplicantEntity): Promise<void> {
+    await this.repo.insertApplicant(m, a);
+    await this.audit.append(m, {
+      actor: user,
+      action: "APPLICANT_CAPTURED",
+      summary: a.customerNumber
+        ? `Captured applicant ${a.id} from core customer ${a.customerNumber} (simulated lookup).`
+        : `Captured applicant ${a.id}, new to the bank (walk-in).`,
+      details: { applicantId: a.id, customerNumber: a.customerNumber },
+    });
+  }
+
+  /** The 409 for a core customer already on file (read outside the failed transaction). */
+  async alreadyOnFile(a: ApplicantEntity): Promise<DomainError> {
+    const existing = a.customerNumber
+      ? await this.repo.findApplicantByCustomerNumber(a.customerNumber)
+      : null;
+    return new DomainError(
+      409,
+      ProblemCode.DuplicateApplication,
+      `This customer is already on file as applicant ${existing?.id ?? "(another applicant)"}. Choose them from the list instead.`,
+    );
   }
 
   private async findInCore(customerNumber: string): Promise<CoreCustomer | null> {
@@ -204,6 +229,12 @@ function fieldErrors(
     }
   }
   if (!body.employer?.trim()) errors.push({ field: "employer", message: "Enter the employer." });
+  if (!Number.isInteger(body.employmentMonths) || (body.employmentMonths as number) < 0) {
+    errors.push({
+      field: "employmentMonths",
+      message: "Enter the months with the employer as a whole number, 0 to 600.",
+    });
+  }
   if (!income || income.isNegative()) {
     errors.push({ field: "monthlyIncome", message: "Enter the monthly income in pesos." });
   }

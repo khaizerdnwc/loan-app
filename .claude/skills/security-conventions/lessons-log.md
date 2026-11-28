@@ -93,3 +93,11 @@ usernames from one address that must eventually get 429.
 - An account is "verified" only when it comes from the system of record (core's customer file).
 - Not lint-shaped: it depends on where a value came from, across files.
 - Nearest gate: an e2e test that captures a walk-in with a seeded customer's account and asserts a 400, or a 409 at booking.
+
+## security-20261128-staff-completes-never-overrides-extracted-identity
+
+- Lane D #30 let the confirm request's `governmentIdLast4` win over the ID digits OCR read (`typedId ?? draft.governmentIdLast4`). The field was meant for drafts where OCR could not read the ID.
+- In batch 1 this only changed which existing record matched. Batch 2 captures a new applicant from the draft on a miss. An officer could then type other digits, miss the real customer, and capture a second "person" with the file's name and birth date but an ID the file never showed. With a customer number, they could also attach a core customer whose ID the file contradicts.
+- The rule: a field the officer completes is accepted only where the extracted value is null. Otherwise refuse it (400), or ignore it.
+- Not lint-shaped: it depends on how the request field relates to stored draft data.
+- Nearest gate: an e2e test that confirms a draft with a read ID while sending other digits (with `newCustomer`, then with a customer number), and asserts a 400 and no applicant, case or audit row.

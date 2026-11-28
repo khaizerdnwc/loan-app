@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role ui-ux`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [ui-ux-20261128-validator-message-in-words] paths: apps/backoffice/src/**, packages/base/src/**/*.dto.ts · shape: test-candidate · A field error a dialog shows is in an officer's words, never class-validator's. Check: no test asserts, and no DTO sends, "<field> must not be less than …".
 - [ui-ux-20261128-field-error-needs-its-field] paths: apps/backoffice/src/** · shape: test-candidate · A field error the API can return is shown even when its input is not rendered. Check: each field error the endpoint sends shows in every form branch, or in the error callout.
 - [ui-ux-20261128-no-figure-below-minimum] paths: apps/backoffice/src/** · shape: test-candidate · A statistic computed on fewer cases than its minimum is not shown as a figure beside its thresholds. Check: under an "insufficient data" status, the value reads "not computed" with the counts.
 - [ui-ux-20261128-engine-figure-says-basis] paths: apps/backoffice/src/** · shape: test-candidate · An engine figure is named as the engine's, not with a staff action's word, says it is indicative, and puts its edge value in words. Check: no "Recommended …" engine figure; a zero reads as a sentence.

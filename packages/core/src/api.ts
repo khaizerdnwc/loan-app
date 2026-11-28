@@ -557,7 +557,8 @@ export interface NewApplicantRequest {
   birthDate: string;
   governmentIdLast4: string;
   employer: string;
-  employmentMonths: number;
+  /** Required: the API answers a field error when it is left out (a blank is never 0). */
+  employmentMonths?: number;
   /** Declared monthly income. */
   monthlyIncome: string;
   monthlyObligations: string;

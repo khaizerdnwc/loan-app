@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role security`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [security-20261128-staff-completes-never-overrides-extracted-identity] paths: packages/base/src/intake/*.ts · shape: test-candidate · Staff may fill an identity field OCR could not read, never replace one it read. Check: a confirm with other ID digits on a draft whose ID was read is refused and writes nothing.
 - [security-20261128-disbursement-account-from-system-of-record] paths: packages/base/src/cases/applicants.service.ts, packages/base/src/cases/booking-checklist.ts · shape: test-candidate · A verified payout account is core's, never staff-typed. Check: a walk-in with another customer's WB-SAV number fails.
 - [security-20261128-compliance-findings-stay-out-of-case-history] paths: packages/base/src/compliance/*.ts · shape: test-candidate · Compliance notes and match details go to the audit log, not case activity details every case viewer reads. Check: a loan officer's case activity has no notes or matchedList.
 - [security-20261127-precondition-rechecked-under-the-lock] paths: packages/base/src/cases/*.service.ts · shape: test-candidate · A gate checked before an out-of-transaction provider call is re-checked after lockOrFail, or its writer bumps the case version. Check: the gate is read again inside tx.run.

@@ -13,6 +13,7 @@ import { BusinessHolidays1764300002002 } from "./1764300002002-BusinessHolidays"
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
 import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
 import { IntakeAndExtraction1764300004000 } from "./1764300004000-IntakeAndExtraction";
+import { IntakeCapturedApplicant1764300004001 } from "./1764300004001-IntakeCapturedApplicant";
 import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
 
 /**
@@ -37,5 +38,6 @@ export const MIGRATIONS = [
   AutomationAndTriggers1764300003000,
   ProviderResilienceAndEstimates1764300003001,
   IntakeAndExtraction1764300004000,
+  IntakeCapturedApplicant1764300004001,
   ForeignKeysAndTruncateGuards1764300009000,
 ];

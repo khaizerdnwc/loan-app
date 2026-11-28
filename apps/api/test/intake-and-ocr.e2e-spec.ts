@@ -261,7 +261,9 @@ describe("email and file intake (INT-1..INT-4, PRD INT-010, F4)", () => {
     const missing = await confirm(elmer.id, terms).expect(400);
     expect(missing.body.errors[0]).toMatchObject({ field: "governmentIdLast4" });
     const wrong = await confirm(elmer.id, { ...terms, governmentIdLast4: "1111" }).expect(400);
-    expect(wrong.body.errors[0].message).toContain("No customer on record matches Elmer Santos");
+    expect(wrong.body.errors[0].message).toContain(
+      "Check the last 4 digits; if they are right, capture the customer with New or walk-in customer",
+    );
     const notDigits = await confirm(elmer.id, { ...terms, governmentIdLast4: "12a4" }).expect(400);
     expect(notDigits.body.errors[0].field).toBe("governmentIdLast4");
     expect(await intakeState()).toEqual(before);

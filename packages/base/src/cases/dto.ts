@@ -35,6 +35,10 @@ import {
  */
 const DECIMAL = { decimal_digits: "0,2", force_decimal: false } as const;
 
+/** Officer wording; the leading token is the field, as the problem filter reads it. */
+const EMPLOYMENT_MONTHS =
+  "employmentMonths Enter the months with the employer as a whole number, 0 to 600.";
+
 export class ConsentDto {
   @ApiProperty({ description: "Consent to a credit bureau check" })
   @IsBoolean()
@@ -57,7 +61,7 @@ export class CreateCaseDto {
   applicantId!: string;
 
   @ApiProperty({ example: "150000.00" })
-  @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })
+  @IsDecimal(DECIMAL, { message: "amount Enter the amount in pesos, with at most 2 decimals." })
   amount!: string;
 
   @ApiProperty({ example: 24 })
@@ -93,7 +97,7 @@ export class UpdateDraftDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })
+  @IsDecimal(DECIMAL, { message: "amount Enter the amount in pesos, with at most 2 decimals." })
   amount?: string;
 
   @ApiPropertyOptional()
@@ -117,7 +121,7 @@ export class RecommendDto {
 
   @ApiPropertyOptional({ example: "120000.00" })
   @IsOptional()
-  @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })
+  @IsDecimal(DECIMAL, { message: "amount Enter the amount in pesos, with at most 2 decimals." })
   amount?: string;
 
   @ApiPropertyOptional({ example: 36 })
@@ -191,18 +195,21 @@ export class NewApplicantDto {
   employer!: string;
 
   @ApiProperty({ example: 24 })
-  @IsInt()
-  @Min(0)
-  @Max(600)
+  @IsInt({ message: EMPLOYMENT_MONTHS })
+  @Min(0, { message: EMPLOYMENT_MONTHS })
+  @Max(600, { message: EMPLOYMENT_MONTHS })
   employmentMonths!: number;
 
   @ApiProperty({ example: "45000.00" })
-  @IsDecimal(DECIMAL, { message: "monthlyIncome must be a decimal string with at most 2 decimals" })
+  @IsDecimal(DECIMAL, {
+    message: "monthlyIncome Enter the monthly income in pesos, with at most 2 decimals.",
+  })
   monthlyIncome!: string;
 
   @ApiProperty({ example: "5000.00" })
   @IsDecimal(DECIMAL, {
-    message: "monthlyObligations must be a decimal string with at most 2 decimals",
+    message:
+      "monthlyObligations Enter the monthly obligations in pesos, with at most 2 decimals (0 if none).",
   })
   monthlyObligations!: string;
 }
@@ -258,7 +265,7 @@ export class DocumentReviewDto {
 /** `GET /products/PL/quote`: the requested terms to quote an indicative repayment for. */
 export class IndicativeQuoteQueryDto {
   @ApiProperty({ example: "150000.00" })
-  @IsDecimal(DECIMAL, { message: "amount must be a decimal string with at most 2 decimals" })
+  @IsDecimal(DECIMAL, { message: "amount Enter the amount in pesos, with at most 2 decimals." })
   amount!: string;
 
   @ApiProperty({ example: 24 })

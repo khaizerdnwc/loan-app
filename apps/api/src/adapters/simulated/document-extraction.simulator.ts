@@ -8,7 +8,14 @@ import type {
   ExtractedRow,
   StatementAnalysis,
 } from "@loan/contracts";
-import { type IntakeSource, Money, ProviderMode, ServiceName } from "@loan/core";
+import { ProviderUnavailableError } from "@loan/contracts";
+import {
+  INTAKE_SAMPLE_FILES,
+  type IntakeSource,
+  Money,
+  ProviderMode,
+  ServiceName,
+} from "@loan/core";
 import { Inject, Injectable } from "@nestjs/common";
 import { InjectDataSource } from "@nestjs/typeorm";
 import { DataSource } from "typeorm";
@@ -32,16 +39,19 @@ interface SyntheticRow {
 }
 
 /**
- * The synthetic files an officer can "upload" (no file exists: the simulator holds what OCR
- * would read from each). Every person is invented; each row matches a seeded synthetic
- * applicant except where a field is missing on purpose (Elmer Santos's ID number), as in the
- * prototype's Email and file intake screen.
+ * The synthetic files an officer can "upload", keyed as in `INTAKE_SAMPLE_FILES` (no file
+ * exists: the simulator holds what OCR would read from each). Every person is invented.
+ * Cordillera Foods' rows and Grace Villamor match seeded applicants, except Elmer Santos's
+ * missing ID number (as in the prototype). Makati Logistics' two people are not on record (one
+ * asks for less than the product's minimum), and Lorna Abad's payslip shows less than she
+ * declared.
  */
 const SYNTHETIC_FILES: Record<
-  IntakeSource,
-  { fileName: string; fingerprint: string; rows: SyntheticRow[] }
+  string,
+  { source: IntakeSource; fileName: string; fingerprint: string; rows: SyntheticRow[] }
 > = {
-  PARTNER_SPREADSHEET: {
+  CORDILLERA_FOODS: {
+    source: "PARTNER_SPREADSHEET",
     fileName: "Cordillera Foods HR – salary loan requests Nov 2026.xlsx",
     fingerprint: "SYN-SHEET-CORDILLERA-2026-11",
     rows: [
@@ -83,7 +93,58 @@ const SYNTHETIC_FILES: Record<
       },
     ],
   },
-  EMAIL_BUNDLE: {
+  MAKATI_LOGISTICS: {
+    source: "PARTNER_SPREADSHEET",
+    fileName: "Makati Logistics HR – loan requests Dec 2026.xlsx",
+    fingerprint: "SYN-SHEET-MAKATI-2026-12",
+    rows: [
+      {
+        sourceDetail: "Partner spreadsheet, row 2",
+        fullName: "Marites Dela Paz",
+        birthDate: "1991-06-09",
+        governmentIdLast4: "4417",
+        employer: "Makati Logistics Corp.",
+        declaredMonthlyIncome: "38000.00",
+        documentMonthlyIncome: null,
+        amount: "60000.00",
+        tenorMonths: 12,
+        purpose: "Appliance purchase",
+      },
+      {
+        sourceDetail: "Partner spreadsheet, row 3",
+        fullName: "Rodel Pascual",
+        birthDate: "1988-10-02",
+        governmentIdLast4: "8203",
+        employer: "Makati Logistics Corp.",
+        declaredMonthlyIncome: "29000.00",
+        documentMonthlyIncome: null,
+        amount: "15000.00",
+        tenorMonths: 6,
+        purpose: "School supplies",
+      },
+    ],
+  },
+  ABAD: {
+    source: "EMAIL_BUNDLE",
+    fileName: "Email from l.abad@example.invalid with 3 attachments",
+    fingerprint: "SYN-EMAIL-ABAD-2026-12",
+    rows: [
+      {
+        sourceDetail: "Email bundle: application form, government ID, payslip",
+        fullName: "Lorna Abad",
+        birthDate: "1986-03-18",
+        governmentIdLast4: "2950",
+        employer: "Quezon City Medical Center",
+        declaredMonthlyIncome: "52000.00",
+        documentMonthlyIncome: "41000.00",
+        amount: "100000.00",
+        tenorMonths: 24,
+        purpose: "Car repair",
+      },
+    ],
+  },
+  VILLAMOR: {
+    source: "EMAIL_BUNDLE",
     fileName: "Email from g.villamor@example.invalid with 3 attachments",
     fingerprint: "SYN-EMAIL-VILLAMOR-2026-11",
     rows: [
@@ -142,7 +203,18 @@ export class SimulatedDocumentExtraction implements DocumentExtraction {
 
   async extractBundle(request: BundleExtractionRequest): Promise<ExtractedBundle> {
     const mode = await applyFailureMode(ServiceName.DocumentExtraction, this.modes, this.options);
-    const file = SYNTHETIC_FILES[request.source];
+    // The source's first file unless another is named; a key of another source is not a file
+    // this source can carry (lending checks it first, so this is the adapter's own guard).
+    const key =
+      request.sampleFile ?? INTAKE_SAMPLE_FILES.find((f) => f.source === request.source)?.key ?? "";
+    const file = SYNTHETIC_FILES[key];
+    if (!file || file.source !== request.source) {
+      throw new ProviderUnavailableError(
+        ServiceName.DocumentExtraction,
+        "MALFORMED",
+        "The simulated OCR has no such synthetic file for this source",
+      );
+    }
     const rows: ExtractedRow[] = file.rows.map((r, i) => ({
       rowNumber: request.source === "PARTNER_SPREADSHEET" ? i + 2 : 1,
       sourceDetail: r.sourceDetail,

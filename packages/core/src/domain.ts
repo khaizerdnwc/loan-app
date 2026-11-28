@@ -144,11 +144,17 @@ export const WITHDRAW_REASON_LABEL: Record<WithdrawReason, string> = {
   NOT_PROCEEDING: "Not proceeding (other)",
 };
 
-/** Where an application came in. Staff capture at a branch is the only channel in this release. */
-export const Channel = { Branch: "BRANCH" } as const;
+/**
+ * Where an application came in: captured by staff at a branch, or confirmed by a loan officer
+ * from an emailed bundle or a partner's file (email and file intake, PRD INT-010).
+ */
+export const Channel = { Branch: "BRANCH", FileIntake: "FILE_INTAKE" } as const;
 export type Channel = (typeof Channel)[keyof typeof Channel];
 
-export const CHANNEL_LABEL: Record<Channel, string> = { BRANCH: "Branch" };
+export const CHANNEL_LABEL: Record<Channel, string> = {
+  BRANCH: "Branch",
+  FILE_INTAKE: "File intake",
+};
 
 /** A case's place in the loan officers' queue (PRD WF-002): HIGH cases are listed first. */
 export const Priority = { Normal: "NORMAL", High: "HIGH" } as const;
