@@ -259,7 +259,7 @@ These are PRD sections, not requirement IDs.
 | NFR-001 | 99.9% availability | not built (**OOR**) | — | Operational. |
 | NFR-002 | Borrower API p95 < 500 ms | not built | — | Not measured, and there is no borrower API. |
 | NFR-003 | Automated decision p95 < 60 s | partly built | `decision_record.latency_ms`, PR-5 | Every decision's latency (inputs gathered to record written) is stored and the p50/p95 reported against the 60 s target. Missing: a load test at volume. |
-| NFR-004 | 10,000 apps/day, 500 staff | not built | — | No load test. |
+| NFR-004 | 10,000 apps/day, 500 staff | partly built | OB-3, `scripts/load/applications.mjs` | A load script drives capture, submit and reads as one loan officer at a set rate and reports latency percentiles and errors; run by the integrator at merge (docs/DEPLOY.md "Load test"). One process, one user: 500 concurrent staff and horizontal scaling are not exercised. |
 | NFR-005 | No lost applications; outages refer, never decline | built | B-7, B-10 | Outages refer; once the provider answers, the officer re-decides the case (new decision record, the old one kept). |
 | NFR-006 | RPO ≤ 15 min, RTO ≤ 4 h | not built (**OOR**) | — | Operational. |
 | NFR-007 | Tenant ID on every record | not built | — | Phase 1 asks for tenant ID columns even in a single-bank deployment. |
@@ -267,7 +267,7 @@ These are PRD sections, not requirement IDs.
 | NFR-009 | RBAC + ABAC; MFA | partly built | `@Roles`, `canView`, authority | Role access plus amount and grade authority. No branch or product attributes and no MFA. |
 | NFR-010 | Pentest, scanning, ASVS | partly built (**OOR** for pentest) | `scripts/verify/verify.sh` security stage (gitleaks, semgrep, pnpm audit) | |
 | NFR-011 | Decisions reproducible | built | ADR 0022, F1-2, D-8, `POST /decisions/:id/reproduce` | |
-| NFR-012 | Logs, metrics, tracing, dashboards | not built | — | `/health` only. |
+| NFR-012 | Logs, metrics, tracing, dashboards | partly built | OB-1, OB-2 | One JSON log line per request (request id, route pattern, status, duration, staff id; no bodies, queries, applicant data or tokens), the request id echoed and passed through the backoffice proxy, and `GET /metrics` (requests and durations by route, provider attempts and circuits) for a private scraper. No tracing, dashboards, alerting or central log store. |
 | NFR-013 | WCAG 2.1 AA borrower journeys; app < 10 min | not built (**OOR**) | — | Borrower journeys. The staff UI follows the ui-ux conventions but has not been audited. |
 | NFR-014 | Multi-language, currency, formats | not built | — | English and PHP only. |
 | NFR-015 | Cloud-native, containerised | partly built | `Dockerfile`, `docker-compose.yml`, `docs/DEPLOY.md` | Not deployed (M10 waiting). |
@@ -319,7 +319,7 @@ Every item is buildable with simulated services and synthetic data unless it is 
 | 31 | Collections: simulated core delinquency feed, buckets, strategies, collector queue, PTP, contact rules, restructuring and write-off workflows | CLX-001..005, CLX-007, CLX-008, CMP-009, F7 | L | Third Phase 1 wave in the PRD ("then collections"). |
 | 32 | Remaining reports and exports: portfolio quality, collections performance, scheduled exports, regulatory extracts, bureau submission file (generated, not submitted) | RPT-004..007, CMP-003 | L | Depends on #31 and on booked-loan history. |
 | 33 | Eligibility pre-check ✅ done (EL-1, EL-2, lane C batch 4); the rest open. Platform items: per-tenant theming and localisation, holiday calendars, feature flags, multi-language, eligibility pre-check API, config export/import, lead capture, document storage with retention, data-subject requests, external decision engine port | PLT-003, PLT-005, PLT-006, NFR-014, PC-007, PC-008, INT-011, DOC-006, CMP-004, DEC-008 | M each | Individually small value to the MVP exit criteria. |
-| 34 | Observability: structured logs, metrics, tracing, dashboards; load test to NFR-004 volumes | NFR-012, NFR-004, NFR-002 | M | Needed before a pilot, not before the demo. |
+| 34 | Partly built (OB-1..OB-3): structured request logs with a request id, GET /metrics (Prometheus text, off by default), a load-test script. Missing: tracing, dashboards and alerting, centralised log shipping, tenant-level views, a load test at 500 concurrent staff. Observability: structured logs, metrics, tracing, dashboards; load test to NFR-004 volumes | NFR-012, NFR-004, NFR-002 | M | Needed before a pilot, not before the demo. |
 
 **Out of reach under the challenge mechanics (simulated only):**
 

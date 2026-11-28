@@ -5,6 +5,8 @@ import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import cookieParser from "cookie-parser";
 import { AppModule } from "./app.module";
 import { env } from "./config/env";
+import { HttpMetrics } from "./observability/http-metrics";
+import { requestLogging } from "./observability/request-log";
 import { ProblemFilter } from "./problem.filter";
 
 /** Build the configured app (used by main.ts and by the integration tests). */
@@ -35,6 +37,9 @@ export function configureApp(
     "trust proxy",
     trustProxyHops,
   );
+  // First: every request gets an id and, when it finishes, one structured log line and its
+  // metrics (route pattern, status, duration, staff id; never a body, query or token).
+  app.use(requestLogging(app.get(HttpMetrics)));
   app.use(cookieParser());
   app.enableCors({ origin: env().CORS_ORIGIN, credentials: true });
   app.useGlobalPipes(

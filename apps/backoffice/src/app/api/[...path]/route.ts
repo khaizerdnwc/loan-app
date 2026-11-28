@@ -69,6 +69,10 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
   // x-forwarded-for entries never are.
   const client = clientAddress(request.headers.get("x-forwarded-for"), env().WEB_TRUST_PROXY_HOPS);
   if (client) headers.set("x-forwarded-for", client);
+  // One id per request, in the API's log line and echoed to the browser, so a reported error
+  // can be found. The browser's own id is kept only if it is well formed.
+  const requestId = requestIdOf(request.headers.get(REQUEST_ID));
+  headers.set(REQUEST_ID, requestId);
   const hasBody = !["GET", "HEAD"].includes(request.method);
 
   // One deadline covers the whole exchange: reading the client's body, then the API's answer.
@@ -85,11 +89,17 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
         ? await readCapped(request, MAX_REQUEST_BODY_BYTES, deadline.signal)
         : undefined;
       if (read === TOO_LARGE) {
-        return problem(413, "Request too large", "That request is larger than the API accepts.");
+        return withId(
+          problem(413, "Request too large", "That request is larger than the API accepts."),
+          requestId,
+        );
       }
       requestBody = read;
     } catch {
-      return problem(504, "Request timed out", "The request did not arrive in time. Try again.");
+      return withId(
+        problem(504, "Request timed out", "The request did not arrive in time. Try again."),
+        requestId,
+      );
     }
     const upstream = await fetch(target, {
       method: request.method,
@@ -103,13 +113,17 @@ async function forward(request: NextRequest, { params }: Context): Promise<Respo
     const contentType = upstream.headers.get("content-type");
     if (contentType) out.set("content-type", contentType);
     for (const cookie of upstream.headers.getSetCookie()) out.append("set-cookie", cookie);
+    out.set(REQUEST_ID, requestIdOf(upstream.headers.get(REQUEST_ID), requestId));
     const body = upstream.status === 204 ? null : await upstream.arrayBuffer();
     return new NextResponse(body, { status: upstream.status, headers: out });
   } catch {
-    return problem(
-      502,
-      "API unavailable",
-      "The lending service is not answering. Try again in a moment.",
+    return withId(
+      problem(
+        502,
+        "API unavailable",
+        "The lending service is not answering. Try again in a moment.",
+      ),
+      requestId,
     );
   } finally {
     clearTimeout(timer);
@@ -131,6 +145,23 @@ export function clientAddress(header: string | null, hops: number): string | nul
     .filter(Boolean);
   const entry = entries[entries.length - hops];
   return entry && isIP(entry) !== 0 ? entry : null;
+}
+
+export const REQUEST_ID = "x-request-id";
+const REQUEST_ID_FORMAT = /^[A-Za-z0-9._-]{8,64}$/;
+
+/**
+ * `header` if it is a well-formed request id (8–64 letters, digits, `.`, `_`, `-`: the API's
+ * rule too), else `fallback`, else a new one.
+ */
+export function requestIdOf(header: string | null, fallback?: string): string {
+  if (header && REQUEST_ID_FORMAT.test(header)) return header;
+  return fallback ?? crypto.randomUUID();
+}
+
+function withId(response: Response, requestId: string): Response {
+  response.headers.set(REQUEST_ID, requestId);
+  return response;
 }
 
 const TOO_LARGE = Symbol("too large");

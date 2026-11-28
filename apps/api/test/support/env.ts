@@ -27,3 +27,5 @@ process.env.MIGRATE_ON_BOOT = "false";
 process.env.EXPIRY_SWEEP_SECONDS = "0";
 // Unset, so the app runs with the default (Swagger off), as a deployment that omits it would.
 delete process.env.SWAGGER_ENABLED;
+// Unset too: GET /metrics runs with its default (off) unless a test switches it on.
+delete process.env.METRICS_ENABLED;

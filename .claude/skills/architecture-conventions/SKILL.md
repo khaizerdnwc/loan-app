@@ -64,7 +64,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   the report period rules; reports/ never imports sla/, and the turnaround route, though under
   /reports, is declared in sla/); `cases/` ← `intake/` (intake/ uses cases/; nothing in cases/
   imports intake/). It exports only `SessionGuard`,
-  `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
+  `JwtModule`, `ExpiryService` (for the API's expiry-sweep timer) and `ProviderGateway` (read by
+  the API's `GET /metrics` for provider attempts and circuits; nothing else in the API calls it).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
 - The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written

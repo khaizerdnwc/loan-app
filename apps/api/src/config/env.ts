@@ -39,6 +39,15 @@ const schema = z
      */
     EXPIRY_SWEEP_SECONDS: z.coerce.number().int().min(0).max(86_400).default(300),
     /**
+     * Answer GET /metrics (Prometheus text: request counts and durations by route, provider
+     * attempts and circuits). An explicit opt-in, off when unset or blank; for a scraper on
+     * the API's private network only (the backoffice proxy never forwards it).
+     */
+    METRICS_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((v) => v === "true"),
+    /**
      * Serve the Swagger UI at /docs and the OpenAPI document at /docs-json. An explicit
      * opt-in, off when unset or blank: a deployment that forgets a variable publishes nothing.
      */

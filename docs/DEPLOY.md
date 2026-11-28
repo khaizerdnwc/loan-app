@@ -50,6 +50,7 @@ Docker (API `node_modules` 123 MB; backoffice `node_modules` 385 MB, `.next` 12 
 | api | `PROVIDER_CIRCUIT_OPEN_MS` | `30000` (default): how long a paused service is skipped before one trial call; `0` = the next call is always a trial, so the breaker never skips a call. The circuit is per API instance and in memory: a restart or a rolling deploy closes it, and with several replicas each counts its own failures, so one replica's open circuit does not stop the others (a best-effort breaker, not a global one) |
 | api | `BUREAU_CACHE_DAYS` | `30` (default): days a bureau report is reused for the same applicant and provider mode (PRD IH-005); `0` = never reuse (every decision pulls) |
 | api | `SWAGGER_ENABLED` | leave unset (off). `true` serves Swagger at `/docs`; only local development's `.env.example` sets it |
+| api | `METRICS_ENABLED` | leave unset (off: `/metrics` answers 404). `true` only if the API has no public route: it serves unauthenticated Prometheus text at `/metrics` for a scraper on the API's private network, and the backoffice never forwards it |
 | web | `API_URL` | the API's internal URL, e.g. `http://api:3101` (required in production) |
 | web | `WEB_TRUST_PROXY_HOPS` | load balancers in front of the backoffice that append the client address to `X-Forwarded-For`, usually `1` on a hosted platform. The backoffice passes the entry that many from the right to the API, alone. `0` (default): no address is passed on, and anonymous traffic, sign-in included, shares the backoffice's bucket. Never set it higher than the real count: an entry further left is written by the client |
 
@@ -154,6 +155,64 @@ migrate, revert, migrate, with every row count unchanged (11 keys and 7 TRUNCATE
 on, then off apart from the audit log's own, then on). With an orphan planted at the prior head
 (an activity event the first time, a provider call the second) the migration failed on
 `FK_activity_event_case` / `FK_provider_call_case` and left the database at the prior head.
+
+## Logs, metrics and the load test
+
+**Logs.** The API writes one bare JSON object per line to stdout for each request (no Nest
+prefix or colours, so a platform's collector can parse it; the `/health` probe is counted in the
+metrics but not logged):
+`{"msg":"request","requestId":"…","method":"GET","route":"/cases/:id","status":200,"durationMs":12,"staffId":"STF-PAOLO"}`.
+`route` is the matched pattern (`unmatched` for a 404), never the path, so no id or query
+string appears; there is no body, header, token or applicant field, and `staffId` is the
+session guard's verified user (null when anonymous). The request id is the caller's
+`x-request-id` when it is 8–64 letters, digits, `.`, `_` or `-`, else a new UUID. It is echoed in
+the response's `x-request-id`. The backoffice proxy forwards the browser's id (or makes one)
+and echoes the API's back, so an id a user reports finds its API log line. Ship stdout to the
+host's log store; nothing here aggregates logs.
+
+**Metrics.** With `METRICS_ENABLED=true`, `GET /metrics` serves the Prometheus text format:
+`http_requests_total{method,route,status}`, `http_request_duration_seconds{method,route}`
+(histogram, 5 ms to 10 s), `loan_provider_attempts{service,outcome}` (since this process
+started, read from the shared provider-call table) and `loan_provider_circuit_open{service}`
+(this process's circuits). Request metrics are per replica; Prometheus sums them. Scrape it
+from the private network only.
+
+**Load test.** `scripts/load/applications.mjs` (plain Node, no dependencies) signs in as a loan
+officer and, per application, captures a synthetic walk-in, submits a case for it, reads it
+back and lists the queue, at `RATE_PER_MINUTE` starts a minute (default 120, about 17× the
+average of 10,000 a day and under the API's 300-a-minute-per-user limit) with `CONCURRENCY`
+in flight:
+
+```bash
+BASE_URL=http://localhost:3101 APPLICATIONS=300 RATE_PER_MINUTE=120 node scripts/load/applications.mjs
+```
+
+**What it writes.** Every application is real data in the target database: one applicant, one
+case, a decision record, a consent record, several activity and audit events and the provider
+calls, about a dozen rows, most of them in insert-only tables that cannot be deleted
+(TRUNCATE is refused too). 300 applications leave about 3,600 rows. So the script refuses any
+host but localhost unless `LOAD_CONFIRM` equals the target's host (`LOAD_CONFIRM=lending.example.com`),
+and checks its numeric settings (whole numbers in range; `MAX_ERROR_RATE` from 0 to 1). Both
+are checked before any request is sent, and a refusal exits 2. Point it at a database you can
+throw away, or a demo you are happy to fill with "Load Test …" applicants.
+
+It prints one JSON report and exits 1 when the error rate is above `MAX_ERROR_RATE` (default
+0.01):
+
+```json
+{
+  "baseUrl": "…", "settings": { "applications": 300, "concurrency": 5, "ratePerMinute": 120 },
+  "applicationsCompleted": 300, "applicationsPerMinute": 119.6, "requests": 1200,
+  "errorRate": 0, "throttled429": 0,
+  "operations": { "POST /cases (submit)": { "count": 300, "p50Ms": 0, "p95Ms": 0, "p99Ms": 0, "maxMs": 0, "statuses": { "201": 300 } } },
+  "nfr004": { "target": "10,000 applications a day ≈ 6.9 a minute on average", "averageMultipleAchieved": 17.2 }
+}
+```
+
+Record a run as the date, the target (`BASE_URL`, local or deployed), the settings, and per
+operation the p50/p95/p99 and statuses, with the error rate and the multiple achieved. The
+integrator runs it at merge. A 3-application smoke run against a local API on 28 Nov 2026
+completed with no errors (submit p95 540 ms, simulated providers included).
 
 ## Backup and restore
 
