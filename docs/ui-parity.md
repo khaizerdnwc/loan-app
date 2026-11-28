@@ -111,6 +111,21 @@ The rules that came out of this, and the component list, are in
 | 61 | BarList | Prototype `.hbar` prints the figure in monospace with a 140px label column | **kept** — figures in the body font with tabular numbers (monospace is for identifiers); labels wrap rather than truncate |
 | 62 | Reports | Reason codes are shown as "R11 · Sanctions or watchlist match" in the body font | **kept** — the code stays readable as part of the label; a bar label is not an identifier field |
 
+## Routing, SLA, walk-ins and model governance (lanes A, B and C)
+
+| # | Screen | Difference | Status |
+|---|---|---|---|
+| 63 | Work queue | The prototype's My queue / Team / Unassigned tabs are now the owner filter (counts included); the owner and stage filters were component state | **fixed** — both kept in the URL (`?owner=mine\|unassigned`, `?stage=REVIEW`), so Back from a case restores them; an unknown value falls back to the whole team and all stages |
+| 64 | Work queue | Prototype puts Pick in its own column on the Unassigned tab; ours puts it under the owner name on every unassigned referral | **kept** — the owner cell says who acts and offers the action in one place; the button is interactive, so the row click does not fire it |
+| 65 | Queue and case SLA | The unavailable line was muted text; the case clock's failure did not say what still works | **fixed** — a neutral `Callout` on the list; on the case "SLA clock unavailable just now; the rest of the case is unaffected." The SLA pill and the "Past SLA" figure match the prototype's SLA column and KPI |
+| 66 | Walk-in dialog | The existing applicant's id was in the body font; the "new to the bank cannot be booked" consequence was a small grey note | **fixed** — the id in monospace; the consequence as an info `Callout` ("Not bookable yet.") |
+| 67 | Walk-in dialog | Prototype's new-application screen takes the customer inline (a core-customer select); ours opens a dialog with an Existing / New toggle (`SegmentedFilter` used as a mode switch) | **kept** — the toggle is the shared control; the dialog keeps the application form short |
+| 68 | Turnaround report | The holiday calendar's limit was gold text | **fixed** — a warning `Callout` |
+| 69 | Turnaround report, reconciliation, loan account | A `Table` inside a `Card` draws its own border inside the card's (the prototype's `.bd.np` card has none) | **later** — a `flush` table variant in `packages/ui`, applied everywhere at once |
+| 70 | Model governance | Counts printed raw (`1200`) | **fixed** — through `formatNumber` |
+| 71 | Model governance | The drift table showed the grade as a plain letter | **fixed** — `GradeTile`, as everywhere else a grade appears |
+| 72 | Model governance | Percentages are computed on the page (`toFixed`), not through a shared formatter; PSI below the minimum reads "not computed" with the counts | **later** (percentages: a `formatPercent` in `packages/ui`); the PSI wording already follows the no-figure-below-minimum lesson |
+
 ## States checked on every screen
 
 Hover (rows, buttons, nav), keyboard focus (rows via their link, buttons, fields, dialogs),

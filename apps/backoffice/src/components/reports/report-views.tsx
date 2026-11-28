@@ -14,6 +14,7 @@ import {
   type Bar,
   BarList,
   type BarTone,
+  Callout,
   Card,
   type Column,
   EmptyState,
@@ -269,9 +270,9 @@ export function TurnaroundView({ report: r }: { report: TurnaroundReport }) {
           </p>
         )}
         {calendarNote(r.holidayCalendarEnds, r.period.to) && (
-          <p className="mt-2 text-xs text-gold-700">
+          <Callout tone="warn" className="mt-3">
             {calendarNote(r.holidayCalendarEnds, r.period.to)}
-          </p>
+          </Callout>
         )}
       </Card>
     </div>
