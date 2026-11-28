@@ -1,0 +1,46 @@
+{
+  "name": "@loan/backoffice",
+  "version": "0.1.0",
+  "private": true,
+  "description": "WhiteBank Lending staff console (Next.js): queues, applications, decisions, approvals and booking.",
+  "files": [
+    ".next",
+    "next.config.ts",
+    "public"
+  ],
+  "scripts": {
+    "dev": "next dev -p 3100",
+    "build": "next build",
+    "start": "next start -p 3100",
+    "typecheck": "next typegen && tsc --noEmit -p tsconfig.json",
+    "lint": "eslint --cache --no-error-on-unmatched-pattern src test e2e",
+    "test": "vitest run",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.2.2",
+    "@loan/core": "workspace:*",
+    "@loan/ui": "workspace:*",
+    "next": "^16.4.6",
+    "react": "^19.1.10",
+    "react-dom": "^19.1.10",
+    "react-hook-form": "^7.62.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.65.1",
+    "@tailwindcss/postcss": "^4.3.5",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.1",
+    "@types/node": "^22.19.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "eslint": "^9.39.5",
+    "jsdom": "^27.0.0",
+    "tailwindcss": "^4.3.5",
+    "typescript": "~5.9.3",
+    "vitest": "^5.1.2"
+  }
+}

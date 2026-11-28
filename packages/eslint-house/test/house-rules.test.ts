@@ -3,20 +3,31 @@ import { type Rule, RuleTester } from "eslint";
 import tseslint from "typescript-eslint";
 import { afterAll, describe, it } from "vitest";
 import { REPO_ROOT } from "../src/_app-path.js";
+import moneyColumnNumeric from "../src/rules/money-column-numeric.js";
 import moneyThroughFormatter from "../src/rules/money-through-formatter.js";
+import noApplicantDataInAuditAppend from "../src/rules/no-applicant-data-in-audit-append.js";
+import noArbitraryTextSize from "../src/rules/no-arbitrary-text-size.js";
+import noCaseStatusAssignmentOutsideLifecycle from "../src/rules/no-case-status-assignment-outside-lifecycle.js";
 import noCommentedOutCode from "../src/rules/no-commented-out-code.js";
 import noConsoleInServer from "../src/rules/no-console-in-server.js";
 import noDatasourceOutsideRepository from "../src/rules/no-datasource-outside-repository.js";
+import noEngineVersionLiteral from "../src/rules/no-engine-version-literal.js";
 import noFloatMoney from "../src/rules/no-float-money.js";
 import noMathRandomInServer from "../src/rules/no-math-random-in-server.js";
+import noMoneyParseInController from "../src/rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "../src/rules/no-process-env-outside-config.js";
+import noProviderCallInTransaction from "../src/rules/no-provider-call-in-transaction.js";
 import noProviderImportOutsideAdapters from "../src/rules/no-provider-import-outside-adapters.js";
 import noRawColour from "../src/rules/no-raw-colour.js";
+import noReasonCodeLiteral from "../src/rules/no-reason-code-literal.js";
+import noServerEnvInClient from "../src/rules/no-server-env-in-client.js";
 import noStatusOnlyAssertion from "../src/rules/no-status-only-assertion.js";
 import noTodoComment from "../src/rules/no-todo-comment.js";
 import noTypeormSynchronize from "../src/rules/no-typeorm-synchronize.js";
+import problemCodeThroughConstant from "../src/rules/problem-code-through-constant.js";
 import requireOrderWithTake from "../src/rules/require-order-with-take.js";
 import requireRolesOnControllerHandler from "../src/rules/require-roles-on-controller-handler.js";
+import requireShapeWithValidateNested from "../src/rules/require-shape-with-validate-nested.js";
 
 /** The rules are plain JS; their inferred literal types are narrower than ESLint's. */
 const asRule = (rule: unknown) => rule as Rule.RuleModule;
@@ -384,6 +395,582 @@ ruleTester.run("money-through-formatter", asRule(moneyThroughFormatter), {
       filename: WEB,
       code: "const f = new Intl.NumberFormat('en-PH');",
       errors: [{ messageId: "localeFormat" }],
+    },
+  ],
+});
+
+ruleTester.run(
+  "no-case-status-assignment-outside-lifecycle",
+  asRule(noCaseStatusAssignmentOutsideLifecycle),
+  {
+    valid: [
+      {
+        filename: at("packages/base/src/cases/lifecycle.ts"),
+        code: "function moveTo(c, e, to) { c.status = to; }",
+      },
+      {
+        filename: at("packages/base/src/cases/cases.service.ts"),
+        code: "moveTo(c, 'APPROVE', CaseStatus.Offer);",
+      },
+      {
+        filename: at("packages/base/src/cases/booking.service.ts"),
+        code: "booking.status = 'BOOKED';",
+      },
+      {
+        filename: at("apps/api/test/x.e2e-spec.ts"),
+        code: "c.status = CaseStatus.Offer;",
+      },
+    ],
+    invalid: [
+      {
+        filename: at("packages/base/src/cases/cases.service.ts"),
+        code: "c.status = CaseStatus.Offer;",
+        errors: [{ messageId: "assignment" }],
+      },
+      {
+        filename: at("packages/base/src/cases/booking.service.ts"),
+        code: "loanCase.status = to;",
+        errors: [{ messageId: "assignment" }],
+      },
+    ],
+  },
+);
+
+ruleTester.run("no-arbitrary-text-size", asRule(noArbitraryTextSize), {
+  valid: [
+    // The type-scale tokens.
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="text-2xs text-title text-display">x</p>;`,
+    },
+    // Arbitrary non-size text utilities (a colour, a line-height) are not sizes.
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="text-[var(--c)] leading-[19px]">x</p>;`,
+    },
+    // A string outside any className or cn() is not a class list.
+    { filename: WEB, code: `export const note = "set text-[13px] in the design doc";` },
+    // Server code and tests are out of scope.
+    { filename: API, code: `export const k = cn("text-[13px]");` },
+    {
+      filename: at("apps/backoffice/test/a.test.tsx"),
+      code: `export const A = () => <p className="text-[13px]">x</p>;`,
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: `export const A = () => <p className="font-bold text-[13.5px]">x</p>;`,
+      errors: [{ messageId: "arbitrary", data: { token: "text-[13.5px]" } }],
+    },
+    // Under a variant, in rem or em, and the length: form.
+    {
+      filename: at("packages/ui/src/components/a.tsx"),
+      code: `export const A = () => <p className="md:text-[1.1rem] hover:text-[0.9em] text-[length:var(--s)]">x</p>;`,
+      errors: [{ messageId: "arbitrary" }, { messageId: "arbitrary" }, { messageId: "arbitrary" }],
+    },
+    // Inside cn(), a template literal and a ternary in a className expression.
+    {
+      filename: WEB,
+      code: `export const A = ({ big }) => <p className={cn("p-2", big && "text-[28px]")}>x</p>;`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+    {
+      filename: WEB,
+      code: "export const A = ({ t }) => <p className={`${t} text-[15px]`}>x</p>;",
+      errors: [{ messageId: "arbitrary" }],
+    },
+    {
+      filename: WEB,
+      code: `export const A = ({ on }) => <p className={on ? "text-[11px]" : "text-xs"}>x</p>;`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+    // cn() outside JSX, building a class constant.
+    {
+      filename: WEB,
+      code: `export const k = cn("rounded", "text-[12.5px]");`,
+      errors: [{ messageId: "arbitrary" }],
+    },
+  ],
+});
+
+const DTO = at("packages/base/src/cases/dto.ts");
+const CV = `import { IsArray, IsObject, IsOptional, ValidateNested } from "class-validator";\nimport { Type } from "class-transformer";\n`;
+
+ruleTester.run("require-shape-with-validate-nested", asRule(requireShapeWithValidateNested), {
+  valid: [
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsOptional() @IsObject() @ValidateNested() @Type(() => C) consent?: C; }`,
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsArray() @ValidateNested({ each: true }) @Type(() => L) lines!: L[]; }`,
+    },
+    {
+      filename: DTO,
+      code: `import * as cv from "class-validator";\nimport * as ct from "class-transformer";\nclass D { @cv.IsObject() @cv.ValidateNested() @ct.Type(() => C) c!: C; }`,
+    },
+    { filename: DTO, code: `${CV}class D { @IsOptional() @IsObject() plain?: object; }` },
+    { filename: WEB, code: `class D { @ValidateNested() c!: C; }` },
+    {
+      filename: DTO,
+      code: `${CV}class D {\n  // eslint-disable-next-line rule-to-test/require-shape-with-validate-nested -- test\n  @ValidateNested() c!: C;\n}`,
+    },
+  ],
+  invalid: [
+    // The consent DTO as staged: @Type but no @IsObject, so an array passes.
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsOptional() @ValidateNested() @Type(() => C) consent?: C; }`,
+      errors: [{ messageId: "missingShape" }],
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @IsObject() @ValidateNested() consent!: C; }`,
+      errors: [{ messageId: "missingType" }],
+    },
+    {
+      filename: DTO,
+      code: `${CV}class D { @ValidateNested() consent!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // An aliased import is the same decorator.
+    {
+      filename: DTO,
+      code: `import { ValidateNested as Nested } from "class-validator";\nclass D { @Nested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // A namespace import is the same decorator.
+    {
+      filename: DTO,
+      code: `import * as cv from "class-validator";\nclass D { @cv.ValidateNested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+    // In apps/api too.
+    {
+      filename: at("apps/api/src/simulation/dto.ts"),
+      code: `import { ValidateNested } from "class-validator";\nclass D { @ValidateNested() c!: C; }`,
+      errors: [{ messageId: "missingType" }, { messageId: "missingShape" }],
+    },
+  ],
+});
+
+ruleTester.run("no-server-env-in-client", asRule(noServerEnvInClient), {
+  valid: [
+    {
+      filename: at("apps/backoffice/src/app/api/[...path]/route.ts"),
+      code: `import { env } from "@/config/env";`,
+    },
+    {
+      filename: at("apps/backoffice/src/middleware.ts"),
+      code: `import { env } from "./config/env";`,
+    },
+    { filename: at("apps/backoffice/src/lib/api.ts"), code: `import { x } from "@/lib/env";` },
+    { filename: at("apps/backoffice/test/api-route.test.ts"), code: `import "@/config/env";` },
+    { filename: API, code: `import { env } from "../config/env";` },
+    {
+      filename: WEB,
+      code: `// eslint-disable-next-line rule-to-test/no-server-env-in-client -- server component\nimport { env } from "@/config/env";`,
+    },
+  ],
+  invalid: [
+    {
+      filename: at("apps/backoffice/src/components/x.tsx"),
+      code: `"use client";\nimport { env } from "@/config/env";`,
+      errors: [{ messageId: "clientImport" }],
+    },
+    {
+      filename: at("apps/backoffice/src/lib/api.ts"),
+      code: `import { env } from "../config/env.ts";`,
+      errors: [{ messageId: "clientImport" }],
+    },
+    {
+      filename: WEB,
+      code: "export { env } from '@/config/env';\nexport * from '../../config/env/index';",
+      errors: [{ messageId: "clientImport" }, { messageId: "clientImport" }],
+    },
+    {
+      filename: at("apps/backoffice/src/lib/x.ts"),
+      code: "const a = import(`@/config/env`);\nconst b = require('../config/env');",
+      errors: [{ messageId: "clientImport" }, { messageId: "clientImport" }],
+    },
+    {
+      // A file merely named route.ts outside app/ is not a route handler.
+      filename: at("apps/backoffice/src/lib/route.ts"),
+      code: `import { env } from "@/config/env";`,
+      errors: [{ messageId: "clientImport" }],
+    },
+  ],
+});
+
+const CONTROLLER = at("packages/base/src/cases/cases.controller.ts");
+
+ruleTester.run("no-money-parse-in-controller", asRule(noMoneyParseInController), {
+  valid: [
+    // The guarded parse in a service (cases.service.ts parseAmount).
+    {
+      filename: at("packages/base/src/cases/cases.service.ts"),
+      code: "function parseAmount(raw) { try { return Money.of(raw); } catch { return null; } }",
+    },
+    // A constant literal cannot be attacker-shaped.
+    { filename: CONTROLLER, code: `const floor = Money.of("0.00");` },
+    // Outside server code.
+    {
+      filename: at("apps/backoffice/src/app/quote.controller.ts"),
+      code: "const a = Money.of(query.amount);",
+    },
+    // Another class's `of`.
+    { filename: CONTROLLER, code: "const a = Decimal.of(query.amount);" },
+    {
+      filename: CONTROLLER,
+      code: "// eslint-disable-next-line rule-to-test/no-money-parse-in-controller -- proven\nconst a = Money.of(q.amount);",
+    },
+  ],
+  invalid: [
+    // GET /products/PL/quote as staged: `amount=.` passes @IsDecimal, Money.of throws, 500.
+    {
+      filename: CONTROLLER,
+      code: "class C { quote(query) { const amount = Money.of(query.amount); return amount; } }",
+      errors: [{ messageId: "moneyOfInController" }],
+    },
+    {
+      filename: CONTROLLER,
+      code: `const a = Money["of"](raw);`,
+      errors: [{ messageId: "moneyOfInController" }],
+    },
+    {
+      filename: at("apps/api/src/simulation/simulation.controller.ts"),
+      code: "const a = Money.of(`${x}`);",
+      errors: [{ messageId: "moneyOfInController" }],
+    },
+  ],
+});
+
+ruleTester.run("problem-code-through-constant", asRule(problemCodeThroughConstant), {
+  valid: [
+    { filename: WEB, code: "if (err.code === ProblemCode.InvalidTransition) run();" },
+    { filename: WEB, code: "const r = c.reasonCodes.some((r) => r.code === 'R10');" },
+    { filename: WEB, code: "if (a.status === 'BOOKING_FAILED') run();" },
+    {
+      filename: at("packages/base/src/cases/cases.service.ts"),
+      code: "if (err.code === 'INVALID_STATE_TRANSITION') run();",
+    },
+    {
+      filename: at("apps/backoffice/test/escalation-actions.test.tsx"),
+      code: "if (err.code === 'INVALID_STATE_TRANSITION') run();",
+    },
+    {
+      filename: WEB,
+      code: "// eslint-disable-next-line rule-to-test/problem-code-through-constant -- not a problem code\nif (x.code === 'SOME_CODE') run();",
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: "if (err instanceof ApiError && err.code === 'INVALID_STATE_TRANSITION') run();",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "const held = a.blockedBy !== `COMPLIANCE_HOLD`;",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "const x = 'AUTHORITY_LIMIT' == (e as ApiError).code;",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: WEB,
+      code: "switch (err?.code) { case 'SCREENING_MATCH': break; case ProblemCode.AuthorityLimit: break; }",
+      errors: [{ messageId: "literal" }],
+    },
+    {
+      filename: at("packages/ui/src/components/thing.tsx"),
+      code: "const y = e['code'] === 'COMPLIANCE_HOLD';",
+      errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+// Screens never re-derive case state from reason codes: R17 (fraud check unavailable) was
+// missed by the next-action text that tested for R10 and R13 (lesson ui-ux-20261128-no-reason-code-mirror).
+const PANEL = at("apps/backoffice/src/components/case/actions-panel.tsx");
+ruleTester.run("no-reason-code-literal", asRule(noReasonCodeLiteral), {
+  valid: [
+    // Asking the API's view instead.
+    {
+      filename: PANEL,
+      code: `const offered = c.allowedActions.some((a) => a.action === "REDECIDE" && a.enabled);`,
+    },
+    // Displaying the codes the API sent.
+    { filename: PANEL, code: `const L = ({ r }) => <span className="font-mono">{r.code}</span>;` },
+    // An object key that happens to look like a code.
+    { filename: PANEL, code: `const legend = { R10: "x" };` },
+    // Not a code: "R1" (one digit) and "RS-PL-1".
+    { filename: PANEL, code: `const v = x === "R1" || y === "RS-PL-1";` },
+    // Outside the path gate: the engine owns its codes.
+    {
+      filename: at("packages/base/src/decisioning/engine/reason-codes.ts"),
+      code: `export const R = { code: "R10" };`,
+    },
+    // Tests may name codes.
+    { filename: at("apps/backoffice/test/actions-panel.test.tsx"), code: `expect(x).toBe("R10");` },
+  ],
+  invalid: [
+    // The shape that bit us.
+    {
+      filename: PANEL,
+      code: `const out = c.decision?.reasonCodes.some((r) => r.code === "R10" || r.code === "R13");`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // Hoisted into a constant list.
+    {
+      filename: PANEL,
+      code: `const OUTAGE = new Set(["R10", "R13"]);`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // A switch over codes.
+    {
+      filename: PANEL,
+      code: `switch (r.code) { case "R17": break; }`,
+      errors: [{ messageId: "literal" }],
+    },
+    // A template literal spelling.
+    { filename: PANEL, code: "const c = `R13`;", errors: [{ messageId: "literal" }] },
+    // A computed key is a lookup, not a label.
+    { filename: PANEL, code: `const m = { ["R10"]: 1 };`, errors: [{ messageId: "literal" }] },
+    // In packages/ui too.
+    {
+      filename: at("packages/ui/src/components/pill.tsx"),
+      code: `const outage = codes.includes("R10");`,
+      errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+ruleTester.run("money-column-numeric", asRule(moneyColumnNumeric), {
+  valid: [
+    {
+      filename: WEB,
+      code: "const c = [{ key: 'a', header: 'Amount', numeric: true, render: (r) => formatPeso(r.a) }];",
+    },
+    { filename: WEB, code: "const c = [{ key: 'n', header: 'Name', render: (r) => r.name }];" },
+    {
+      filename: at("packages/base/src/reports/x.ts"),
+      code: "const c = [{ header: 'Amount', render: (r) => formatPeso(r.a) }];",
+    },
+    {
+      filename: WEB,
+      code: "const c = [{\n header: 'Note',\n // eslint-disable-next-line rule-to-test/money-column-numeric -- prose\n render: (r) => `Paid ${formatPeso(r.a)} late`,\n}];",
+    },
+  ],
+  invalid: [
+    {
+      filename: WEB,
+      code: "const c = [{ key: 'a', header: 'Amount', render: (r) => formatPeso(r.a) }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "const c = [{ header: 'Amount', numeric: false, render: (r) => <span>{formatPeso(r.a)}</span> }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "function amounts(a, b) { return <p>{formatPeso(a)} {formatPeso(b)}</p>; }\nconst c = [{ header: 'Amounts', render: (f) => amounts(f.a, f.b) }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+    {
+      filename: WEB,
+      code: "const peso = (x) => formatPeso(x);\nconst two = (x) => peso(x);\nconst c = [{ header: 'Amount', render: (f) => two(f.a) }];",
+      errors: [{ messageId: "notNumeric" }],
+    },
+  ],
+});
+
+// Screens never key on engine versions: the decision panel's band table stopped at RS-PL-2 and
+// RS-PL-3 decisions lost their score band (lesson ui-ux-20261128-no-engine-version-table).
+const DPANEL = at("apps/backoffice/src/components/case/decision-panel.tsx");
+ruleTester.run("no-engine-version-literal", asRule(noEngineVersionLiteral), {
+  valid: [
+    // Reading what the API sends.
+    { filename: DPANEL, code: `const bands = decision.scoreBand;` },
+    // Displaying the version the record carries.
+    { filename: DPANEL, code: `const V = ({ d }) => <span>{d.ruleSetVersion}</span>;` },
+    // Not a version: a reason code, a product code.
+    { filename: DPANEL, code: `const a = "R10x"; const b = "PL";` },
+    // Outside the path gate: the engine owns its versions.
+    {
+      filename: at("packages/base/src/decisioning/engine/rule-sets.ts"),
+      code: `const RS = { version: "RS-PL-3" };`,
+    },
+    // Tests may name versions.
+    { filename: at("apps/backoffice/test/decision-band.test.tsx"), code: `const v = "RS-PL-3";` },
+  ],
+  invalid: [
+    // The shape that bit us: a table keyed by version.
+    {
+      filename: DPANEL,
+      code: `const BANDS = { "RS-PL-1": { a: 1 }, "RS-PL-2": { a: 1 } };`,
+      errors: [{ messageId: "literal" }, { messageId: "literal" }],
+    },
+    // A branch on the version.
+    {
+      filename: DPANEL,
+      code: `const old = d.ruleSetVersion === "RS-PL-1";`,
+      errors: [{ messageId: "literal" }],
+    },
+    // A scorecard version, in a template literal.
+    { filename: DPANEL, code: "const s = `SC-PL-2`;", errors: [{ messageId: "literal" }] },
+    // In packages/ui too.
+    {
+      filename: at("packages/ui/src/components/score-band.tsx"),
+      code: `switch (v) { case "RS-PL-3": break; }`,
+      errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+const SVC = "packages/base/src/cases/cases.service.ts";
+const GATEWAY_CLASS = (body: string) =>
+  `class S { constructor(private readonly providers: ProviderGateway, private readonly repo: Repo) {}
+     async go(id: string) { ${body} } }`;
+
+ruleTester.run("no-provider-call-in-transaction", asRule(noProviderCallInTransaction), {
+  valid: [
+    // Providers first, then the transaction (the shape cases.service.ts uses).
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`const r = await this.providers.screen(s, id);
+        await this.tx.run(async (m) => { await this.repo.save(m, r); });`),
+    },
+    {
+      filename: at(SVC),
+      code: `class S { async go() { const i = await this.decisions.gatherInputs(c, d);
+        await this.tx.run(async (m) => { use(i); }); } }`,
+    },
+    // Another field's methods inside the transaction are fine.
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`await this.tx.run(async (m) => { await this.repo.lock(m, id); });`),
+    },
+    // Outside packages/base/src.
+    {
+      filename: at("apps/api/test/x.e2e-spec.ts"),
+      code: GATEWAY_CLASS(
+        `await this.tx.run(async () => { await this.providers.screen(s, id); });`,
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`await this.tx.run(async (m) => {
+        const c = await this.repo.lock(m, id);
+        await this.providers.pullBureau(s, c.id);
+      });`),
+      errors: [{ messageId: "inTransaction" }],
+    },
+    {
+      filename: at(SVC),
+      code: `class S { async go() { await this.tx.run(async (m) => {
+        await this.decisions.gatherInputs(c, d); }); } }`,
+      errors: [{ messageId: "inTransaction" }],
+    },
+    // ds.transaction / manager.transaction, a function expression, a nested helper arrow.
+    {
+      filename: at("packages/base/src/operations/operations.service.ts"),
+      code: GATEWAY_CLASS(`await ds.transaction(async function (m) {
+        await Promise.all([1].map(() => this.providers.assessFraud(s, id)));
+      });`),
+      errors: [{ messageId: "inTransaction" }],
+    },
+    // A gateway under another field name.
+    {
+      filename: at(SVC),
+      code: `class S { constructor(private readonly gw: ProviderGateway) {}
+        async go() { await tx.run(async () => { await this.gw.screen(s, id); }); } }`,
+      errors: [{ messageId: "inTransaction" }],
+    },
+  ],
+});
+
+ruleTester.run("no-applicant-data-in-audit-append", asRule(noApplicantDataInAuditAppend), {
+  valid: [
+    // Ids and references only; the actor (staff) is not inspected.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, a) { await this.audit.append(m, {
+        actor: user, action: "APPLICANT_CAPTURED",
+        summary: \`Captured applicant \${a.id}.\`, details: { applicantId: a.id } }); } }`,
+    },
+    // A const built earlier from safe values.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, b) { const s = \`Uploaded \${b.reference}\`;
+        await this.audit.append(m, { actor: user, action: "X", summary: s }); } }`,
+    },
+    // Not an audit service: an array append, an activity record (the case history).
+    { filename: BASE, code: `form.append("fileName", f.fileName);` },
+    {
+      filename: BASE,
+      code: `class S { async go(m) { await this.activity.record(m, { summary: a.fullName }); } }`,
+    },
+    // Outside server code.
+    { filename: WEB, code: `audit.append(m, { summary: a.fullName });` },
+    {
+      filename: at("apps/api/test/x.e2e-spec.ts"),
+      code: `audit.append(m, { summary: a.fullName });`,
+    },
+    // The opt-out.
+    {
+      filename: BASE,
+      code: `class S { async go(m, b) { await this.audit.append(m, {
+        // eslint-disable-next-line rule-to-test/no-applicant-data-in-audit-append -- synthetic catalogue name
+        summary: b.fileName }); } }`,
+    },
+  ],
+  invalid: [
+    // The shape that bit us: the uploaded file name in a template literal.
+    {
+      filename: BASE,
+      code: `class S { async go(m, user, bundle) { await this.audit.append(m, {
+        actor: user, action: "INTAKE_UPLOADED",
+        summary: \`Uploaded "\${bundle.fileName}"\` }); } }`,
+      errors: [{ messageId: "applicantData" }],
+    },
+    // Optional chaining, and an applicant name in details.
+    {
+      filename: BASE,
+      code: `class S { async go(m, d, a) { await this.audit.append(m, {
+        summary: \`From \${d.batch?.fileName ?? "a file"}\`, details: { name: a.fullName } }); } }`,
+      errors: [{ messageId: "applicantData" }, { messageId: "applicantData" }],
+    },
+    // A forbidden key, computed member access, and a destructured identifier.
+    {
+      filename: BASE,
+      code: `class S { async go(m, a) { const { birthDate } = a; await this.auditService.append(m, {
+        details: { governmentIdLast4: x, b: a["fullName"], c: birthDate } }); } }`,
+      errors: [
+        { messageId: "applicantData" },
+        { messageId: "applicantData" },
+        { messageId: "applicantData" },
+      ],
+    },
+    // A value built into a const first, and a whole entry object built first.
+    {
+      filename: API,
+      code: `async function go(audit, m, a) { const s = "for " + a.fullName;
+        await audit.append(m, { summary: s }); }`,
+      errors: [{ messageId: "applicantData" }],
+    },
+    {
+      filename: BASE,
+      code: `class S { async go(m, a) { const entry = { summary: a.email };
+        await this.audit.append(m, entry); } }`,
+      errors: [{ messageId: "applicantData" }],
     },
   ],
 });

@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* The shared components live in packages/ui: let Tailwind see their classes. */
+@source "../../../../packages/ui/src";
+
+/*
+ * Design tokens, copied from the project team's prototype so the screens look the same; the
+ * whole look is restyled by editing this block. Tailwind's default palette is reset, so a
+ * component can only use these names (house/no-raw-colour keeps literals out of .tsx).
+ */
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-transparent: transparent;
+  --color-current: currentColor;
+
+  --color-ink-900: #1e1e29;
+  --color-ink-800: #2d2d3d;
+  --color-ink-700: #3b3b4e;
+  --color-ink-600: #4a4a5f;
+
+  --color-mist-600: #52526a;
+  --color-mist-500: #6e6e86;
+  --color-mist-400: #9a9aae;
+  --color-mist-300: #c4c4d2;
+  --color-mist-200: #dedee8;
+  --color-mist-100: #ececf2;
+  --color-mist-050: #f5f5f9;
+  --color-lav: #e4e4f2;
+
+  /* One step darker than the prototype's #a5631a / #2e7d5b, so small text on the 100 and
+     050 tints meets WCAG AA 4.5:1 (gold-700 on gold-100 4.75:1, ok-700 on ok-100 5.08:1). */
+  --color-gold-700: #94581a;
+  --color-gold-600: #be7320;
+  --color-gold-500: #d88728;
+  --color-gold-200: #f2d6a8;
+  --color-gold-100: #f8e8cd;
+  --color-gold-050: #fbf3e3;
+
+  --color-ok-700: #276d4f;
+  --color-ok-100: #d6eee2;
+  --color-ok-050: #eaf6f0;
+
+  /* Danger button hover (the prototype's #9a272e): white text 7.3:1. */
+  --color-bad-800: #9a272e;
+  --color-bad-700: #b23138;
+  --color-bad-500: #db4a52;
+  --color-bad-100: #f8d8da;
+  --color-bad-050: #fcecee;
+
+  /* Grade tiles: the prototype's solid fills with a white letter. B, C and D are darkened
+     from #4f8f63 / #be7320 / #c4602f (3.9, 3.7, 4.2:1) so white 14px text meets AA:
+     A 5.0, B 4.56, C 4.73, D 4.55, E 6.2 :1. */
+  --color-grade-a: #2e7d5b;
+  --color-grade-b: #47825a;
+  --color-grade-c: #a5641b;
+  --color-grade-d: #ba5b2c;
+  --color-grade-e: #b23138;
+
+  --color-info-700: #435289;
+  --color-info-100: #dee3f3;
+  --color-info-050: #eef1f9;
+
+  /* The prototype's three border weights: --border-s (dividers inside a card), --border
+     (cards, tables), --border-x (buttons and form controls). */
+  --color-line-soft: rgba(45, 45, 61, 0.06);
+  --color-line: rgba(45, 45, 61, 0.12);
+  --color-line-strong: rgba(45, 45, 61, 0.22);
+
+  --font-sans: "Manrope", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+  --radius-modal: 16px;
+  --radius-card: 14px;
+  --radius-btn: 12px;
+  /* Sidebar links (10px), segmented filter buttons (9px), avatar and grade tiles (8px). */
+  --radius-nav: 10px;
+  --radius-tab: 9px;
+  --radius-tile: 8px;
+
+  /*
+   * The root font size is 14px, so every rem-based Tailwind value renders at 0.875× its usual
+   * size: spacing unit 3.5px (h-11 = 38.5px, the shared height of Input, Select and Button;
+   * min-h-24 = 84px for Textarea; p-5 = 17.5px card padding).
+   *
+   * One type scale, in px for the same reason (Tailwind's rem text-xs / text-sm came out at
+   * 10.5 / 12.25px). Every text size in the app is one of these; no text-[…px]
+   * (house/no-arbitrary-text-size).
+   *   2xs 11   labels, table headings, eyebrows, badges (uppercase, tracked)
+   *   xs  12   hints, errors, captions, secondary lines
+   *   sm  13   buttons, navigation, table cells, card asides
+   *   base 14  body copy and form controls (the prototype's input size)
+   *   title 15 card titles
+   *   stat 28  stat-card figures
+   *   display 32 page titles and the decision score
+   */
+  --text-2xs: 11px;
+  --text-2xs--line-height: 16px;
+  --text-xs: 12px;
+  --text-xs--line-height: 17px;
+  --text-sm: 13px;
+  --text-sm--line-height: 19px;
+  --text-base: 14px;
+  --text-base--line-height: 21px;
+  --text-title: 15px;
+  --text-title--line-height: 21px;
+  --text-lg: 18px;
+  --text-lg--line-height: 24px;
+  --text-stat: 28px;
+  --text-stat--line-height: 34px;
+  --text-display: 32px;
+  --text-display--line-height: 37px;
+
+  --shadow-card: 0 1px 2px rgba(30, 30, 41, 0.04);
+  --shadow-modal: 0 24px 48px rgba(30, 30, 41, 0.18);
+}
+
+html,
+body {
+  background: var(--color-mist-050);
+  color: var(--color-mist-600);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+h1,
+h2,
+h3 {
+  color: var(--color-ink-900);
+}
+
+/* gold-700 on the light surfaces (5.7:1 on white, 5.3:1 on mist-050; gold-500 was 2.8:1),
+   gold-500 inside the dark sidebar (4.8:1 on ink-800), both above the 3:1 non-text minimum. */
+:focus-visible {
+  outline: 2px solid var(--color-gold-700);
+  outline-offset: 2px;
+}
+
+[data-surface="dark"] :focus-visible {
+  outline-color: var(--color-gold-500);
+}

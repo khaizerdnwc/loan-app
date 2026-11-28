@@ -12,7 +12,7 @@
     "build": "tsc -p tsconfig.build.json",
     "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "lint": "eslint --cache src test",
+    "lint": "eslint --cache --no-error-on-unmatched-pattern src test",
     "test": "jest"
   },
   "dependencies": {

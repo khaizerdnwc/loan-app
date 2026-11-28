@@ -1,0 +1,793 @@
+import { createHash } from "node:crypto";
+import { AutomationMode, DecisionOutcome, type Grade, Money } from "@loan/core";
+import { ratioAsPercent } from "./ratio";
+import { REASONS } from "./reason-codes";
+import { type RuleSet, ruleSet } from "./rule-sets";
+import { prohibitedFeaturesIn, type Scorecard, score, scorecard } from "./scorecards";
+import type {
+  DecisionInputs,
+  DecisionResult,
+  DecisionVersions,
+  ReasonCode,
+  RuleResult,
+} from "./types";
+
+/**
+ * The automated credit decision (ADR 0022): a pure function of the input snapshot and the
+ * versions. No clock, no database, no randomness — the same inputs and versions always
+ * give the same result, which is what makes a stored decision reproducible.
+ *
+ * Order (PRD 7.1): knockouts first (they end the pipeline and cannot be overridden by the
+ * score), then the score and its band, then referral triggers that send a case to a person
+ * whatever the score. A provider that could not answer degrades to a referral, never to a
+ * decline (PRD NFR-005). Then, from RS-PL-4, the external decision engine's stored answer
+ * where the product uses one (PRD DEC-008, `applyExternal`). Last, the product's automation
+ * mode (PRD §7.5), an input like the
+ * rest: unless automation is live and the kill switch is off, the case goes to a person and
+ * the engine's own outcome is kept beside it (`engineOutcome`).
+ */
+export function decide(inputs: DecisionInputs, versions: DecisionVersions): DecisionResult {
+  const byRules = decideByRules(inputs, versions);
+  const rs = ruleSet(versions.ruleSet);
+  // The overlay is versioned like any rule (ADR 0022 R4): a rule set with `automationModes`
+  // needs the mode in the snapshot, and one without it refuses a snapshot that carries one.
+  if (rs.automationModes && !inputs.automation) {
+    throw new Error(`Rule set ${rs.version} needs the automation mode in the decision inputs`);
+  }
+  if (!rs.automationModes && inputs.automation) {
+    throw new Error(`Rule set ${rs.version} does not apply automation modes`);
+  }
+  // The same both ways for the external engine (RS-PL-4 on).
+  if (rs.externalEngine && !inputs.external) {
+    throw new Error(
+      `Rule set ${rs.version} needs the external decision engine role in the decision inputs`,
+    );
+  }
+  if (!rs.externalEngine && inputs.external) {
+    throw new Error(`Rule set ${rs.version} does not call an external decision engine`);
+  }
+  const sc = scorecard(versions.scorecard);
+  const withEstimates: DecisionResult = {
+    ...byRules,
+    // Warnings (RS-PL-5 on) are recorded whatever the outcome and change nothing.
+    ruleResults: [...byRules.ruleResults, ...warningRules(inputs, rs)],
+    engineOutcome: byRules.outcome,
+    ...estimates(byRules.grade, inputs, rs, sc),
+  };
+  return applyAutomation(applyExternal(withEstimates, inputs), inputs.automation);
+}
+
+type RulesResult = Omit<DecisionResult, "engineOutcome" | "pd" | "recommendedAmount">;
+
+/**
+ * The probability of default and the recommended amount (PRD AIS-001), each switched on by its
+ * own version: PD by the scorecard (`pdByGrade`, SC-PL-2 on), the amount by the rule set
+ * (`recommendedAmount`, RS-PL-3 on). Earlier versions give null for both, so their records
+ * replay unchanged. Nothing is estimated without a grade (knockout, bureau outage).
+ */
+function estimates(
+  grade: Grade | null,
+  inputs: DecisionInputs,
+  rs: RuleSet,
+  sc: Scorecard,
+): { pd: string | null; recommendedAmount: string | null } {
+  if (!grade) return { pd: null, recommendedAmount: null };
+  return {
+    pd: sc.pdByGrade?.[grade] ?? null,
+    recommendedAmount: rs.recommendedAmount
+      ? affordableAmount(
+          {
+            monthlyIncome: inputs.applicant.monthlyIncome,
+            monthlyObligations: inputs.applicant.monthlyObligations,
+            amount: inputs.application.amount,
+            tenorMonths: inputs.application.tenorMonths,
+          },
+          rs.monthlyRate[grade],
+          rs.recommendedAmount,
+        )
+      : null,
+  };
+}
+
+/**
+ * The largest amount, at most the one requested, whose average add-on instalment keeps the
+ * monthly debt service within `maxDebtServiceRatio` of income: obligations + amount × (1/n + r)
+ * ≤ income × ratio, so amount ≤ (income × ratio − obligations) × n ÷ (1 + r·n). The policy is
+ * on the average instalment: the schedule's last one absorbs rounding (ADR 0019) and can be a
+ * few centavos higher. Exact decimal arithmetic, rounded down to `roundDownTo` pesos; "0.00"
+ * when nothing is affordable.
+ */
+export function affordableAmount(
+  terms: { monthlyIncome: string; monthlyObligations: string; amount: string; tenorMonths: number },
+  monthlyRate: string,
+  policy: NonNullable<RuleSet["recommendedAmount"]>,
+): string {
+  const n = terms.tenorMonths;
+  const available = Money.of(terms.monthlyIncome)
+    .times(policy.maxDebtServiceRatio)
+    .minus(Money.of(terms.monthlyObligations));
+  if (available.isNegative() || available.isZero()) return "0.00";
+  // 1 + r·n as an integer over 10,000: the rate has exactly four decimals ("0.0160" → 160).
+  if (!/^0\.\d{4}$/.test(monthlyRate)) throw new Error(`Unexpected monthly rate ${monthlyRate}`);
+  const rateBp = Number.parseInt(monthlyRate.slice(2), 10);
+  const affordable = available.times(n * 10_000).dividedBy(10_000 + rateBp * n);
+  // Round down to a multiple of `roundDownTo`: divide so the step is one centavo, round down.
+  const step = policy.roundDownTo * 100;
+  const floored = affordable.dividedBy(step).round("DOWN").times(step);
+  const requested = Money.of(terms.amount);
+  return (floored.lessThan(requested) ? floored : requested).toString();
+}
+
+function decideByRules(inputs: DecisionInputs, versions: DecisionVersions): RulesResult {
+  const rs = ruleSet(versions.ruleSet);
+  const sc = scorecard(versions.scorecard);
+  // PRD AIS-012: a scorecard that reads a prohibited attribute never scores anyone.
+  const prohibited = prohibitedFeaturesIn(sc);
+  if (prohibited.length > 0) {
+    throw new Error(`Scorecard ${sc.version} uses prohibited features: ${prohibited.join(", ")}`);
+  }
+  const { applicant, application, bureau, screening } = inputs;
+  if (application.productCode !== rs.productCode) {
+    throw new Error(
+      `Rule set ${rs.version} is for product ${rs.productCode}, not ${application.productCode}`,
+    );
+  }
+
+  // Policy comparisons use exact Money arithmetic (obligations > income × cap). The 4-decimal
+  // ratio is only for display and the record. Zero income has no ratio and always refers.
+  const income = Money.of(applicant.monthlyIncome);
+  const obligations = Money.of(applicant.monthlyObligations);
+  const dti = income.isZero() ? null : obligations.ratioTo(income);
+  const dtiLabel = dti === null ? "no income" : `DTI ${ratioAsPercent(dti)}`;
+
+  const rules: RuleResult[] = [];
+  const reasons: ReasonCode[] = [];
+  const knockouts: ReasonCode[] = [];
+  const triggers: string[] = [];
+  const add = (reason: ReasonCode) => {
+    if (!reasons.some((r) => r.code === reason.code)) reasons.push(reason);
+  };
+
+  // --- Knockouts --------------------------------------------------------------------
+  const ageOk = applicant.ageYears >= rs.minAge && applicant.ageYears <= rs.maxAge;
+  rules.push({
+    id: "KO-AGE",
+    name: `Applicant age ${rs.minAge}–${rs.maxAge}`,
+    kind: "KNOCKOUT",
+    result: ageOk ? "PASS" : "FAIL",
+    value: `age ${applicant.ageYears}`,
+  });
+  if (!ageOk) knockouts.push(REASONS.ageOutsidePolicy);
+
+  if (screening.status === "OK") {
+    rules.push({
+      id: "KO-SANCTIONS",
+      name: "No sanctions or watchlist match",
+      kind: "KNOCKOUT",
+      result: screening.sanctionsMatch ? "FAIL" : "PASS",
+      value: screening.sanctionsMatch ? "match" : "clear",
+    });
+    if (screening.sanctionsMatch) knockouts.push(REASONS.sanctionsMatch);
+    rules.push({
+      id: "KO-KYC",
+      name: "Identity verified",
+      kind: "KNOCKOUT",
+      result: screening.kycVerified ? "PASS" : "FAIL",
+      value: screening.kycVerified ? "verified" : "not verified",
+    });
+    if (!screening.kycVerified) knockouts.push(REASONS.identityNotVerified);
+  } else {
+    for (const [id, name] of [
+      ["KO-SANCTIONS", "No sanctions or watchlist match"],
+      ["KO-KYC", "Identity verified"],
+    ] as const) {
+      rules.push({
+        id,
+        name,
+        kind: "KNOCKOUT",
+        result: "NOT_EVALUATED",
+        value: "screening unavailable",
+      });
+    }
+  }
+
+  if (bureau.status === "OK") {
+    rules.push({
+      id: "KO-DEFAULT",
+      name: "No existing default",
+      kind: "KNOCKOUT",
+      result: bureau.existingDefault ? "FAIL" : "PASS",
+      value: bureau.existingDefault ? "default reported" : "none",
+    });
+    if (bureau.existingDefault) knockouts.push(REASONS.existingDefault);
+  } else {
+    rules.push({
+      id: "KO-DEFAULT",
+      name: "No existing default",
+      kind: "KNOCKOUT",
+      result: "NOT_EVALUATED",
+      value: "bureau unavailable",
+    });
+  }
+
+  const base = { versions, ruleResults: rules, debtToIncome: dti };
+
+  if (knockouts.length > 0) {
+    return {
+      ...base,
+      outcome: DecisionOutcome.Decline,
+      score: null,
+      grade: null,
+      scoreContributions: [],
+      reasonCodes: knockouts,
+      referralTriggers: [],
+      monthlyRate: null,
+    };
+  }
+
+  // --- Referral triggers that do not need a score ------------------------------------
+  const amount = Money.of(application.amount);
+  const aboveLimit = amount.greaterThan(Money.of(rs.autoApprovalLimit));
+  rules.push({
+    id: "RF-AMOUNT",
+    name: "Amount within the automatic approval limit",
+    kind: "REFERRAL",
+    result: aboveLimit ? "FAIL" : "PASS",
+    value: `limit ${rs.autoApprovalLimit}`,
+  });
+  if (aboveLimit) {
+    triggers.push(REASONS.amountAboveAutoLimit.staff);
+    add(REASONS.amountAboveAutoLimit);
+  }
+
+  const dtiHigh = income.isZero() || obligations.greaterThan(income.times(rs.maxDebtToIncome));
+  rules.push({
+    id: "RF-DTI",
+    name: `Debt-to-income at or below ${ratioAsPercent(rs.maxDebtToIncome)}`,
+    kind: "REFERRAL",
+    result: dtiHigh ? "FAIL" : "PASS",
+    value: dtiLabel,
+  });
+  if (dtiHigh) {
+    triggers.push(REASONS.debtToIncome.staff);
+    add(REASONS.debtToIncome);
+  }
+
+  if (screening.status === "UNAVAILABLE") {
+    triggers.push(REASONS.screeningUnavailable.staff);
+    add(REASONS.screeningUnavailable);
+  }
+
+  // --- Triggers added in RS-PL-2 (absent from earlier versions, so their records replay) --
+  for (const reason of laterTriggers(inputs, rs, income, rules)) {
+    triggers.push(reason.staff);
+    add(reason);
+  }
+
+  // --- Bureau unavailable: refer without a score (never decline) ----------------------
+  if (bureau.status === "UNAVAILABLE") {
+    rules.push({
+      id: "RF-BUREAU",
+      name: "Credit bureau answered",
+      kind: "REFERRAL",
+      result: "FAIL",
+      value: bureau.reason,
+    });
+    triggers.push(REASONS.bureauUnavailable.staff);
+    add(REASONS.bureauUnavailable);
+    return {
+      ...base,
+      outcome: DecisionOutcome.Refer,
+      score: null,
+      grade: null,
+      scoreContributions: [],
+      reasonCodes: reasons,
+      referralTriggers: triggers,
+      monthlyRate: null,
+    };
+  }
+
+  const thin = bureau.fileDepth !== "FULL";
+  rules.push({
+    id: "RF-FILE",
+    name: "Bureau file sufficient",
+    kind: "REFERRAL",
+    result: thin ? "FAIL" : "PASS",
+    value: bureau.fileDepth === "NO_HIT" ? "no hit" : `${bureau.fileDepth.toLowerCase()} file`,
+  });
+  if (thin) {
+    const reason = bureau.fileDepth === "NO_HIT" ? REASONS.noBureauHit : REASONS.thinFile;
+    triggers.push(reason.staff);
+    add(reason);
+  }
+
+  // --- Missing data (RS-PL-5 on): a full file without a score is not left to a default ---
+  // (A thin file or no hit already refers above.)
+  if (rs.missingDataReferral) {
+    const missing = bureau.fileDepth === "FULL" && bureau.bureauScore === null;
+    rules.push({
+      id: "RF-DATA",
+      name: "Bureau score present on a full file",
+      kind: "REFERRAL",
+      result: bureau.fileDepth !== "FULL" ? "NOT_EVALUATED" : missing ? "FAIL" : "PASS",
+      value:
+        bureau.fileDepth !== "FULL"
+          ? "file not full"
+          : missing
+            ? "no bureau score"
+            : "score present",
+    });
+    if (missing) {
+      triggers.push(REASONS.missingData.staff);
+      add(REASONS.missingData);
+    }
+  }
+
+  // --- Score and band -------------------------------------------------------------------
+  const scored = score(sc, bureau, applicant, { obligations, income });
+  const band = bandFor(scored.score, rs);
+  rules.push({
+    id: "SC-BAND",
+    name: `Score band (decline below ${rs.declineBelow}, approve from ${rs.approveFrom})`,
+    kind: "REFERRAL",
+    result: band === "APPROVE" ? "PASS" : "FAIL",
+    value: `score ${scored.score} (${scored.grade})`,
+  });
+
+  // --- Low model confidence (RS-PL-5 on): before the band decides automatically ---------
+  if (rs.lowConfidence) {
+    const { bandMargin, minScoredFactors } = rs.lowConfidence;
+    const factors = factorsFromData(bureau, income);
+    const nearApprove = band === "APPROVE" && scored.score < rs.approveFrom + bandMargin;
+    const nearDecline = band === "DECLINE" && scored.score >= rs.declineBelow - bandMargin;
+    const fewFactors = factors < minScoredFactors;
+    rules.push({
+      id: "RF-CONFIDENCE",
+      name: `Score not within ${bandMargin} points of an automatic band edge, and at least ${minScoredFactors} factors read from data`,
+      kind: "REFERRAL",
+      result: nearApprove || nearDecline || fewFactors ? "FAIL" : "PASS",
+      value: `${nearApprove ? `${scored.score} near ${rs.approveFrom}; ` : nearDecline ? `${scored.score} near ${rs.declineBelow}; ` : ""}${factors} of ${TOTAL_FACTORS} factors from data`,
+    });
+    if (nearApprove || nearDecline || fewFactors) {
+      triggers.push(REASONS.lowConfidence.staff);
+      add(REASONS.lowConfidence);
+    }
+  }
+
+  // A referral trigger sends the case to a person "regardless of score" (PRD glossary), so
+  // a low score declines automatically only when nothing else asks for review; otherwise
+  // the low score is one more reason for the reviewer.
+  if (band === "DECLINE" && (triggers.length === 0 || rs.lowScoreWithTrigger === "DECLINE")) {
+    const declineReasons: ReasonCode[] = [REASONS.scoreBelowMinimum];
+    if (bureau.delinquencies12m > 0) declineReasons.push(REASONS.delinquencies);
+    return {
+      ...base,
+      outcome: DecisionOutcome.Decline,
+      score: scored.score,
+      grade: scored.grade,
+      scoreContributions: scored.contributions,
+      reasonCodes: declineReasons,
+      referralTriggers: [],
+      monthlyRate: rs.monthlyRate[scored.grade],
+    };
+  }
+  if (band === "DECLINE") {
+    add(REASONS.scoreBelowMinimum);
+    if (bureau.delinquencies12m > 0) add(REASONS.delinquencies);
+  }
+  if (band === "REFER") {
+    triggers.push(REASONS.scoreInReferralBand.staff);
+    add(REASONS.scoreInReferralBand);
+  }
+  const outcome = triggers.length > 0 ? DecisionOutcome.Refer : DecisionOutcome.Approve;
+
+  return {
+    ...base,
+    outcome,
+    score: scored.score,
+    grade: scored.grade,
+    scoreContributions: scored.contributions,
+    reasonCodes: outcome === DecisionOutcome.Refer ? reasons : [],
+    referralTriggers: outcome === DecisionOutcome.Refer ? triggers : [],
+    monthlyRate: rs.monthlyRate[scored.grade],
+  };
+}
+
+/**
+ * The referral triggers a rule set turns on with its optional fields: income mismatch,
+ * related party and fraud (RS-PL-2). Appends their rule results; returns the reasons that
+ * fired. A version that asks for an input the snapshot lacks is refused, so a record can
+ * never be decided or replayed on inputs its rule set does not describe.
+ */
+function laterTriggers(
+  inputs: DecisionInputs,
+  rs: RuleSet,
+  income: Money,
+  rules: RuleResult[],
+): ReasonCode[] {
+  const fired: ReasonCode[] = [];
+  const missing = (what: string) =>
+    new Error(`Rule set ${rs.version} needs ${what} in the decision inputs`);
+
+  if (rs.incomeMismatchTolerance !== undefined) {
+    const declaredRaw = inputs.applicant.declaredMonthlyIncome;
+    if (declaredRaw === undefined) throw missing("the declared income");
+    const tolerance = rs.incomeMismatchTolerance;
+    const name = `Declared and verified income within ${ratioAsPercent(tolerance)}`;
+    if (declaredRaw === null) {
+      rules.push({
+        id: "RF-INCOME",
+        name,
+        kind: "REFERRAL",
+        result: "NOT_EVALUATED",
+        value: "no separate declaration",
+      });
+    } else {
+      // Exact: |declared − verified| > verified × tolerance. No verified income: any declared
+      // income is a mismatch.
+      const declared = Money.of(declaredRaw);
+      const gap = declared.greaterThan(income) ? declared.minus(income) : income.minus(declared);
+      const mismatch = income.isZero()
+        ? !declared.isZero()
+        : gap.greaterThan(income.times(tolerance));
+      rules.push({
+        id: "RF-INCOME",
+        name,
+        kind: "REFERRAL",
+        result: mismatch ? "FAIL" : "PASS",
+        value: income.isZero()
+          ? "no verified income"
+          : `differs by ${ratioAsPercent(gap.ratioTo(income))}`,
+      });
+      if (mismatch) fired.push(REASONS.incomeMismatch);
+    }
+  }
+
+  if (rs.relatedPartyReferral) {
+    const related = inputs.applicant.relatedParty;
+    if (related === undefined) throw missing("the related-party flag");
+    rules.push({
+      id: "RF-RELATED",
+      name: "Not a related party or insider",
+      kind: "REFERRAL",
+      result: related ? "FAIL" : "PASS",
+      value: related ? "related party" : "none",
+    });
+    if (related) fired.push(REASONS.relatedParty);
+  }
+
+  if (rs.fraudCheck) {
+    const fraud = inputs.fraud;
+    if (fraud === undefined) throw missing("the fraud check");
+    if (fraud.status === "OK") {
+      rules.push({
+        id: "RF-FRAUD",
+        name: "No fraud or identity flag",
+        kind: "REFERRAL",
+        result: fraud.flagged ? "FAIL" : "PASS",
+        value: fraud.flagged
+          ? fraud.signals.map((s) => s.toLowerCase().replaceAll("_", " ")).join(", ") || "flagged"
+          : "clear",
+      });
+      if (fraud.flagged) fired.push(REASONS.fraudFlag);
+    } else {
+      // An unanswered fraud check refers, never declines (PRD NFR-005).
+      rules.push({
+        id: "RF-FRAUD",
+        name: "No fraud or identity flag",
+        kind: "REFERRAL",
+        result: "NOT_EVALUATED",
+        value: "fraud check unavailable",
+      });
+      fired.push(REASONS.fraudUnavailable);
+    }
+  }
+
+  // RS-PL-5: terms the product allows but outside its standard terms need an exception.
+  if (rs.policyException) {
+    const { standardTenorStep, maxAmountToIncome } = rs.policyException;
+    const tenor = inputs.application.tenorMonths;
+    const oddTenor = tenor % standardTenorStep !== 0;
+    // Exact: amount > income × multiple (no income: any amount is above it).
+    const largeAmount = Money.of(inputs.application.amount).greaterThan(
+      income.times(maxAmountToIncome),
+    );
+    rules.push({
+      id: "RF-POLICY",
+      name: `Standard terms (tenor in ${standardTenorStep}-month steps, amount at most ${maxAmountToIncome} × monthly income)`,
+      kind: "REFERRAL",
+      result: oddTenor || largeAmount ? "FAIL" : "PASS",
+      value:
+        [
+          oddTenor ? `${tenor} months` : null,
+          largeAmount ? "amount above the income multiple" : null,
+        ]
+          .filter((v) => v !== null)
+          .join("; ") || "standard",
+    });
+    if (oddTenor || largeAmount) fired.push(REASONS.policyException);
+  }
+  return fired;
+}
+
+/** The scorecard factors (SC-PL-1/2 read seven) and how many were read from data, not a default. */
+const TOTAL_FACTORS = 7;
+
+/**
+ * Factors read from data: the bureau score (when there is one), file depth, utilisation and
+ * missed payments (only from a file with a record: no hit leaves them at defaults),
+ * debt-to-income (only with income), employment and relationship.
+ */
+function factorsFromData(
+  bureau: Extract<DecisionInputs["bureau"], { status: "OK" }>,
+  income: Money,
+): number {
+  let n = 3; // file depth, employment, relationship
+  if (bureau.bureauScore !== null) n += 1;
+  if (bureau.fileDepth !== "NO_HIT") n += 2;
+  if (!income.isZero()) n += 1;
+  return n;
+}
+
+/**
+ * Warning rules (PRD DEC-002, RS-PL-5 on): high utilisation and short employment. Recorded
+ * with the decision and shown to the reviewer and approver; they never refer or decline.
+ */
+function warningRules(inputs: DecisionInputs, rs: RuleSet): RuleResult[] {
+  if (!rs.warnings) return [];
+  const { maxUtilisationPct, minEmploymentMonths } = rs.warnings;
+  const { bureau, applicant } = inputs;
+  const months = applicant.employmentMonths;
+  return [
+    bureau.status === "OK" && bureau.fileDepth !== "NO_HIT"
+      ? {
+          id: "WN-UTILISATION",
+          name: `Credit utilisation at most ${maxUtilisationPct}%`,
+          kind: "WARNING",
+          result: bureau.utilisationPct > maxUtilisationPct ? "FAIL" : "PASS",
+          value: `${bureau.utilisationPct}%`,
+        }
+      : {
+          id: "WN-UTILISATION",
+          name: `Credit utilisation at most ${maxUtilisationPct}%`,
+          kind: "WARNING",
+          result: "NOT_EVALUATED",
+          value: bureau.status === "OK" ? "no bureau record" : "bureau unavailable",
+        },
+    {
+      id: "WN-EMPLOYMENT",
+      name: `Employed ${minEmploymentMonths} months or more`,
+      kind: "WARNING",
+      result: months < minEmploymentMonths ? "FAIL" : "PASS",
+      value: `${months} months`,
+    },
+  ];
+}
+
+const MODE_WORDS: Record<AutomationMode, string> = {
+  OFF: "automation off",
+  SHADOW: "shadow mode",
+  LIVE: "live",
+};
+
+const OUTCOME_WORDS: Record<DecisionOutcome, string> = {
+  AUTO_APPROVE: "auto-approve",
+  REFER: "refer",
+  AUTO_DECLINE: "auto-decline",
+};
+
+/** The external engine's answer as a decision outcome (one table: the engine and the views). */
+export const EXTERNAL_OUTCOME: Record<"APPROVE" | "REFER" | "DECLINE", DecisionOutcome> = {
+  APPROVE: DecisionOutcome.Approve,
+  REFER: DecisionOutcome.Refer,
+  DECLINE: DecisionOutcome.Decline,
+};
+
+/**
+ * The bank's own controls that stand when the external engine decides instead of the score:
+ * a failed rule here refers an external approval. The credit rules it replaces (score band,
+ * debt-to-income, file depth, income mismatch, bureau answered) do not.
+ */
+function bankControls(result: DecisionResult, inputs: DecisionInputs): ReasonCode[] {
+  const controls: ReasonCode[] = [];
+  for (const r of result.ruleResults) {
+    if (r.id === "RF-AMOUNT" && r.result === "FAIL") controls.push(REASONS.amountAboveAutoLimit);
+    if (r.id === "RF-RELATED" && r.result === "FAIL") controls.push(REASONS.relatedParty);
+    // RS-PL-5: a policy exception is the bank's terms policy, not a model judgement. (Low
+    // confidence and missing data are about the built-in score, which "instead" replaces.)
+    if (r.id === "RF-POLICY" && r.result === "FAIL") controls.push(REASONS.policyException);
+    if (r.id === "RF-FRAUD" && r.result === "FAIL") controls.push(REASONS.fraudFlag);
+    if (r.id === "RF-FRAUD" && r.result === "NOT_EVALUATED") {
+      controls.push(REASONS.fraudUnavailable);
+    }
+  }
+  if (inputs.screening.status === "UNAVAILABLE") controls.push(REASONS.screeningUnavailable);
+  return controls;
+}
+
+/** The bank's own decision providers that could not answer, as their outage reasons. */
+function bankOutages(inputs: DecisionInputs): ReasonCode[] {
+  const outages: ReasonCode[] = [];
+  if (inputs.bureau.status === "UNAVAILABLE") outages.push(REASONS.bureauUnavailable);
+  if (inputs.screening.status === "UNAVAILABLE") outages.push(REASONS.screeningUnavailable);
+  if (inputs.fraud?.status === "UNAVAILABLE") outages.push(REASONS.fraudUnavailable);
+  return outages;
+}
+
+/**
+ * The external decision engine (PRD DEC-008), applied to what the rules and the score decided
+ * and before the automation mode. Role NONE (or a version without the step): unchanged.
+ *
+ * - A knockout declines whatever the external engine says: knockouts are the bank's policy.
+ * - ALONGSIDE: the two outcomes agree, it stands; they disagree, a person decides.
+ * - INSTEAD: the external outcome replaces the score and the credit rules. An external
+ *   approval still refers when a bank control fired (`bankControls`, including RS-PL-5's
+ *   policy exception), or when there is no
+ *   built-in grade to price the loan; an external decline refers when the bank's bureau,
+ *   screening or fraud check did not answer (`bankOutages`, NFR-005).
+ * - Either role: an engine that could not answer refers, never declines (NFR-005).
+ *
+ * The result's `engineOutcome` is the combined outcome: what automation would apply.
+ */
+function applyExternal(result: DecisionResult, inputs: DecisionInputs): DecisionResult {
+  const ext = inputs.external;
+  if (!ext || ext.role === "NONE") return result;
+  const name =
+    ext.role === "ALONGSIDE"
+      ? "External decision engine agrees with the built-in engine"
+      : "External decision engine approves (used instead of the score)";
+  // The client's codes are its own identifiers, named as such; the reference comes last
+  // ("ref …") so the panel can set it apart.
+  const answer =
+    ext.status === "OK"
+      ? `${OUTCOME_WORDS[EXTERNAL_OUTCOME[ext.decision]]}${ext.reasonCodes.length > 0 ? `; client codes: ${ext.reasonCodes.join(", ")}` : ""}; ref ${ext.reference}`
+      : `external engine unavailable: ${ext.reason}`;
+  const withRule = (outcome: RuleResult["result"], value = answer): RuleResult[] => [
+    ...result.ruleResults,
+    { id: "EX-ENGINE", name, kind: "REFERRAL", result: outcome, value },
+  ];
+  const decided = (
+    outcome: DecisionOutcome,
+    reasons: ReasonCode[],
+    ruleResults: RuleResult[],
+    leadTrigger?: string,
+  ): DecisionResult => {
+    const unique = reasons.filter((r, i) => reasons.findIndex((x) => x.code === r.code) === i);
+    const refer = outcome === DecisionOutcome.Refer;
+    return {
+      ...result,
+      outcome,
+      engineOutcome: outcome,
+      ruleResults,
+      reasonCodes: unique,
+      // One trigger per reason, in order; the first may carry more detail than its wording.
+      referralTriggers: refer
+        ? unique.map((r, i) => (i === 0 && leadTrigger ? leadTrigger : r.staff))
+        : [],
+    };
+  };
+
+  if (result.ruleResults.some((r) => r.kind === "KNOCKOUT" && r.result === "FAIL")) {
+    return {
+      ...result,
+      ruleResults: withRule("NOT_EVALUATED", `${answer}; a knockout declines whatever it says`),
+    };
+  }
+
+  if (ext.role === "ALONGSIDE") {
+    if (ext.status === "UNAVAILABLE") {
+      return decided(
+        DecisionOutcome.Refer,
+        [REASONS.externalUnavailable, ...result.reasonCodes],
+        withRule("NOT_EVALUATED"),
+      );
+    }
+    const theirs = EXTERNAL_OUTCOME[ext.decision];
+    if (theirs === result.outcome) return { ...result, ruleResults: withRule("PASS") };
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalDisagrees, ...result.reasonCodes],
+      withRule("FAIL"),
+      `${REASONS.externalDisagrees.staff} (built-in: ${OUTCOME_WORDS[result.outcome]}; external: ${OUTCOME_WORDS[theirs]})`,
+    );
+  }
+
+  // INSTEAD
+  const controls = bankControls(result, inputs);
+  if (ext.status === "UNAVAILABLE") {
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalUnavailable, ...controls],
+      withRule("NOT_EVALUATED"),
+    );
+  }
+  if (ext.decision === "DECLINE") {
+    // A bank provider that did not answer turns the decline into a referral (NFR-005): the
+    // client's decline was made without the bank's own bureau, screening or fraud result.
+    const outages = bankOutages(inputs);
+    if (outages.length > 0) {
+      return decided(
+        DecisionOutcome.Refer,
+        [...outages, REASONS.externalDeclined, ...controls],
+        withRule("FAIL"),
+      );
+    }
+    return decided(DecisionOutcome.Decline, [REASONS.externalDeclined], withRule("FAIL"));
+  }
+  if (ext.decision === "REFER") {
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalReferred, ...controls],
+      withRule("FAIL"),
+    );
+  }
+  if (controls.length > 0) return decided(DecisionOutcome.Refer, controls, withRule("PASS"));
+  if (result.grade === null) {
+    return decided(DecisionOutcome.Refer, [REASONS.externalNoGrade], withRule("PASS"));
+  }
+  return decided(DecisionOutcome.Approve, [], withRule("PASS"));
+}
+
+/**
+ * The product's automation mode and kill switch (PRD §7.5). Live with the switch off: the
+ * engine's outcome stands. Otherwise the case goes to a person (a knockout too: a person
+ * declines it), with the score, grade and the engine's own reasons kept for the reviewer.
+ * Only rule sets with `automationModes` (RS-PL-2 on) apply it; RS-PL-1 records carry no
+ * `automation` and come back unchanged.
+ */
+function applyAutomation(
+  result: DecisionResult,
+  automation: DecisionInputs["automation"],
+): DecisionResult {
+  if (!automation) return result;
+  const live = automation.mode === AutomationMode.Live && !automation.killSwitch;
+  const rule: RuleResult = {
+    id: "AU-MODE",
+    name: "Automated decisions live for this product",
+    kind: "REFERRAL",
+    result: live ? "PASS" : "FAIL",
+    value: automation.killSwitch ? "kill switch on" : MODE_WORDS[automation.mode],
+  };
+  const ruleResults = [...result.ruleResults, rule];
+  if (live) return { ...result, ruleResults };
+
+  const reason = automation.killSwitch
+    ? REASONS.killSwitch
+    : automation.mode === AutomationMode.Off
+      ? REASONS.automationOff
+      : REASONS.shadowMode;
+  return {
+    ...result,
+    ruleResults,
+    outcome: DecisionOutcome.Refer,
+    reasonCodes: [reason, ...result.reasonCodes.filter((r) => r.code !== reason.code)],
+    referralTriggers: [
+      `${reason.staff} (the engine's outcome: ${OUTCOME_WORDS[result.engineOutcome]})`,
+      ...result.referralTriggers,
+    ],
+  };
+}
+
+/** The score band for a score: approve from `approveFrom`, decline below `declineBelow`. */
+export function bandFor(scoreValue: number, rs: RuleSet): "APPROVE" | "REFER" | "DECLINE" {
+  if (scoreValue >= rs.approveFrom) return "APPROVE";
+  if (scoreValue < rs.declineBelow) return "DECLINE";
+  return "REFER";
+}
+
+/** Canonical JSON (keys sorted at every level) so equal inputs always hash the same. */
+export function canonicalJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    const entries = Object.entries(value as Record<string, unknown>)
+      .filter(([, v]) => v !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+    return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${canonicalJson(v)}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
+/** SHA-256 of the canonical input snapshot, stored with the decision record. */
+export function hashInputs(inputs: DecisionInputs): string {
+  return createHash("sha256").update(canonicalJson(inputs)).digest("hex");
+}

@@ -37,19 +37,55 @@ this (`pnpm deps:check`, part of the `static` stage).
 - Implementations live only in `apps/api/src/adapters/` (today: `simulated/`). Each simulator
   has the failure modes `ok | outage | timeout | malformed`, labels its output *simulated*, and
   passes the port's conformance test suite.
-- The composition root (`apps/api/src/app.module.ts`) is the only place that binds a token to
-  an implementation. Domain code injects the token and types against the port —
+- `apps/api/src/adapters/simulated/simulated-providers.module.ts` is the only place that binds
+  a port token to an implementation; the composition root (`apps/api/src/app.module.ts`)
+  imports it. Domain code injects the token and types against the port —
   `house/no-provider-import-outside-adapters`.
 
 ## Modules and lifecycle
 
-- One Nest module per feature in `packages/base/src/<feature>/` (auth, applications,
-  decisioning, review, approvals, booking, activity, simulation-control). A module exports
-  only what another module needs; nothing reaches into another module's repository.
+- The lending domain is **one Nest module** (`packages/base/src/lending.module.ts`) with
+  folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
+  hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
+  (booking exceptions, reconciliation), `reports/` (read-only aggregates), `sla/` (stage SLAs,
+  business time, the holiday calendar and its maker-checker changes), `notifications/` (staff alerts, borrower messages), `intake/` (email and
+  file intake drafts and OCR readings, which only feed the case aggregate), `providers/` (the
+  decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
+  (model registry, override and drift monitoring, read-only), `eligibility/` (the pre-check over
+  stated figures, stores nothing), `features/` (feature flags: optional modules switched on or
+  off under maker-checker; it uses `audit/`, `auth/` and `cases/domain-error`, `eligibility/` and
+  `intake/` call its `assertEnabled` in their services, nothing else imports it) and the pure
+  `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
+  repository and one transaction runner, so splitting into per-feature modules would only
+  re-export that repository. Split when a second aggregate stands alone (e.g. collections). AML
+  escalations stay inside: they are opened in the case's locked transaction. `automation/` is a
+  small second aggregate kept inside on purpose: a decision reads it under a share lock inside
+  the case's own transaction (docs/ARCHITECTURE.md). `cases/activity.service.ts` may import
+  `audit/` but never `compliance/` (that would be a cycle). Folder dependencies stay one-way:
+  `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `audit/` ← `reports/` (its CSV
+  downloads are audited); `reports/` ← `sla/` (sla/ uses
+  the report period rules; reports/ never imports sla/, and the turnaround route, though under
+  /reports, is declared in sla/); `cases/` ← `intake/` (intake/ uses cases/; nothing in cases/
+  imports intake/). `notifications/` (staff alerts, the borrower-message outbox
+  and its sender) is **the one allowed two-way folder pair**, `cases/` ↔ `notifications/`,
+  and only through two edges: `cases/activity.service.ts` → `notifications/notification.service.ts`,
+  and `notifications/notification.repository.ts` → `cases/entities/loan-case.entity.ts` (an
+  entity read). `notification.service.ts` and `notification.repository.ts` never import a
+  `cases/` service (that would be a DI cycle through ActivityService); they depend only on the
+  repository, the transaction runner and the `NOTIFICATIONS` port. Nothing in `cases/` imports
+  `notification-reads.service.ts`, which may use `cases/` (visibility) and `sla/` (clocks) and
+  is imported only by its controller and the API's sweep. No provider call inside `tx.run`: the outbox row is
+  written in the case's transaction and sent later. It exports only `SessionGuard`,
+  `JwtModule`, `ExpiryService` (for the API's expiry-sweep timer), `ProviderGateway` (read by
+  the API's `GET /metrics` for provider attempts and circuits; nothing else in the API calls it),
+  and `NotificationService` and `NotificationReadsService` (for the API's notification sweep).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
-- The case lifecycle is **one transition table**: every state change goes through it, and it
-  is the only place that knows which state may follow which, and who may cause it.
+- The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written
+  only by `moveTo(c, event, to)`, which checks both ends of the edge, or `startDraft(c)` —
+  `house/no-case-status-assignment-outside-lifecycle`.
+- Provider mode (simulated or real) comes from the port or its result, never a literal in
+  `packages/base`.
 
 ## Enforced by lint and checks
 

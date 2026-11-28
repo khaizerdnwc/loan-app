@@ -7,8 +7,10 @@ The canonical spec for every AI tool working in this repo. `CLAUDE.md` points he
 A web MVP that takes a WhiteBank personal loan from application through automated credit
 decision, referral review, approval within authority, and booking with disbursement into a
 simulated core banking system. Staff-facing only (no borrower app, no mobile). All data is
-synthetic; every external service is simulated in this repo. Scope, assumptions and
-deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
+synthetic; every external service is simulated in this repo. With the MVP done, work
+continues through the PRD backlog in `docs/PRD-COVERAGE.md` §2 (the list of what is built
+and what is deferred). Scope, assumptions and deferrals: `docs/ACCEPTANCE.md`,
+`docs/ASSUMPTIONS.md`, `docs/PRD-COVERAGE.md`.
 
 ## 2. Non-negotiables
 
@@ -25,8 +27,8 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 5. **One transaction per state change**, and every state change writes an activity event
    (who, what, when, before/after) in that same transaction.
 6. **External services are ports.** Interfaces in `packages/contracts`; simulated
-   implementations only in `apps/api/src/adapters/simulated`, wired only in
-   `apps/api/src/app.module.ts`. Each simulator has `ok | outage | timeout | malformed` modes
+   implementations only in `apps/api/src/adapters/simulated`, bound only in
+   `adapters/simulated/simulated-providers.module.ts` (imported by `app.module.ts`). Each simulator has `ok | outage | timeout | malformed` modes
    and labels its output as simulated.
 7. **Outages degrade to referral, never decline** (PRD NFR-005).
 8. **No real data, no real providers, no secrets in the repo, no applicant data in logs.**
@@ -37,7 +39,14 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 |---|---|
 | Money, shared types, RFC 9457 error shape | `packages/core/src` |
 | Port interface for an external service | `packages/contracts/src` |
-| Domain module (entities, repository, service, controller, DTOs) | `packages/base/src/<module>/` |
+| Lending domain (one Nest module, `lending.module.ts`: auth, cases, simulation controls, automation mode and kill switch, the decision's provider gateway, model governance, the eligibility pre-check) | `packages/base/src/{auth,cases,simulation,automation,providers,governance,eligibility}/` |
+| AML escalations and screening before disbursement; the hash-chained audit log | `packages/base/src/compliance/`, `packages/base/src/audit/` (same module) |
+| Booking exceptions and reconciliation; decision-mix and funnel reports | `packages/base/src/operations/`, `packages/base/src/reports/` (same module) |
+| Email and file intake (OCR drafts) and OCR readings of case documents | `packages/base/src/intake/` (same module; uses `cases/`, never imported by it) |
+| Stage SLAs, Philippine business time, the business calendar (holidays kept under maker-checker) and the turnaround report | `packages/base/src/sla/` (same module) |
+| Staff alerts, borrower messages (outbox written in the case transaction, sent outside it), SLA-breach alerts | `packages/base/src/notifications/` (same module); the API's sweep `apps/api/src/notification-sweep.ts` |
+| Feature flags: the bank's optional modules switched on or off (maker-checker) | `packages/base/src/features/` (same module; used by `eligibility/` and `intake/` through `FeaturesService.assertEnabled`) |
+| Case status changes (the transition table) | `packages/base/src/cases/lifecycle.ts` (`moveTo`) |
 | Decision engine, rule sets, scorecard | `packages/base/src/decisioning/engine/` |
 | Migrations, data source, transaction runner | `packages/base/src/database/` |
 | Seed data (personas, staff, product) | `packages/base/src/seed/` |
@@ -66,11 +75,13 @@ deferrals: `docs/ACCEPTANCE.md`, `docs/ASSUMPTIONS.md`.
 
 ```bash
 pnpm install && pnpm db:up && pnpm db:migrate && pnpm db:seed && pnpm dev
-#   backoffice http://localhost:3100  ·  API http://localhost:3101 (Swagger at /docs)
+#   backoffice http://localhost:3100  ·  API http://localhost:3101 (Swagger at /docs when SWAGGER_ENABLED=true, as in apps/api/.env.example)
+#   sign in: docs/TEST-ACCOUNTS.md (usernames; password Password123! — synthetic test data)
 pnpm typecheck · pnpm lint · pnpm test · pnpm test:integration · pnpm test:e2e
 pnpm house:check · pnpm deps:check · pnpm lessons for <files>
 pnpm review:preflight [--cached] · pnpm review:roles · pnpm review:ack [--stamp]
 pnpm verify [--only security,static,unit,db,integration,build,e2e]
+#   parallel worktrees: VERIFY_PG_PORT=… VERIFY_API_PORT=… VERIFY_WEB_PORT=… pnpm verify …
 ```
 
 ## 6. Commits and PRs

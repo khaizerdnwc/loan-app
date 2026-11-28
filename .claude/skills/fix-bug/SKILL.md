@@ -66,7 +66,7 @@ Pick the lowest level that can show the bug:
 pnpm --filter @loan/core exec jest <the test file>
 pnpm --filter @loan/base exec jest <the test file>
 pnpm --filter @loan/backoffice exec vitest run <the test file>
-pnpm db:up && TEST_DATABASE_URL=postgres://loan:loan_dev_password@127.0.0.1:5433/loan_test \
+pnpm db:up && TEST_DATABASE_URL=postgres://loan:loan_dev_password@127.0.0.1:5436/loan_test \
   pnpm --filter @loan/api run test:integration <the test file>      # DB-backed
 pnpm --filter @loan/backoffice exec playwright test <spec> --project=chromium
 ```

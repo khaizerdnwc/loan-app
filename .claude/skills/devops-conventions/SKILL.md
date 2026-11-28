@@ -45,8 +45,10 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 
 ## Local stack
 
-Dev Postgres on 5433 (`pnpm db:up`), API on 3101, backoffice on 3100; verify's throwaway
-Postgres on 55432 with databases ending in `_test`.
+Dev Postgres on 5436 (`pnpm db:up`), API on 3101, backoffice on 3100; verify's throwaway
+Postgres on 55432 with databases ending in `_test`. Several worktrees can verify at once by
+setting `VERIFY_PG_PORT`, `VERIFY_API_PORT` and `VERIFY_WEB_PORT`; the container is named
+`loan-verify-<VERIFY_PG_PORT>` (or `VERIFY_CONTAINER_PREFIX`), so runs never remove each other's.
 
 ## Lessons
 

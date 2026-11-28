@@ -44,8 +44,12 @@ export default tseslint.config(
       // security
       "house/no-console-in-server": "error",
       "house/no-math-random-in-server": "error",
+      "house/no-applicant-data-in-audit-append": "error",
+      "house/no-money-parse-in-controller": "error",
       "house/no-process-env-outside-config": "error",
       "house/require-roles-on-controller-handler": "error",
+      "house/no-server-env-in-client": "error",
+      "house/require-shape-with-validate-nested": "error",
       "house/no-dangerous-html-without-sanitize": "error",
       "house/no-error-name-branching": "error",
       // data
@@ -53,8 +57,10 @@ export default tseslint.config(
       "house/no-datasource-outside-repository": "error",
       "house/no-typeorm-synchronize": "error",
       "house/require-order-with-take": "error",
+      "house/no-provider-call-in-transaction": "error",
       // architecture
       "house/no-provider-import-outside-adapters": "error",
+      "house/no-case-status-assignment-outside-lifecycle": "error",
       // qa
       "house/no-status-only-assertion": "error",
       // ui-ux
@@ -62,8 +68,13 @@ export default tseslint.config(
       "house/money-through-formatter": "error",
       "house/no-ring-color-without-width": "error",
       "house/text-size-before-leading": "error",
+      "house/no-arbitrary-text-size": "error",
       "house/no-title-on-disabled-control": "error",
       "house/require-label-in-name": "error",
+      "house/problem-code-through-constant": "error",
+      "house/money-column-numeric": "error",
+      "house/no-reason-code-literal": "error",
+      "house/no-engine-version-literal": "error",
       // eslint-plugin-security: the generic Node security checks.
       "security/detect-eval-with-expression": "error",
       "security/detect-child-process": "error",

@@ -9,7 +9,9 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # shellcheck source=scripts/verify/env.sh
 . "$ROOT/scripts/verify/env.sh"
 
-PREFIX="loan-verify"
+# Named after its port, so a worktree that overrides only the ports never removes another
+# worktree's container (up() starts with down()).
+PREFIX="${VERIFY_CONTAINER_PREFIX:-loan-verify-$VERIFY_PG_PORT}"
 
 down() {
   docker rm -f "$PREFIX-postgres" >/dev/null 2>&1 || true

@@ -21,12 +21,15 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 
 ## The walls
 
-1. **Sign-in** — a demo persona picker (`POST /auth/demo-login`) issues a signed JWT in an
-   **httpOnly, SameSite=Lax** cookie. No password exists; the picker is labelled as demo
-   access and is a documented limitation. The token carries the user id and role only; the
-   server re-reads the user (role, authority limit, grades) from the database per request.
+1. **Sign-in** — `POST /auth/sign-in` checks a username and test password against an
+   **scrypt** hash (auth/password.ts; one published test password, docs/TEST-ACCOUNTS.md) and
+   issues a signed JWT in an **httpOnly, SameSite=Lax** cookie (Secure in production). One
+   401 for an unknown user and a wrong password (dummy-hash check); no password-less route and
+   no public list of accounts; throttled per account and per source address. The token
+   carries the staff id only; the server re-reads the user (role, authority limit, grades)
+   from the database per request.
 2. **Authentication guard** — global. Every route needs a valid session unless it is
-   decorated `@Public()` (health, demo sign-in).
+   decorated `@Public()` (health, sign-in).
 3. **Roles guard** — global and **fail closed**: a handler with no `@Roles(...)` and no
    `@Public()` answers 403. `house/require-roles-on-controller-handler` makes the declaration
    visible on every handler.

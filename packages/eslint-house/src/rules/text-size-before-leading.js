@@ -36,7 +36,8 @@ function split(token) {
   };
 }
 
-const NAMED_SIZE = /^text-(?:xs|sm|base|lg|[2-9]?xl)(?:\/.+)?$/;
+/** Tailwind's named sizes plus this repo's type-scale tokens (globals.css @theme). */
+const NAMED_SIZE = /^text-(?:2xs|xs|sm|base|title|lg|stat|display|[2-9]?xl)(?:\/.+)?$/;
 /** An arbitrary font size: `text-[15px]`, `text-[1.1rem]`, `text-[length:…]`. */
 const ARBITRARY_SIZE = /^text-\[(?:length:[^\]]+|\d*\.?\d+(?:px|rem|em))\](?:\/.+)?$/;
 

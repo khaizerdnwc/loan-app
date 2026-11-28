@@ -208,6 +208,42 @@ function workspacePackages(root: string): string[] {
   });
 }
 
+/**
+ * Workspace packages whose entry point is compiled output (`main` under dist/), in the order to
+ * build them. Their dist/ is not tracked, so a fresh worktree has none and anything importing
+ * them (the backoffice's Vitest suites import @loan/core) would fail to load there.
+ */
+export function compiledPackages(root: string): string[] {
+  const order = ["packages/core", "packages/contracts", "packages/base"];
+  const compiled = workspacePackages(root).filter((dir) => {
+    if (!dir.startsWith("packages/")) return false; // apps are run, not imported
+    const manifest = join(root, dir, "package.json");
+    if (!existsSync(manifest)) return false;
+    const pkg = JSON.parse(readFileSync(manifest, "utf8")) as { main?: string };
+    // Selected by what buildCompiled actually runs: tsc -p tsconfig.build.json.
+    return Boolean(
+      pkg.main?.replace(/^\.\//, "").startsWith("dist/") &&
+        existsSync(join(root, dir, "tsconfig.build.json")),
+    );
+  });
+  const rank = (d: string) => (order.includes(d) ? order.indexOf(d) : order.length);
+  return compiled.sort((a, b) => rank(a) - rank(b) || a.localeCompare(b));
+}
+
+/** Build the compiled workspace packages inside the worktree (see compiledPackages). */
+async function buildCompiled(tree: string): Promise<string | null> {
+  // Read from the worktree: it is the state being built (base commit, then with the fix).
+  for (const dir of compiledPackages(tree)) {
+    const r = await sh(
+      join(tree, "node_modules", ".bin", "tsc"),
+      ["-p", "tsconfig.build.json"],
+      join(tree, dir),
+    );
+    if (r.code !== 0) return `could not build ${dir} in the worktree: ${r.out.trim().slice(-800)}`;
+  }
+  return null;
+}
+
 /** The commit the diff is measured from. */
 function baseCommit(root: string, spec: DiffSpec): string {
   const arg = spec.diffArgs[0] ?? "HEAD";
@@ -383,10 +419,15 @@ async function main(): Promise<void> {
     const testSide = changed.filter(isTestSide);
     const err1 = await applyPaths(root, tree, spec, [...new Set([...testSide, ...tests])]);
     if (err1) return finish(false, err1);
+    const build1 = await buildCompiled(tree);
+    if (build1) return finish(false, build1);
     const without = await runTests(tree, tests, "without-fix");
 
     const err2 = await applyPaths(root, tree, spec, product);
     if (err2) return finish(false, err2);
+    // Rebuild: the fix may be in a compiled package itself.
+    const build2 = await buildCompiled(tree);
+    if (build2) return finish(false, build2);
     const withFix = await runTests(tree, tests, "with-fix");
 
     const v = judge(without, withFix);

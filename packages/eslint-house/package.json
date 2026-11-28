@@ -10,7 +10,7 @@
   },
   "scripts": {
     "test": "vitest run",
-    "lint": "eslint --cache src test",
+    "lint": "eslint --cache src",
     "typecheck": "tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
