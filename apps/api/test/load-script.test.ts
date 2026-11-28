@@ -1,4 +1,4 @@
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { resolve } from "node:path";
@@ -17,9 +17,10 @@ interface Fake {
 }
 
 /** A stand-in for the API's sign-in, walk-in capture, case submit and reads. */
-async function fakeApi(submitStatus: number): Promise<Fake> {
+async function fakeApi(submitStatus: number, throttleFirstRead = false): Promise<Fake> {
   const hits: string[] = [];
   let n = 0;
+  let throttle = throttleFirstRead;
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     req.resume();
     req.on("end", () => {
@@ -38,6 +39,9 @@ async function fakeApi(submitStatus: number): Promise<Fake> {
           submitStatus,
           submitStatus === 201 ? { id: `case-${String(n).padStart(8, "0")}` } : {},
         );
+      } else if (route === "GET /cases/:id" && throttle) {
+        throttle = false;
+        json(429, { code: "RATE_LIMITED" });
       } else if (route.startsWith("GET /cases")) {
         json(200, {});
       } else {
@@ -57,6 +61,9 @@ function run(
     const child = spawn(process.execPath, [SCRIPT], {
       env: { PATH: process.env.PATH ?? "", ...env },
     });
+    children.add(child);
+    // A hung script is killed rather than left running after the test.
+    const timer = setTimeout(() => child.kill("SIGKILL"), 20_000);
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (d) => {
@@ -65,12 +72,19 @@ function run(
     child.stderr.on("data", (d) => {
       stderr += String(d);
     });
-    child.on("close", (code) => done({ code, stdout, stderr }));
+    child.on("close", (code) => {
+      clearTimeout(timer);
+      children.delete(child);
+      done({ code, stdout, stderr });
+    });
   });
 }
 
+const children = new Set<ChildProcess>();
 let fake: Fake | undefined;
 afterEach(async () => {
+  for (const child of children) child.kill("SIGKILL");
+  children.clear();
   if (fake) await new Promise((r) => fake?.server.close(r));
   fake = undefined;
 });
@@ -103,9 +117,31 @@ describe("the load script (OB-3)", () => {
       expect(o.count).toBe(4);
       expect(o.statuses).toEqual({ [op.startsWith("POST") ? "201" : "200"]: 4 });
       expect(o.p50Ms).toBeLessThanOrEqual(o.p95Ms);
-      expect(o.p95Ms).toBeLessThanOrEqual(o.maxMs);
+      expect(o.p95Ms).toBeLessThanOrEqual(o.p99Ms);
+      expect(o.p99Ms).toBeLessThanOrEqual(o.maxMs);
     }
+    // Throughput and the NFR-004 multiple are derived from each other (6.94 a minute = 10,000 a day).
+    expect(report.applicationsPerMinute).toBeGreaterThan(0);
+    expect(report.nfr004.averageMultipleAchieved).toBeCloseTo(
+      report.applicationsPerMinute / 6.94,
+      0,
+    );
     expect(fake.hits.filter((h) => h === "POST /auth/sign-in")).toHaveLength(1);
+  });
+
+  it("counts a 429 in throttled429 and in the error rate", async () => {
+    fake = await fakeApi(201, true);
+    const r = await run({
+      BASE_URL: fake.url,
+      APPLICATIONS: "4",
+      CONCURRENCY: "1",
+      RATE_PER_MINUTE: "0",
+      MAX_ERROR_RATE: "1",
+    });
+    expect(r.code).toBe(0);
+    const report = JSON.parse(r.stdout);
+    expect(report).toMatchObject({ requests: 16, throttled429: 1, errorRate: 0.0625 });
+    expect(report.operations["GET /cases/:id"].statuses).toEqual({ "200": 3, "429": 1 });
   });
 
   it("counts failed submits in the error rate and exits 1 above MAX_ERROR_RATE", async () => {
@@ -147,5 +183,18 @@ describe("the load script (OB-3)", () => {
       LOAD_CONFIRM: "other.example.invalid",
     });
     expect(wrong.code).toBe(2);
+  });
+
+  it.each([
+    // "localhost" as the user name; the host is lending.example.invalid.
+    ["http://localhost@lending.example.invalid/api", "lending.example.invalid"],
+    // A domain that merely starts with "localhost".
+    ["http://localhost.lending.example.invalid/api", "localhost.lending.example.invalid"],
+  ])("is not fooled by %s (exit 2, nothing sent)", async (url, host) => {
+    fake = await fakeApi(201);
+    const r = await run({ BASE_URL: url });
+    expect(r.code).toBe(2);
+    expect(r.stderr).toContain(`LOAD_CONFIRM=${host}`);
+    expect(fake.hits).toEqual([]);
   });
 });
