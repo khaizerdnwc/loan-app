@@ -108,6 +108,34 @@ it, a returned case goes back to the officer who recommended it). `migration:rev
 migrations in the order they were executed, not by timestamp, so on such a database the first
 reverts undo 1001 and then 1000.
 
+Migration 1764300009000 adds foreign keys to the child tables and refuses TRUNCATE on the
+insert-only ones. It fails, naming the constraint and applying nothing, if a row points at a
+case, loan account, booking request, decision or applicant that does not exist. The
+application never writes such a row; to check first (every count must be 0):
+
+```sql
+SELECT 'decision_record', count(*) FROM decision_record t WHERE NOT EXISTS (SELECT 1 FROM loan_case p WHERE p.id = t.case_id)
+UNION ALL SELECT 'activity_event', count(*) FROM activity_event t WHERE NOT EXISTS (SELECT 1 FROM loan_case p WHERE p.id = t.case_id)
+UNION ALL SELECT 'booking_request', count(*) FROM booking_request t WHERE NOT EXISTS (SELECT 1 FROM loan_case p WHERE p.id = t.case_id)
+UNION ALL SELECT 'loan_account', count(*) FROM loan_account t WHERE NOT EXISTS (SELECT 1 FROM loan_case p WHERE p.id = t.case_id)
+  OR NOT EXISTS (SELECT 1 FROM booking_request p WHERE p.id = t.booking_request_id)
+UNION ALL SELECT 'schedule_line', count(*) FROM schedule_line t WHERE NOT EXISTS (SELECT 1 FROM loan_account p WHERE p.id = t.loan_account_id)
+UNION ALL SELECT 'disbursement', count(*) FROM disbursement t WHERE NOT EXISTS (SELECT 1 FROM loan_account p WHERE p.id = t.loan_account_id)
+UNION ALL SELECT 'loan_case.decision_id', count(*) FROM loan_case t WHERE t.decision_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM decision_record p WHERE p.id = t.decision_id)
+UNION ALL SELECT 'consent_record', count(*) FROM consent_record t WHERE NOT EXISTS (SELECT 1 FROM applicant p WHERE p.id = t.applicant_id)
+UNION ALL SELECT 'aml_escalation', count(*) FROM aml_escalation t WHERE NOT EXISTS (SELECT 1 FROM applicant p WHERE p.id = t.applicant_id)
+UNION ALL SELECT 'provider_call', count(*) FROM provider_call t WHERE t.case_id IS NOT NULL AND NOT EXISTS (SELECT 1 FROM loan_case p WHERE p.id = t.case_id);
+```
+
+Rehearsed on 28 Nov 2026, by hand, on populated test databases: first 41 cases (10 booked),
+then again after lanes B and C landed with every table filled, reconciliation runs, provider
+calls and bureau cache included (7 cases, 5 booked, 52 events, 60 schedule lines, 6
+reconciliation runs, 21 provider calls, 7 cache rows). Each time: revert to the prior head,
+migrate, revert, migrate, with every row count unchanged (11 keys and 7 TRUNCATE guards
+on, then off apart from the audit log's own, then on). With an orphan planted at the prior head
+(an activity event the first time, a provider call the second) the migration failed on
+`FK_activity_event_case` / `FK_provider_call_case` and left the database at the prior head.
+
 ## Backup and restore
 
 Two scripts wrap the Postgres 16 client tools (`pg_dump`, `pg_restore`). Run them where those
@@ -129,19 +157,23 @@ RESTORE_CONFIRM=db.internal:5432/loan DATABASE_URL=postgres://…@db.internal:54
 Stop the API first (the script cannot tell). `restore.sh` refuses before restoring anything:
 with exit 2 when `RESTORE_CONFIRM` is not the target's `<host:port>/<name>` or the URL names
 no database (no database is contacted), and with exit 3 when the target already has
-migrations and its latest differs from the backup's (a restore drops only the backup's own
+migrations and their set differs from the backup's, naming what is only on each side (a restore drops only the backup's own
 objects, so a newer table would survive while the migrations table is rewound). Restore into
-an empty database, or one at the same migration head; then start the API, and
+an empty database, or one with exactly the same migrations; then start the API, and
 `MIGRATE_ON_BOOT` applies any newer migrations. The refusals are tested in
 `apps/api/test/db-scripts.test.ts` with stand-in client tools.
 
 `scripts/db/rehearse-restore.sh` proves a backup restores: it backs up a source database,
 restores it into a throwaway Postgres 16 container (the image pinned in docker-compose.yml),
 and compares every table's row count in both schemas, the applied migrations, every
-sequence's position (`loan_case_ref_seq`: a reset would reissue case references) and the
-triggers with their enabled state, then removes the container. Rehearsed on 28 Nov 2026
-against a test database holding booked cases: 16 tables, 137 rows, 7 migrations, 5 sequence
-positions and 3 enabled triggers matched.
+sequence's position (`loan_case_ref_seq`: a reset would reissue case references), the
+triggers with their enabled state and every foreign key (validated, delete rule), then removes
+the container. Rehearsed on 28 Nov 2026 against a test database holding booked cases: 16
+tables, 137 rows, 7 migrations, 5 sequence positions and 3 enabled triggers matched. Rehearsed
+again after H7, against a migrated and seeded test database populated by the operations suite
+(booked cases, reconciliation runs, provider calls): 26 tables, 363 rows, 13 migrations, 6
+sequence positions, 14 triggers (all 7 TRUNCATE guards enabled) and 19 foreign keys (the 11
+from 1764300009000 among them, all validated, NO ACTION) matched.
 
 ```bash
 SRC_CONTAINER=loan-app-postgres \

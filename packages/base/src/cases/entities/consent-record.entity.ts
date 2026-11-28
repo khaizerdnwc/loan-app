@@ -7,6 +7,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { ApplicantEntity } from "./applicant.entity";
 import { LoanCaseEntity } from "./loan-case.entity";
 
 /**
@@ -31,6 +32,10 @@ export class ConsentRecordEntity {
 
   @Column({ name: "applicant_id", type: "varchar", length: 40 })
   applicantId!: string;
+
+  @ManyToOne(() => ApplicantEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "applicant_id", foreignKeyConstraintName: "FK_consent_record_applicant" })
+  applicant?: ApplicantEntity;
 
   @Column({ name: "credit_bureau_check", type: "boolean" })
   creditBureauCheck!: boolean;

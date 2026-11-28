@@ -4,9 +4,13 @@ import {
   CreateDateColumn,
   Entity,
   Index,
+  JoinColumn,
+  ManyToOne,
   PrimaryColumn,
   PrimaryGeneratedColumn,
+  type Relation,
 } from "typeorm";
+import { LoanCaseEntity } from "../cases/entities/loan-case.entity";
 import { moneyColumn } from "../database/money.transformer";
 
 export type ProviderCallOutcome = "OK" | "FAILED" | "SHORT_CIRCUITED" | "CACHE_HIT";
@@ -48,12 +52,17 @@ export class ProviderCallEntity {
   cost!: Money;
 
   /**
-   * The application being decided, when there is one. Deliberately no foreign key: the counter
-   * is insert-only and outlives the case rows a reset or retention job may remove, and nothing
-   * queries it by case except tests.
+   * The application being decided, when there is one (null for a call made outside a case).
+   * A foreign key to the case (migration 1764300009000), NO ACTION like every key on a child
+   * table: cases are never deleted, so no retention job removes the rows this points at, and the
+   * row is insert-only, so ON DELETE SET NULL would be refused anyway.
    */
   @Column({ name: "case_id", type: "uuid", nullable: true })
   caseId!: string | null;
+
+  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_provider_call_case" })
+  loanCase?: Relation<LoanCaseEntity>;
 
   @CreateDateColumn({ name: "created_at", type: "timestamptz" })
   createdAt!: Date;

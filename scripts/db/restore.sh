@@ -9,9 +9,11 @@
 # Refuses, before restoring anything:
 #   exit 2  RESTORE_CONFIRM is not the target's <host:port>/<name> (as printed in the message),
 #           or DATABASE_URL names no database — checked before any database is contacted;
-#   exit 3  the target already has migrations and its latest differs from the backup's (a
-#           restore drops only the backup's objects, so a newer table would survive while the
-#           migrations table is rewound). Restore into an empty database instead.
+#   exit 3  the target already has migrations and their set differs from the backup's (a
+#           restore drops only the backup's objects, so a table from a migration the backup
+#           lacks would survive while the migrations table is rewound). The whole set is
+#           compared, not the latest: lanes merge migrations out of timestamp order, so two
+#           databases can share the latest and still differ. Restore into an empty database.
 set -euo pipefail
 
 in="${1:?usage: restore.sh <backup-file>}"
@@ -33,23 +35,28 @@ if [[ "${RESTORE_CONFIRM:-}" != "$target" ]]; then
   exit 2
 fi
 
-# The latest migration in the backup, and in the target (none when it has no migrations table).
-backup_head="$(pg_tool pg_restore --data-only --table=migrations --file=- <"$in" | awk -F'\t' '
+# The applied migrations in the backup and in the target (none when it has no migrations
+# table), one name per line, sorted.
+backup_set="$(pg_tool pg_restore --data-only --table=migrations --file=- <"$in" | awk -F'\t' '
   /^COPY .*migrations / { copying = 1; next }
   copying && $0 == "\\." { copying = 0; next }
-  copying && $2 + 0 > best { best = $2 + 0; name = $3 }
-  END { print (name == "" ? "<none>" : name) }')"
+  copying { print $3 }' | LC_ALL=C sort)"
+backup_count="$(printf '%s' "$backup_set" | grep -c . || true)"
 has_table="$(pg_tool psql -X -q -tA -v ON_ERROR_STOP=1 --dbname="$DATABASE_URL" \
   -c "SELECT to_regclass('public.migrations') IS NOT NULL")"
 if [[ "$has_table" == "t" ]]; then
-  target_head="$(pg_tool psql -X -q -tA -v ON_ERROR_STOP=1 --dbname="$DATABASE_URL" \
-    -c "SELECT coalesce((SELECT name FROM migrations ORDER BY timestamp DESC, id DESC LIMIT 1), '<none>')")"
-  if [[ "$target_head" != "$backup_head" ]]; then
-    echo "restore: $target is at migration $target_head but the backup is at $backup_head. Restore into an empty database." >&2
+  target_set="$(pg_tool psql -X -q -tA -v ON_ERROR_STOP=1 --dbname="$DATABASE_URL" \
+    -c "SELECT name FROM migrations" | LC_ALL=C sort)"
+  if [[ "$target_set" != "$backup_set" ]]; then
+    {
+      echo "restore: $target has a different set of migrations from the backup. Restore into an empty database."
+      echo "  only in the target: $(LC_ALL=C comm -23 <(echo "$target_set") <(echo "$backup_set") | grep . | paste -sd' ' - || true)"
+      echo "  only in the backup: $(LC_ALL=C comm -13 <(echo "$target_set") <(echo "$backup_set") | grep . | paste -sd' ' - || true)"
+    } >&2
     exit 3
   fi
 fi
 
 pg_tool pg_restore --clean --if-exists --no-owner --no-privileges --single-transaction \
   --exit-on-error --dbname="$DATABASE_URL" <"$in"
-echo "restore: $in → $target (migration head $backup_head)"
+echo "restore: $in → $target ($backup_count migrations)"

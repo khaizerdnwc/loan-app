@@ -1,5 +1,15 @@
 import type { CaseStatus, Role } from "@loan/core";
-import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from "typeorm";
+import {
+  Column,
+  CreateDateColumn,
+  Entity,
+  Index,
+  JoinColumn,
+  ManyToOne,
+  PrimaryGeneratedColumn,
+  type Relation,
+} from "typeorm";
+import { LoanCaseEntity } from "./loan-case.entity";
 
 /**
  * Who did what and when, with before and after (PRD LND-WF-011). Written in the same
@@ -13,6 +23,11 @@ export class ActivityEventEntity {
 
   @Column({ name: "case_id", type: "uuid" })
   caseId!: string;
+
+  /** History belongs to an existing case; nothing cascades into it. */
+  @ManyToOne(() => LoanCaseEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "case_id", foreignKeyConstraintName: "FK_activity_event_case" })
+  loanCase?: Relation<LoanCaseEntity>;
 
   @Column({ name: "actor_id", type: "varchar", length: 40 })
   actorId!: string;

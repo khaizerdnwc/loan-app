@@ -15,6 +15,7 @@ import noFloatMoney from "../src/rules/no-float-money.js";
 import noMathRandomInServer from "../src/rules/no-math-random-in-server.js";
 import noMoneyParseInController from "../src/rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "../src/rules/no-process-env-outside-config.js";
+import noProviderCallInTransaction from "../src/rules/no-provider-call-in-transaction.js";
 import noProviderImportOutsideAdapters from "../src/rules/no-provider-import-outside-adapters.js";
 import noRawColour from "../src/rules/no-raw-colour.js";
 import noReasonCodeLiteral from "../src/rules/no-reason-code-literal.js";
@@ -827,6 +828,70 @@ ruleTester.run("no-engine-version-literal", asRule(noEngineVersionLiteral), {
       filename: at("packages/ui/src/components/score-band.tsx"),
       code: `switch (v) { case "RS-PL-3": break; }`,
       errors: [{ messageId: "literal" }],
+    },
+  ],
+});
+
+const SVC = "packages/base/src/cases/cases.service.ts";
+const GATEWAY_CLASS = (body: string) =>
+  `class S { constructor(private readonly providers: ProviderGateway, private readonly repo: Repo) {}
+     async go(id: string) { ${body} } }`;
+
+ruleTester.run("no-provider-call-in-transaction", asRule(noProviderCallInTransaction), {
+  valid: [
+    // Providers first, then the transaction (the shape cases.service.ts uses).
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`const r = await this.providers.screen(s, id);
+        await this.tx.run(async (m) => { await this.repo.save(m, r); });`),
+    },
+    {
+      filename: at(SVC),
+      code: `class S { async go() { const i = await this.decisions.gatherInputs(c, d);
+        await this.tx.run(async (m) => { use(i); }); } }`,
+    },
+    // Another field's methods inside the transaction are fine.
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`await this.tx.run(async (m) => { await this.repo.lock(m, id); });`),
+    },
+    // Outside packages/base/src.
+    {
+      filename: at("apps/api/test/x.e2e-spec.ts"),
+      code: GATEWAY_CLASS(
+        `await this.tx.run(async () => { await this.providers.screen(s, id); });`,
+      ),
+    },
+  ],
+  invalid: [
+    {
+      filename: at(SVC),
+      code: GATEWAY_CLASS(`await this.tx.run(async (m) => {
+        const c = await this.repo.lock(m, id);
+        await this.providers.pullBureau(s, c.id);
+      });`),
+      errors: [{ messageId: "inTransaction" }],
+    },
+    {
+      filename: at(SVC),
+      code: `class S { async go() { await this.tx.run(async (m) => {
+        await this.decisions.gatherInputs(c, d); }); } }`,
+      errors: [{ messageId: "inTransaction" }],
+    },
+    // ds.transaction / manager.transaction, a function expression, a nested helper arrow.
+    {
+      filename: at("packages/base/src/operations/operations.service.ts"),
+      code: GATEWAY_CLASS(`await ds.transaction(async function (m) {
+        await Promise.all([1].map(() => this.providers.assessFraud(s, id)));
+      });`),
+      errors: [{ messageId: "inTransaction" }],
+    },
+    // A gateway under another field name.
+    {
+      filename: at(SVC),
+      code: `class S { constructor(private readonly gw: ProviderGateway) {}
+        async go() { await tx.run(async () => { await this.gw.screen(s, id); }); } }`,
+      errors: [{ messageId: "inTransaction" }],
     },
   ],
 });

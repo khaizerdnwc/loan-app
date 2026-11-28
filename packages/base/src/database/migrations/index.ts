@@ -11,6 +11,7 @@ import { AuditLogAndAmlEscalations1764300002000 } from "./1764300002000-AuditLog
 import { ReconciliationRuns1764300002001 } from "./1764300002001-ReconciliationRuns";
 import { AutomationAndTriggers1764300003000 } from "./1764300003000-AutomationAndTriggers";
 import { ProviderResilienceAndEstimates1764300003001 } from "./1764300003001-ProviderResilienceAndEstimates";
+import { ForeignKeysAndTruncateGuards1764300009000 } from "./1764300009000-ForeignKeysAndTruncateGuards";
 
 /**
  * Every migration, in order. Listed explicitly so the same list runs from src (tests) and
@@ -32,4 +33,5 @@ export const MIGRATIONS = [
   ReconciliationRuns1764300002001,
   AutomationAndTriggers1764300003000,
   ProviderResilienceAndEstimates1764300003001,
+  ForeignKeysAndTruncateGuards1764300009000,
 ];

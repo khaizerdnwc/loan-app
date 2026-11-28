@@ -21,7 +21,9 @@ cannot tell whether it worked).
   (`crypto.randomUUID()`), unique per application (`UNIQUE(application_id)`). A second
   submit returns the existing request.
 - **R2. The checker's approval runs in one transaction** that locks the application row
-  (`SELECT … FOR UPDATE`), re-checks the state is `PENDING_CHECKER`, checks the checker is a
+  (`SELECT … FOR NO KEY UPDATE`; `FOR UPDATE` until H7, changed so foreign-key checks from
+  child rows written on another connection do not wait on it — it serialises two approvals
+  exactly as before), re-checks the state is `PENDING_CHECKER`, checks the checker is a
   supervisor and not the maker, calls core banking with the key, then writes the loan
   account, schedule, disbursement, status change and activity events together.
 - **R3. Constraints make a duplicate impossible even if the code is wrong:**

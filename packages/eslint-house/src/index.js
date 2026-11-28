@@ -23,6 +23,7 @@
  *   - no-float-money                     : money is Money (decimal), never number math or float columns
  *   - no-datasource-outside-repository   : DataSource/EntityManager/raw SQL only in repositories
  *   - no-typeorm-synchronize             : schema changes through migrations only
+ *   - no-provider-call-in-transaction    : the provider gateway runs before tx.run, never inside it (no row lock held while a provider answers)
  *   - require-order-with-take            : take/skip/limit come with an explicit order
  *   - no-provider-import-outside-adapters: workflow code depends on ports, not concrete providers
  *   - no-case-status-assignment-outside-lifecycle: a case's status changes only via moveTo()
@@ -54,6 +55,7 @@ import noFloatMoney from "./rules/no-float-money.js";
 import noMathRandomInServer from "./rules/no-math-random-in-server.js";
 import noMoneyParseInController from "./rules/no-money-parse-in-controller.js";
 import noProcessEnvOutsideConfig from "./rules/no-process-env-outside-config.js";
+import noProviderCallInTransaction from "./rules/no-provider-call-in-transaction.js";
 import noProviderImportOutsideAdapters from "./rules/no-provider-import-outside-adapters.js";
 import noRawColour from "./rules/no-raw-colour.js";
 import noReasonCodeLiteral from "./rules/no-reason-code-literal.js";
@@ -88,6 +90,7 @@ export default {
     "no-typeorm-synchronize": noTypeormSynchronize,
     "require-order-with-take": requireOrderWithTake,
     "no-provider-import-outside-adapters": noProviderImportOutsideAdapters,
+    "no-provider-call-in-transaction": noProviderCallInTransaction,
     "no-case-status-assignment-outside-lifecycle": noCaseStatusAssignmentOutsideLifecycle,
     "no-status-only-assertion": noStatusOnlyAssertion,
     "no-raw-colour": noRawColour,

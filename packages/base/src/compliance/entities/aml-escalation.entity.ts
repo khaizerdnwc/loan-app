@@ -13,6 +13,7 @@ import {
   ManyToOne,
   PrimaryGeneratedColumn,
 } from "typeorm";
+import { ApplicantEntity } from "../../cases/entities/applicant.entity";
 import { DecisionRecordEntity } from "../../cases/entities/decision-record.entity";
 import { LoanCaseEntity } from "../../cases/entities/loan-case.entity";
 
@@ -42,6 +43,10 @@ export class AmlEscalationEntity {
 
   @Column({ name: "applicant_id", type: "varchar", length: 40 })
   applicantId!: string;
+
+  @ManyToOne(() => ApplicantEntity, { onDelete: "NO ACTION" })
+  @JoinColumn({ name: "applicant_id", foreignKeyConstraintName: "FK_aml_escalation_applicant" })
+  applicant?: ApplicantEntity;
 
   @Column({ type: "varchar", length: 20 })
   stage!: ScreeningStage;
