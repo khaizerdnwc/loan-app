@@ -45,7 +45,7 @@ under `docs/DECISIONS/`. The lessons this repo has paid for are one command away
 | `SegmentedFilter` (`label`, `options` with `count`) | Narrowing a list or report (stage, scope, period): toggle buttons with counts where the list knows them. Keep the choice in the URL (`?scope=`, `?view=`, `?days=`) so Back and a shared link restore it; a page reading `useSearchParams` wraps its body in `<Suspense>` |
 | `BarList` (`bars`, `max`, `label`, tones `ink` / `gold` / `ok` / `bad`) | Report breakdowns (the prototype's `.hbar`): label, bar, figure; figures in the body font, labels wrap |
 | `StageBar`, `ScoreBand`, `GradeTile`, `Avatar`, `Icon`, `SimulatedLabel` | As named |
-| `Modal`, `ConfirmDialog` | Every dialog; footer buttons secondary first, the confirming one last. Coming with lane A batch 3: `confirmDisabled`, for a dialog whose confirm must wait for a valid choice (say why next to the control, never in a tooltip) |
+| `Modal`, `ConfirmDialog` | Every dialog; footer buttons secondary first, the confirming one last. `confirmDisabled` (a sentence) disables the confirm button and shows why under the form, linked to the button: for a dialog whose confirm must wait for a valid choice (never a tooltip) |
 | `useToast` | The result of an action, top right |
 | `LoadState` (backoffice) | Loading and error-with-retry for every fetching screen |
 
@@ -100,6 +100,9 @@ Formatters (`packages/ui/src/lib/format.ts`): `formatPeso` (amounts), `formatAmo
 - `eslint-plugin-jsx-a11y` (recommended) runs on every .tsx; plus the ported nxlvl rules
   `no-title-on-disabled-control`, `require-label-in-name`, `no-ring-color-without-width`,
   `text-size-before-leading`. Visible focus, labels on every input, keyboard-reachable dialogs.
+- A statistic computed on fewer cases than its minimum is not shown as a figure beside its
+  thresholds: under an "insufficient data" status it reads "not computed" with the counts
+  (lesson `ui-ux-20261128-no-figure-below-minimum`).
 - Every interactive part has its states from the shared parts: hover, keyboard focus (the
   solid gold-700 ring, never the prototype's faint glow), active, disabled (one sunken look;
   a blocked action shows its reason under it), empty, loading and error.

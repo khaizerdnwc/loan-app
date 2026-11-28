@@ -15,6 +15,8 @@ import {
   type Column,
   EmptyState,
   formatDate,
+  formatNumber,
+  GradeTile,
   OUTCOME_LABEL,
   Pill,
   SimulatedLabel,
@@ -61,7 +63,12 @@ const SCORECARD_COLUMNS: Column<ScorecardRow>[] = [
       </span>
     ),
   },
-  { key: "decisions", header: "Decisions", numeric: true, render: (r) => r.decisions },
+  {
+    key: "decisions",
+    header: "Decisions",
+    numeric: true,
+    render: (r) => formatNumber(r.decisions),
+  },
   {
     key: "used",
     header: "Last used",
@@ -93,7 +100,12 @@ const RULE_SET_COLUMNS: Column<RuleSetRow>[] = [
       </span>
     ),
   },
-  { key: "decisions", header: "Decisions", numeric: true, render: (r) => r.decisions },
+  {
+    key: "decisions",
+    header: "Decisions",
+    numeric: true,
+    render: (r) => formatNumber(r.decisions),
+  },
   {
     key: "used",
     header: "Last used",
@@ -157,7 +169,7 @@ export function OverrideMonitor({ monitor }: { monitor: OverrideMonitorView }) {
   return (
     <Card title="Overrides · last 30 days" aside={<SimulatedLabel what="data" />}>
       <div className="grid gap-3 min-[700px]:grid-cols-3">
-        <StatCard label="Recommendations" value={monitor.recommendations} />
+        <StatCard label="Recommendations" value={formatNumber(monitor.recommendations)} />
         <StatCard
           label="Overrides"
           value={`${rate.toFixed(1)}%`}
@@ -202,7 +214,12 @@ export function OverrideMonitor({ monitor }: { monitor: OverrideMonitorView }) {
               header: "Officer recommended",
               render: (r) => RECOMMENDATION_WORD[r.recommendation],
             },
-            { key: "count", header: "Cases", numeric: true, render: (r) => r.count },
+            {
+              key: "count",
+              header: "Cases",
+              numeric: true,
+              render: (r) => formatNumber(r.count),
+            },
           ]}
           rows={monitor.matrix}
           rowKey={(r) => `${r.engineOutcome}-${r.recommendation}`}
@@ -236,7 +253,7 @@ export function DriftMonitor({ drift }: { drift: DriftView }) {
         <Table
           caption="Share of scored decisions per grade, baseline against recent"
           columns={[
-            { key: "grade", header: "Grade", render: (g) => g.grade },
+            { key: "grade", header: "Grade", render: (g) => <GradeTile grade={g.grade} /> },
             {
               key: "baseline",
               header: `Baseline (${drift.baseline.decisions})`,

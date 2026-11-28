@@ -1,10 +1,18 @@
 "use client";
 
-import type { CaseDetail, CaseList, CaseSummary, Role, SlaView } from "@loan/core";
+import {
+  CASE_STATUSES,
+  type CaseDetail,
+  type CaseList,
+  type CaseStatus,
+  type CaseSummary,
+  type Role,
+  type SlaView,
+} from "@loan/core";
 import { buttonClass, Icon, SegmentedFilter, useToast } from "@loan/ui";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { PageHeader } from "@/components/app-shell";
 import { LoadState } from "@/components/load-state";
 import { QueueBody, type StageFilter } from "@/components/queue-body";
@@ -58,11 +66,51 @@ const OWNERSHIP_EMPTY: Record<Exclude<Ownership, "ALL">, string> = {
   UNASSIGNED: "No referral is waiting for an owner.",
 };
 
+const OWNER_PARAM: Record<Ownership, string | null> = {
+  ALL: null,
+  MINE: "mine",
+  UNASSIGNED: "unassigned",
+};
+
+/** The owner filter named in the URL's `?owner=`; anything else means the whole team. */
+function ownershipOf(value: string | null): Ownership {
+  return value === "mine" ? "MINE" : value === "unassigned" ? "UNASSIGNED" : "ALL";
+}
+
+/** The stage filter named in the URL's `?stage=`; anything else means all stages. */
+function stageOf(value: string | null): StageFilter {
+  return (CASE_STATUSES as readonly string[]).includes(value ?? "") ? (value as CaseStatus) : "ALL";
+}
+
+/**
+ * The work queue. Its filters (owner, stage) live in the URL (`?owner=mine|unassigned`,
+ * `?stage=REVIEW`), so Back from a case restores them.
+ */
 export default function QueuePage() {
+  // useSearchParams needs a Suspense boundary in a statically rendered page.
+  return (
+    <Suspense fallback={null}>
+      <Queue />
+    </Suspense>
+  );
+}
+
+function Queue() {
   const me = useSession();
   const router = useRouter();
-  const [stage, setStage] = useState<StageFilter>("ALL");
-  const [ownership, setOwnership] = useState<Ownership>("ALL");
+  const params = useSearchParams();
+  const stage = stageOf(params.get("stage"));
+  const ownership = ownershipOf(params.get("owner"));
+  const go = (owner: Ownership, nextStage: StageFilter) => {
+    const q = new URLSearchParams();
+    const o = OWNER_PARAM[owner];
+    if (o) q.set("owner", o);
+    if (nextStage !== "ALL") q.set("stage", nextStage);
+    const s = q.toString();
+    router.replace(s ? `/queue?${s}` : "/queue", { scroll: false });
+  };
+  const setStage = (next: StageFilter) => go(ownership, next);
+  const setOwnership = (next: Ownership) => go(next, stage);
   const [picking, setPicking] = useState<string | null>(null);
   const toast = useToast();
   const hasQueue = landingFor(me.role) === "/queue";

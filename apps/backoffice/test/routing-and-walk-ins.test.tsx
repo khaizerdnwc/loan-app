@@ -270,6 +270,8 @@ describe("New or walk-in customer (WI-1)", () => {
     await userEvent.type(screen.getByLabelText("Customer number"), "CIF-100245");
     await userEvent.click(screen.getByRole("button", { name: "Find in core" }));
     const choose = await screen.findByRole("button", { name: "Choose them" });
+    // The applicant id is an identifier: monospace (docs/ui-parity.md row 66).
+    expect(screen.getByText("APL-W0000000001").className).toMatch(/font-mono/);
     // Adding them again would be refused: Add applicant is disabled, with the reason.
     const add = screen.getByRole("button", { name: "Add applicant" });
     expect(add).toBeDisabled();
@@ -290,7 +292,11 @@ describe("New or walk-in customer (WI-1)", () => {
     await userEvent.click(screen.getByRole("button", { name: "New to the bank" }));
     expect(screen.getByRole("button", { name: "Add applicant" })).toBeEnabled();
     expect(screen.queryByLabelText(/deposit account/i)).not.toBeInTheDocument();
-    expect(screen.getByText(/has no WhiteBank deposit account yet/)).toBeInTheDocument();
+    expect(screen.getByText(/has no WhiteBank deposit account/)).toBeInTheDocument();
+    expect(screen.getByText("Not bookable yet.").parentElement).toHaveAttribute(
+      "data-tone",
+      "info",
+    );
   });
 
   it("the queue's Pick is busy while its request is in flight, so a double click sends one", async () => {

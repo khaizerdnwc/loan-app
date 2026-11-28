@@ -206,7 +206,8 @@ export function NewApplicantDialog({
                 />
                 {customer.applicantId ? (
                   <Callout tone="info" lead="Already on file.">
-                    This customer is applicant {customer.applicantId}.{" "}
+                    This customer is applicant{" "}
+                    <span className="font-mono text-xs">{customer.applicantId}</span>.{" "}
                     <Button
                       size="sm"
                       variant="secondary"
@@ -258,10 +259,10 @@ export function NewApplicantDialog({
               err={err}
               incomeLabel="Monthly income (pesos)"
             />
-            <p className="text-xs text-mist-600">
-              A customer new to the bank has no WhiteBank deposit account yet, so the loan cannot be
+            <Callout tone="info" lead="Not bookable yet.">
+              A customer new to the bank has no WhiteBank deposit account, so the loan cannot be
               booked until one is opened and they are captured again from core banking.
-            </p>
+            </Callout>
           </>
         )}
       </FormStack>

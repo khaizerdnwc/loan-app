@@ -7,7 +7,7 @@ import {
   type SlaState,
   type SlaView,
 } from "@loan/core";
-import { formatDate, formatDateTime, Pill, type Tone } from "@loan/ui";
+import { Callout, formatDate, formatDateTime, Pill, type Tone } from "@loan/ui";
 import { useEffect, useRef } from "react";
 import { useApi } from "@/lib/use-api";
 
@@ -32,10 +32,11 @@ export function timeLeft(s: SlaView): string {
 /** The one line a list shows when its clocks could not be read (the list itself is complete). */
 export function SlaUnavailable({ what }: { what: "queue" | "list" }) {
   return (
-    <p role="status" className="mb-3 text-sm text-mist-500">
-      SLA clocks could not be loaded just now; the {what} is complete but shows no SLA. Reload to
-      try again.
-    </p>
+    <div role="status" className="mb-3">
+      <Callout tone="neutral" lead="SLA clocks could not be loaded just now.">
+        The {what} is complete but shows no SLA. Reload to try again.
+      </Callout>
+    </div>
   );
 }
 
@@ -74,7 +75,11 @@ export function CaseSla({ caseId, status }: { caseId: string; status: CaseStatus
     void reload();
   }, [status, reload]);
   if (data.error) {
-    return <span className="text-xs text-mist-500">SLA clock unavailable just now</span>;
+    return (
+      <span className="text-xs text-mist-500">
+        SLA clock unavailable just now; the rest of the case is unaffected.
+      </span>
+    );
   }
   const sla = data.data?.sla;
   if (!sla || sla.status !== status) return null;

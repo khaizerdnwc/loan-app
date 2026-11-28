@@ -81,9 +81,12 @@ describe("SLA display (SLA-1, SLA-2)", () => {
 
   it("when the clocks cannot be read, the list says so in one line and stays complete", () => {
     render(<SlaUnavailable what="queue" />);
-    expect(screen.getByRole("status")).toHaveTextContent(
-      "SLA clocks could not be loaded just now; the queue is complete but shows no SLA. Reload to try again.",
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent(
+      "SLA clocks could not be loaded just now. The queue is complete but shows no SLA. Reload to try again.",
     );
+    // The shared callout, in the neutral tone (docs/ui-parity.md row 63).
+    expect(status.querySelector("[data-tone]")).toHaveAttribute("data-tone", "neutral");
   });
 
   it("without clocks the queue has no SLA column or figure", () => {
@@ -140,7 +143,11 @@ describe("SLA display (SLA-1, SLA-2)", () => {
       ),
     );
     render(<CaseSla caseId="case-3" status="REVIEW" />);
-    expect(await screen.findByText("SLA clock unavailable just now")).toBeInTheDocument();
+    expect(
+      await screen.findByText(
+        "SLA clock unavailable just now; the rest of the case is unaffected.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("past the holiday calendar's last date, the views say so", () => {
