@@ -6,6 +6,7 @@ import {
   DOCUMENT_EXTRACTION,
   DOCUMENT_INTAKE,
   E_SIGNATURE,
+  EXTERNAL_DECISION_ENGINE,
   FRAUD_CHECK,
   KYC_AML,
   NOTIFICATIONS,
@@ -20,6 +21,7 @@ import { SimulatedDisbursement } from "./disbursement.simulator";
 import { SimulatedDocumentExtraction } from "./document-extraction.simulator";
 import { SimulatedDocumentIntake } from "./document-intake.simulator";
 import { SimulatedESignature } from "./e-signature.simulator";
+import { SimulatedExternalDecisionEngine } from "./external-decision-engine.simulator";
 import { SimulatedFraudCheck } from "./fraud-check.simulator";
 import { SimulatedKycAml } from "./kyc-aml.simulator";
 import { SimulatedNotifications } from "./notifications.simulator";
@@ -52,6 +54,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     SimulatedCustomerLookup,
     SimulatedNotifications,
     SimulatedDocumentExtraction,
+    SimulatedExternalDecisionEngine,
     { provide: CREDIT_BUREAU, useExisting: SimulatedCreditBureau },
     { provide: KYC_AML, useExisting: SimulatedKycAml },
     { provide: CORE_BANKING, useExisting: SimulatedCoreBanking },
@@ -62,6 +65,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     { provide: CUSTOMER_LOOKUP, useExisting: SimulatedCustomerLookup },
     { provide: NOTIFICATIONS, useExisting: SimulatedNotifications },
     { provide: DOCUMENT_EXTRACTION, useExisting: SimulatedDocumentExtraction },
+    { provide: EXTERNAL_DECISION_ENGINE, useExisting: SimulatedExternalDecisionEngine },
     { provide: SIMULATION_CONTROL, useExisting: SimulationModesService },
   ],
   exports: [
@@ -75,6 +79,7 @@ import { SIMULATION_OPTIONS } from "./simulation-options";
     CUSTOMER_LOOKUP,
     NOTIFICATIONS,
     DOCUMENT_EXTRACTION,
+    EXTERNAL_DECISION_ENGINE,
     SIMULATION_CONTROL,
   ],
 })

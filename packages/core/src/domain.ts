@@ -244,5 +244,6 @@ export const ServiceName = {
   CustomerLookup: "CUSTOMER_LOOKUP",
   Notifications: "NOTIFICATIONS",
   DocumentExtraction: "DOCUMENT_EXTRACTION",
+  ExternalDecision: "EXTERNAL_DECISION",
 } as const;
 export type ServiceName = (typeof ServiceName)[keyof typeof ServiceName];

@@ -21,6 +21,7 @@ const LABELS: Record<ServiceName, string> = {
   CUSTOMER_LOOKUP: "Core customer lookup (simulated)",
   NOTIFICATIONS: "Email and SMS gateway (simulated)",
   DOCUMENT_EXTRACTION: "OCR and statement analysis (simulated)",
+  EXTERNAL_DECISION: "Client decision engine (simulated)",
 };
 
 const UNIVERSAL: CoreMode[] = Object.values(SimulationMode);

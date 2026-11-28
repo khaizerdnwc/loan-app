@@ -86,12 +86,12 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /models | admin, compliance | `ModelRegistryView`: every scorecard and rule set, the current ones, their decisions and dates, each scorecard's features, PD and prohibited-features check, and the prohibited list |
 | GET | /models/overrides?days= | admin, compliance | `OverrideMonitorView`: recommendations, overrides, overrides by reason, the engine-versus-officer matrix and not-live agreement (default 30 days) |
 | GET | /models/drift?recentDays=&baselineDays= | admin, compliance | `DriftView`: grade shares in the recent window (default 30 days) and the baseline before it (default 90), the PSI (null with fewer than 30 scored decisions in a window) and a status |
-| GET | /providers/usage?days= | admin, compliance | `ProviderUsageView`: per decision service (bureau, KYC/AML, fraud) the attempts, failures, calls not made (open circuit), reused bureau reports, simulated cost and circuit state, over `days` (1–366, default 30) |
+| GET | /providers/usage?days= | admin, compliance | `ProviderUsageView`: per decision service (bureau, KYC/AML, fraud, external decision engine) the attempts, failures, calls not made (open circuit), reused bureau reports, simulated cost and circuit state, over `days` (1–366, default 30) |
 | GET | /decisions/latency?days= | admin, compliance | `DecisionLatencyView`: decisions measured, p50, p95 and max milliseconds, against the 60 s target |
-| GET | /automation | admin, compliance | `AutomationView[]`: each product's mode (OFF, SHADOW, LIVE), kill switch, the change waiting for approval, and the caller's `allowedActions` (none for compliance) |
+| GET | /automation | admin, compliance | `AutomationView[]`: each product's mode (OFF, SHADOW, LIVE), kill switch, external decision engine role (`externalEngine`: NONE, ALONGSIDE, INSTEAD), the change waiting for approval, and the caller's `allowedActions` (none for compliance) |
 | GET | /automation/:product/history | admin, compliance | `AutomationEventView[]`, newest first: who changed what, when, before and after |
-| POST | /automation/:product/changes | admin | `AutomationChangeRequest` (`{ kind: "SET_MODE", mode, reason }` or `{ kind: "KILL_SWITCH_OFF", reason }`) → `AutomationView[]` (201). Drafts a change for a different administrator; nothing changes yet. 409 `CONFLICT` while another change waits; 400 for the current mode or a blank reason; 409 to turn off a switch that is off |
-| POST | /automation/:product/changes/:id/approve | admin, not the drafter | `{ note? }` → `AutomationView[]`. The change takes effect. 403 `MAKER_CHECKER_VIOLATION` for the drafter; 409 if no longer pending |
+| POST | /automation/:product/changes | admin | `AutomationChangeRequest` (`{ kind: "SET_MODE", mode, reason }`, `{ kind: "KILL_SWITCH_OFF", reason }` or `{ kind: "SET_EXTERNAL_ENGINE", externalEngine, reason }`) → `AutomationView[]` (201). Drafts a change for a different administrator; nothing changes yet. 409 `CONFLICT` while another change waits; 400 for the current mode or role, a field that belongs to another kind, or a blank reason; 409 to turn off a switch that is off |
+| POST | /automation/:product/changes/:id/approve | admin, not the drafter | `{ note? }` → `AutomationView[]`. The change takes effect. 403 `MAKER_CHECKER_VIOLATION` for the drafter; 409 if no longer pending, or if the mode or role it changes moved after the draft |
 | POST | /automation/:product/changes/:id/reject | admin | `{ note? }` → `AutomationView[]`. Closes it unchanged: REJECTED, or WITHDRAWN when the drafter closes it |
 | POST | /automation/:product/kill-switch | admin | `{ reason }` → `AutomationView[]`. Turns the kill switch on at once (409 if already on); turning it off is a change request |
 | GET | /operations/exceptions | loan operations, supervisor, compliance | `BookingExceptionView[]`: Booking failed cases with key, attempts, last error, why a retry is blocked, and the latest reconciliation finding |
@@ -142,13 +142,23 @@ the mode the decision ran under and what the engine decided before the mode appl
 their own outcome. `POST /decisions/:id/reproduce` also checks the mode columns against the
 stored snapshot.
 
+From RS-PL-4 the snapshot (`inputs.external`) holds the product's external decision engine
+role and, unless it is NONE, the engine's answer (`decision`, `reasonCodes`, `reference`) or
+why it gave none; the record's rule results then include `EX-ENGINE`, and `engineOutcome` is the
+combined outcome before the mode applied. Reproduce uses the stored answer and never calls the
+engine. Reason codes R22–R26 are the external engine's (unavailable, disagrees, referred,
+declined, approved with no grade to price). The decision view's `externalEngine`
+(`{ role, outcome, reference, agreed } | null`) is read from that snapshot: null when no engine
+was used; `outcome` and `reference` null when it could not answer; `agreed` (alongside only)
+whether it agreed with the built-in engine.
+
 `CaseDetail.decidedDuringOutage` says the current decision was made while the bureau,
-screening or fraud check could not answer (the officer re-decides it).
+screening, fraud check or external decision engine could not answer (the officer re-decides it).
 `CaseDetail.recommendationTypes`, when RECOMMEND is offered, lists APPROVE, COUNTER_OFFER and
 DECLINE each enabled or disabled with the API's reason: after an outage or a failed knockout
 only DECLINE is accepted, and `POST /cases/:id/recommendation` refuses the others (409).
 
-Automation `allowedActions` are REQUEST_MODE_CHANGE, KILL_SWITCH_ON, REQUEST_KILL_SWITCH_OFF,
+Automation `allowedActions` are REQUEST_MODE_CHANGE, REQUEST_EXTERNAL_ENGINE_CHANGE, KILL_SWITCH_ON, REQUEST_KILL_SWITCH_OFF,
 APPROVE_CHANGE (disabled with MAKER_CHECKER_VIOLATION for the drafter), REJECT_CHANGE (another
 administrator) and WITHDRAW_CHANGE (the drafter); reject and withdraw both post to `/reject`.
 

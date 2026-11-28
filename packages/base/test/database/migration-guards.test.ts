@@ -1,6 +1,7 @@
 import type { QueryRunner } from "typeorm";
 import { AutomationAndTriggers1764300003000 } from "../../src/database/migrations/1764300003000-AutomationAndTriggers";
 import { ProviderResilienceAndEstimates1764300003001 } from "../../src/database/migrations/1764300003001-ProviderResilienceAndEstimates";
+import { ExternalDecisionEngine1764300003002 } from "../../src/database/migrations/1764300003002-ExternalDecisionEngine";
 
 /**
  * Forward-only once used (ADR 0022 amendments): reverting 3000 or 3001 on a database that holds
@@ -56,5 +57,26 @@ describe("migration 1764300003001 (estimates, provider calls): down() is forward
     const { q, statements } = runner({ records: 0, calls: 0 });
     await new ProviderResilienceAndEstimates1764300003001().down(q);
     expect(statements.some((s) => /DROP TABLE "provider_call"/.test(s))).toBe(true);
+  });
+});
+
+describe("migration 1764300003002 (external decision engine): down() is forward-only once used", () => {
+  it.each([
+    [{ records: 1, changes: 0, products: 0 }],
+    [{ records: 0, changes: 2, products: 0 }],
+    [{ records: 0, changes: 0, products: 1 }],
+  ])("refuses with %j and drops nothing", async (counts) => {
+    const { q, statements } = runner(counts);
+    await expect(new ExternalDecisionEngine1764300003002().down(q)).rejects.toThrow(
+      /Cannot revert ExternalDecisionEngine/,
+    );
+    expect(statements).toHaveLength(1);
+    expect(statements[0]).toMatch(/"rule_set_version" = 'RS-PL-4'/);
+  });
+
+  it("reverts a database with no such data", async () => {
+    const { q, statements } = runner({ records: 0, changes: 0, products: 0 });
+    await new ExternalDecisionEngine1764300003002().down(q);
+    expect(statements.some((s) => /DROP COLUMN "external_engine"/.test(s))).toBe(true);
   });
 });

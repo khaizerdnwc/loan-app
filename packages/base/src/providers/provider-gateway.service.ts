@@ -4,6 +4,10 @@ import {
   type BureauReport,
   CREDIT_BUREAU,
   type CreditBureau,
+  EXTERNAL_DECISION_ENGINE,
+  type ExternalDecisionEngine,
+  type ExternalDecisionReply,
+  type ExternalDecisionRequest,
   FRAUD_CHECK,
   type FraudAssessment,
   type FraudCheck,
@@ -30,7 +34,12 @@ import {
 } from "./resilience";
 
 /** The decision's providers: the ones this gateway calls, retries and counts. */
-const DECISION_SERVICES = [ServiceName.CreditBureau, ServiceName.KycAml, ServiceName.Fraud];
+const DECISION_SERVICES = [
+  ServiceName.CreditBureau,
+  ServiceName.KycAml,
+  ServiceName.Fraud,
+  ServiceName.ExternalDecision,
+];
 
 /**
  * Simulated price per successful call (PRD IH-006). Synthetic figures for the demo, not a
@@ -40,6 +49,7 @@ export const PRICE: Partial<Record<ServiceName, Money>> = {
   CREDIT_BUREAU: Money.of("25.00"),
   KYC_AML: Money.of("10.00"),
   FRAUD: Money.of("5.00"),
+  EXTERNAL_DECISION: Money.of("15.00"),
 };
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
@@ -48,7 +58,8 @@ const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve,
 export type GatheredReport = BureauReport & { fromCache: boolean };
 
 /**
- * The decision's provider calls (bureau, KYC/AML, fraud) behind one policy (PRD IH-003,
+ * The decision's provider calls (bureau, KYC/AML, fraud, and the external decision engine
+ * where a product uses one, PRD DEC-008) behind one policy (PRD IH-003,
  * IH-005, IH-006): a cached bureau report is reused for the reuse window; otherwise each call
  * runs through its service's circuit breaker and is retried with backoff; every attempt is
  * counted with its simulated cost. A call that still fails throws ProviderUnavailableError, so
@@ -64,14 +75,19 @@ export class ProviderGateway {
     @Inject(CREDIT_BUREAU) private readonly bureau: CreditBureau,
     @Inject(KYC_AML) private readonly kycAml: KycAml,
     @Inject(FRAUD_CHECK) private readonly fraud: FraudCheck,
+    @Inject(EXTERNAL_DECISION_ENGINE) private readonly external: ExternalDecisionEngine,
     private readonly repo: ProvidersRepository,
     @Inject(LENDING_OPTIONS) lending: LendingModuleOptions,
   ) {
     // A decision record holds one provider mode; mixing a real and a simulated provider
     // would make it ambiguous, so that wiring is refused at boot.
-    if (bureau.mode !== kycAml.mode || bureau.mode !== fraud.mode) {
+    if (
+      bureau.mode !== kycAml.mode ||
+      bureau.mode !== fraud.mode ||
+      bureau.mode !== external.mode
+    ) {
       throw new Error(
-        `Credit bureau (${bureau.mode}), KYC/AML (${kycAml.mode}) and fraud check (${fraud.mode}) must run in the same provider mode.`,
+        `Credit bureau (${bureau.mode}), KYC/AML (${kycAml.mode}), fraud check (${fraud.mode}) and external decision engine (${external.mode}) must run in the same provider mode.`,
       );
     }
     this.options = { ...DEFAULT_RESILIENCE, ...lending.resilience };
@@ -128,6 +144,16 @@ export class ProviderGateway {
 
   assessFraud(subject: ApplicantIdentity, caseId: string | null): Promise<FraudAssessment> {
     return this.call(ServiceName.Fraud, "ASSESS", caseId, () => this.fraud.assess(subject));
+  }
+
+  /** The external decision engine's answer (PRD DEC-008), only for products that use one. */
+  evaluateExternally(
+    request: ExternalDecisionRequest,
+    caseId: string | null,
+  ): Promise<ExternalDecisionReply> {
+    return this.call(ServiceName.ExternalDecision, "EVALUATE", caseId, () =>
+      this.external.evaluate(request),
+    );
   }
 
   /** Calls, failures, cache hits and simulated cost per service since a time, with circuits. */

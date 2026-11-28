@@ -7,13 +7,24 @@ import {
   hashInputs,
 } from "../../src/decisioning/engine";
 import rsPl3Fixture from "./fixtures/rs-pl-3-records.json";
-import { CARMEN_LOW_SCORE, JOEL_F2, MARIA_F1, NICO_HIGH_DTI, RAMON_SANCTIONS } from "./personas";
+import {
+  asRsPl3,
+  CARMEN_LOW_SCORE,
+  JOEL_F2,
+  MARIA_F1,
+  NICO_HIGH_DTI,
+  RAMON_SANCTIONS,
+} from "./personas";
 
 const V = { ruleSet: CURRENT_RULE_SET, scorecard: CURRENT_SCORECARD };
 
 describe("D-16 PD and recommended amount (PRD AIS-001), versioned as RS-PL-3 and SC-PL-2", () => {
-  it("are the current versions", () => {
-    expect(V).toEqual({ ruleSet: "RS-PL-3", scorecard: "SC-PL-2" });
+  it("are current: RS-PL-4 keeps RS-PL-3's estimates, SC-PL-2 is the scorecard", () => {
+    expect(V).toEqual({ ruleSet: "RS-PL-4", scorecard: "SC-PL-2" });
+    const v3 = { ruleSet: "RS-PL-3", scorecard: "SC-PL-2" };
+    expect(decide(asRsPl3(NICO_HIGH_DTI), v3).recommendedAmount).toBe(
+      decide(NICO_HIGH_DTI, V).recommendedAmount,
+    );
   });
 
   it("Maria: the grade A PD, and the amount she asked for is affordable", () => {
@@ -71,7 +82,7 @@ describe("D-16 PD and recommended amount (PRD AIS-001), versioned as RS-PL-3 and
   });
 
   it("earlier versions estimate nothing, so their records replay as they were", () => {
-    const r = decide(MARIA_F1, { ruleSet: "RS-PL-2", scorecard: "SC-PL-1" });
+    const r = decide(asRsPl3(MARIA_F1), { ruleSet: "RS-PL-2", scorecard: "SC-PL-1" });
     expect([r.pd, r.recommendedAmount]).toEqual([null, null]);
     // The score is the same under SC-PL-1 and SC-PL-2: only the PD table was added.
     expect(r.score).toBe(decide(MARIA_F1, V).score);

@@ -210,7 +210,12 @@ describe("PR-4 usage and cost, PR-5 latency: read by administrators and complian
     const after = await usage("diane");
     const bureau = (u: ProviderUsageView) => u.services.find((s) => s.service === "CREDIT_BUREAU");
     expect(bureau(after)?.ok).toBe((bureau(before)?.ok ?? 0) + 1);
-    expect(after.services.map((s) => s.service)).toEqual(["CREDIT_BUREAU", "KYC_AML", "FRAUD"]);
+    expect(after.services.map((s) => s.service)).toEqual([
+      "CREDIT_BUREAU",
+      "KYC_AML",
+      "FRAUD",
+      "EXTERNAL_DECISION",
+    ]);
     // One bureau pull (25), one screening (10), one fraud check (5).
     expect(Math.round((Number(after.totalCost) - Number(before.totalCost)) * 100)).toBe(4000);
   });

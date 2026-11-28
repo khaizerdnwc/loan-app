@@ -7,6 +7,9 @@ import {
   type AutomationActionAvailability,
   type AutomationMode,
   type AutomationView,
+  EXTERNAL_ENGINE_ROLE_LABEL,
+  EXTERNAL_ENGINE_ROLES,
+  type ExternalEngineRole,
 } from "@loan/core";
 import {
   Button,
@@ -36,8 +39,21 @@ const MODE_EFFECT: Record<AutomationMode, string> = {
   OFF: "Every application goes to a loan officer. The engine's score and reasons are shown to help them.",
 };
 
+/** What each external engine role does to the next application (PRD DEC-008). */
+const ROLE_EFFECT: Record<ExternalEngineRole, string> = {
+  NONE: "The built-in engine decides alone.",
+  ALONGSIDE:
+    "The client's decision engine is asked as well. Where it disagrees with the built-in engine, the case goes to a loan officer.",
+  INSTEAD:
+    "The client's decision engine decides instead of the built-in score and credit rules. The bank's knockouts, the automatic approval limit, related-party and fraud referrals still apply, and the loan is priced from the built-in grade.",
+};
+
+const NEVER_DECLINES =
+  "If the client's engine cannot answer, the case goes to a loan officer; it is never declined for that.";
+
 type Dialog =
   | { kind: "mode"; view: AutomationView; mode: AutomationMode }
+  | { kind: "external"; view: AutomationView; role: ExternalEngineRole }
   | { kind: "killOn"; view: AutomationView }
   | { kind: "killOff"; view: AutomationView }
   | { kind: "approve"; view: AutomationView }
@@ -48,6 +64,7 @@ type Dialog =
 /** The API action each dialog performs: after a refusal, the dialog stays only if still listed. */
 const DIALOG_ACTION: Record<Exclude<Dialog, null>["kind"], AutomationAction> = {
   mode: "REQUEST_MODE_CHANGE",
+  external: "REQUEST_EXTERNAL_ENGINE_CHANGE",
   killOn: "KILL_SWITCH_ON",
   killOff: "REQUEST_KILL_SWITCH_OFF",
   approve: "APPROVE_CHANGE",
@@ -85,6 +102,8 @@ export function AutomationPanel({
   const [fieldError, setFieldError] = useState<string | undefined>();
   /** The mode chosen in each product's select, before "Draft change…" opens the dialog. */
   const [chosen, setChosen] = useState<Record<string, AutomationMode>>({});
+  /** The external engine role chosen in each product's select. */
+  const [chosenRole, setChosenRole] = useState<Record<string, ExternalEngineRole>>({});
   /** A refusal whose dialog closed because the refreshed product no longer offers the action. */
   const [cardError, setCardError] = useState<{ product: string; message: string } | null>(null);
 
@@ -113,7 +132,9 @@ export function AutomationPanel({
     const fresh = next.find((v) => v.productCode === d.view.productCode);
     const still = fresh?.allowedActions.find((a) => a.action === DIALOG_ACTION[d.kind]);
     // A mode change someone else already made leaves nothing to draft: close it too.
-    const alreadyThere = d.kind === "mode" && fresh?.mode === d.mode;
+    const alreadyThere =
+      (d.kind === "mode" && fresh?.mode === d.mode) ||
+      (d.kind === "external" && fresh?.externalEngine === d.role);
     if (fresh && still?.enabled && !alreadyThere) {
       setDialog({ ...d, view: fresh });
       setError(message);
@@ -128,7 +149,10 @@ export function AutomationPanel({
     const { view } = dialog;
     const base = `/automation/${view.productCode}`;
     const reasonNeeded =
-      dialog.kind === "mode" || dialog.kind === "killOn" || dialog.kind === "killOff";
+      dialog.kind === "mode" ||
+      dialog.kind === "external" ||
+      dialog.kind === "killOn" ||
+      dialog.kind === "killOff";
     if (reasonNeeded && !text.trim()) {
       setFieldError("Enter a reason.");
       return;
@@ -140,6 +164,15 @@ export function AutomationPanel({
           body: {
             kind: "SET_MODE",
             mode: dialog.kind === "mode" ? dialog.mode : undefined,
+            reason: text,
+          },
+        }),
+      external: () =>
+        api(`${base}/changes`, {
+          method: "POST",
+          body: {
+            kind: "SET_EXTERNAL_ENGINE",
+            externalEngine: dialog.kind === "external" ? dialog.role : undefined,
             reason: text,
           },
         }),
@@ -165,6 +198,7 @@ export function AutomationPanel({
     };
     const done: Record<Exclude<Dialog, null>["kind"], string> = {
       mode: "Change drafted — waiting for a second administrator",
+      external: "Change drafted — waiting for a second administrator",
       killOn: "Kill switch on — new applications go to manual review",
       killOff: "Request drafted — waiting for a second administrator",
       approve: "Change approved and in effect",
@@ -179,6 +213,7 @@ export function AutomationPanel({
       toast(done[dialog.kind], dialog.kind === "killOn" ? "warn" : "ok");
       setDialog(null);
       setChosen({});
+      setChosenRole({});
       onChanged(next);
     } catch (e) {
       const fields = fieldErrorsOf(e);
@@ -198,6 +233,8 @@ export function AutomationPanel({
     <div className="flex flex-col gap-4">
       {views.map((view) => {
         const modeAction = find(view, "REQUEST_MODE_CHANGE");
+        const roleAction = find(view, "REQUEST_EXTERNAL_ENGINE_CHANGE");
+        const selectedRole = chosenRole[view.productCode] ?? view.externalEngine;
         const killOn = find(view, "KILL_SWITCH_ON");
         const killOff = find(view, "REQUEST_KILL_SWITCH_OFF");
         const approve = find(view, "APPROVE_CHANGE");
@@ -229,6 +266,19 @@ export function AutomationPanel({
                     </span>
                   ),
                 },
+                {
+                  label: "External decision engine",
+                  value: (
+                    <span className="flex flex-wrap items-center gap-2">
+                      <Pill tone={view.externalEngine === "NONE" ? "neutral" : "info"}>
+                        {EXTERNAL_ENGINE_ROLE_LABEL[view.externalEngine]}
+                      </Pill>
+                      <span className="text-xs text-mist-500">
+                        Client decision engine (simulated)
+                      </span>
+                    </span>
+                  ),
+                },
                 ...(view.killSwitch && view.killSwitchSetByName && view.killSwitchSetAt
                   ? [
                       {
@@ -250,7 +300,9 @@ export function AutomationPanel({
                 <span>
                   {pending.kind === "SET_MODE" && pending.requestedMode
                     ? `change from ${AUTOMATION_MODE_LABEL[pending.fromMode]} to ${AUTOMATION_MODE_LABEL[pending.requestedMode]}`
-                    : "turn the kill switch off"}
+                    : pending.kind === "SET_EXTERNAL_ENGINE" && pending.requestedExternalEngine
+                      ? `change the external decision engine from “${EXTERNAL_ENGINE_ROLE_LABEL[pending.fromExternalEngine]}” to “${EXTERNAL_ENGINE_ROLE_LABEL[pending.requestedExternalEngine]}”`
+                      : "turn the kill switch off"}
                   , drafted by {pending.requestedByName} ({formatDateTime(pending.requestedAt)}).
                 </span>
                 <p className="mt-1">Reason: {pending.reason}</p>
@@ -316,6 +368,46 @@ export function AutomationPanel({
                   A change takes effect only when a second administrator approves it.
                 </p>
                 <Blocked availability={modeAction} />
+              </div>
+            )}
+
+            {roleAction && (
+              <div className="mt-5 max-w-sm">
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-48 flex-1">
+                    <Field label={`External decision engine for ${view.productName}`}>
+                      <Select
+                        value={selectedRole}
+                        disabled={!roleAction.enabled}
+                        onChange={(e) =>
+                          setChosenRole((c) => ({
+                            ...c,
+                            [view.productCode]: e.target.value as ExternalEngineRole,
+                          }))
+                        }
+                      >
+                        {EXTERNAL_ENGINE_ROLES.map((r) => (
+                          <option key={r} value={r}>
+                            {EXTERNAL_ENGINE_ROLE_LABEL[r]}
+                          </option>
+                        ))}
+                      </Select>
+                    </Field>
+                  </div>
+                  <Button
+                    variant="primary"
+                    disabled={!roleAction.enabled || selectedRole === view.externalEngine}
+                    onClick={() => open({ kind: "external", view, role: selectedRole })}
+                  >
+                    Draft engine change…
+                  </Button>
+                </div>
+                <p className="mt-1.5 text-xs text-mist-500">
+                  {selectedRole === view.externalEngine
+                    ? ROLE_EFFECT[view.externalEngine]
+                    : `If changed: ${ROLE_EFFECT[selectedRole]}`}
+                </p>
+                <Blocked availability={roleAction} />
               </div>
             )}
 
@@ -386,6 +478,7 @@ export function AutomationPanel({
 
 const CONFIRM: Record<Exclude<Dialog, null>["kind"], string> = {
   mode: "Draft change",
+  external: "Draft change",
   killOn: "Turn on",
   killOff: "Draft request",
   approve: "Approve change",
@@ -398,6 +491,8 @@ function titleOf(d: Exclude<Dialog, null>): string {
   switch (d.kind) {
     case "mode":
       return `Draft a change of ${name} to “${AUTOMATION_MODE_LABEL[d.mode]}”?`;
+    case "external":
+      return `Draft a change of the ${name} external decision engine to “${EXTERNAL_ENGINE_ROLE_LABEL[d.role]}”?`;
     case "killOn":
       return `Turn on the ${name} kill switch?`;
     case "killOff":
@@ -416,14 +511,20 @@ function describeDialog(d: Exclude<Dialog, null>): ReactNode {
   switch (d.kind) {
     case "mode":
       return `${MODE_EFFECT[d.mode]} Nothing changes until a second administrator approves it.`;
+    case "external":
+      return `${ROLE_EFFECT[d.role]}${d.role === "NONE" ? "" : ` ${NEVER_DECLINES}`} Nothing changes until a second administrator approves it.`;
     case "killOn":
       return "Every new application goes to manual review at once, until two administrators turn it off. Applications already decided are not affected.";
     case "killOff":
       return `Automated decisions resume in ${AUTOMATION_MODE_LABEL[d.view.mode].toLowerCase()} once a second administrator approves.`;
     case "approve":
-      return p?.kind === "SET_MODE" && p.requestedMode
-        ? `${d.view.productName} changes from ${AUTOMATION_MODE_LABEL[p.fromMode]} to ${AUTOMATION_MODE_LABEL[p.requestedMode]} now. ${MODE_EFFECT[p.requestedMode]}`
-        : `The kill switch turns off now; automated decisions resume in ${AUTOMATION_MODE_LABEL[d.view.mode].toLowerCase()}.`;
+      if (p?.kind === "SET_MODE" && p.requestedMode) {
+        return `${d.view.productName} changes from ${AUTOMATION_MODE_LABEL[p.fromMode]} to ${AUTOMATION_MODE_LABEL[p.requestedMode]} now. ${MODE_EFFECT[p.requestedMode]}`;
+      }
+      if (p?.kind === "SET_EXTERNAL_ENGINE" && p.requestedExternalEngine) {
+        return `The ${d.view.productName} external decision engine changes from “${EXTERNAL_ENGINE_ROLE_LABEL[p.fromExternalEngine]}” to “${EXTERNAL_ENGINE_ROLE_LABEL[p.requestedExternalEngine]}” now. ${ROLE_EFFECT[p.requestedExternalEngine]}`;
+      }
+      return `The kill switch turns off now; automated decisions resume in ${AUTOMATION_MODE_LABEL[d.view.mode].toLowerCase()}.`;
     case "reject":
     case "withdraw":
       return `${d.view.productName} stays as it is. The request is kept in the history.`;

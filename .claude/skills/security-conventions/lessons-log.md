@@ -93,3 +93,12 @@ usernames from one address that must eventually get 429.
 - An account is "verified" only when it comes from the system of record (core's customer file).
 - Not lint-shaped: it depends on where a value came from, across files.
 - Nearest gate: an e2e test that captures a walk-in with a seeded customer's account and asserts a 400, or a 409 at booking.
+
+## security-20261128-delegated-decline-needs-every-provider
+
+- Lane C batch 5 (DEC-008) added an "instead" role: the external engine's outcome replaces the score and credit rules.
+- `applyExternal` gates an external APPROVE on `bankControls`, which include screening or fraud not answering. An external DECLINE skips that gate and returns AUTO_DECLINE even when the bureau, screening or fraud check was UNAVAILABLE.
+- With the bureau down the engine is sent `bureauScore: null`. The simulated client policy refers on a null score, so every test passed. A real client engine that declines on a missing score would auto-decline because of the bank's own outage, which breaks NFR-005 (non-negotiable 7).
+- Rule: any outcome produced by delegating the decision away from the built-in engine must check that every provider input was answered before it declines; otherwise it refers.
+- Not lint-shaped: it depends on how outcomes combine inside the engine.
+- Nearest gate: an rs-pl-4 unit case per provider (bureau, screening, fraud) set UNAVAILABLE, with INSTEAD and an external DECLINE, expecting REFER.

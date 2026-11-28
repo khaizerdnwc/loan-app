@@ -58,6 +58,7 @@ commit passed the review loop. Blocked items carry the evidence.
 | P30 | PRD backlog #30: email and file intake with simulated OCR producing drafts; OCR and bank statement analysis on received case documents (INT-010, DOC-002, DOC-007, F4) | done (lane D, batch 1) | INT-1..INT-5, OCR-1..OCR-4 (integration incl. refusals with nothing written, every OCR failure mode, forced unique-index paths for the same file twice, INT-007 and a double reading; base unit for the flag and refusal rules; OCR conformance; component; browser journey `intake.spec.ts` written, run at merge) · `packages/base/src/intake/` (entities, repository, intake and extraction services, controller, DTOs) · `CasesService.captureDraft` shared by capture and intake · `DocumentExtraction` port + simulator (ok, outage, timeout, malformed; labelled simulated) and simulated service `DOCUMENT_EXTRACTION` · migration 1764300004000 (`intake_batch` and `document_extraction` insert-only with TRUNCATE guards, `intake_draft` with partial unique indexes and foreign keys, `sim.document_profile`; additive) rehearsed on the populated loan_d_test (revert, migrate, seed twice) and applied after 1764300009000 on a database already at build/mvp's head (then reverted and re-applied) · H-7 integrity test populates the two new insert-only tables · `intake` added to the backoffice proxy's allowed roots · Email and file intake screen, Extracted data (OCR) card · personas Ramil Ocampo, Joy Fernandez, Elmer Santos, Grace Villamor · a row for someone not on record is confirmed after the officer captures them as a walk-in (WI-1); one-step capture from the draft left for later |
 | P33a | PRD backlog #33 (part): eligibility pre-check (PC-008) | done (lane C, batch 4) | EL-1 (unit), EL-2 (integration, component, browser `eligibility.spec.ts` written for the integrator's e2e run) · `decisioning/engine/pre-check.ts` (pure; reuses the decision's affordability function) · `packages/base/src/eligibility/` · no migration · plus the feature-label unit test (MG-2) |
 | U7 | Prototype UI/UX parity, batch 8: pass over Email and file intake, the review dialog, the Extracted data card and the eligibility pre-check (73–81); `Table framed` for tables in a `Card flush`; ui-ux-conventions skill: field-error-needs-its-field, engine-figure-says-basis (app-wide), Card flush | done | U-14 (component) · no API or schema change |
+| P33b | PRD backlog #33 (part): external decision engine option (DEC-008) | done (lane C, batch 5) | EX-1, EX-4 (unit; thirteen frozen RS-PL-4 records replay), EX-2 (integration incl. the role-approval lock and reject/withdraw, component), EX-3 (integration, unit, component: the decision panel says who decided) · `ExternalDecisionEngine` port + simulated client engine · RS-PL-4 (`applyExternal` in `decide.ts`; an external decline during a bank-provider outage refers) · role per product on the automation controls (maker-checker) · migration 1764300003002 forward-only once used · guard and migration run on a real database (28 Nov): on loan_c_test, migrated and seeded with a pending SET_MODE change, 3002's down() ran and up() re-applied on the populated data (the change kept, `from_external_engine` NONE); the new CHECK refused a role change with no role; with a product set to ALONGSIDE, down() refused (1 product using the engine) and changed nothing |
 | M10 | Deploy to the dev environment | waiting | no environment named in the materials; access not received |
 | M11 | Design notes, AI evidence, video script drafts | todo | |
 
@@ -89,6 +90,14 @@ commit passed the review loop. Blocked items carry the evidence.
   398 tests each). Node v24.21.0, @swc/core 1.16.22, @swc/jest 0.2.39. Not reproduced; if it
   recurs, run the notifications suite with `--detectOpenHandles` first and treat it as a
   blocker.
+- 28 Nov — the #23 merge gate failed e2e (NTF-1, REC-1); build/mvp held unpushed. NTF-1 was
+  a real defect (titled Card not a named region; fixed as an opt-in `region` prop, 9651539);
+  REC-1 was CPU starvation (browser froze ~10 s while API calls answered in ~110 ms). Gate
+  re-run on a quiet machine (lanes paused): 25/25, pushed as 7a5dbb4.
+- 28 Nov 17:43–22:02 Manila — paused at the 5-hour usage limit; auto-continue did not fire at
+  the 21:30 reset; resumed by a manual continue; lanes and eleven reviewers relaunched per
+  rule 11, no lost work. loan-app-cb now runs a watchdog that sends "continue" 3 minutes
+  after a reset if this session is silent.
 
 ## Blocked / waiting
 

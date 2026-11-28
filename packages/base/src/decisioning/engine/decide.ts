@@ -20,7 +20,9 @@ import type {
  * Order (PRD 7.1): knockouts first (they end the pipeline and cannot be overridden by the
  * score), then the score and its band, then referral triggers that send a case to a person
  * whatever the score. A provider that could not answer degrades to a referral, never to a
- * decline (PRD NFR-005). Last, the product's automation mode (PRD §7.5), an input like the
+ * decline (PRD NFR-005). Then, from RS-PL-4, the external decision engine's stored answer
+ * where the product uses one (PRD DEC-008, `applyExternal`). Last, the product's automation
+ * mode (PRD §7.5), an input like the
  * rest: unless automation is live and the kill switch is off, the case goes to a person and
  * the engine's own outcome is kept beside it (`engineOutcome`).
  */
@@ -35,13 +37,22 @@ export function decide(inputs: DecisionInputs, versions: DecisionVersions): Deci
   if (!rs.automationModes && inputs.automation) {
     throw new Error(`Rule set ${rs.version} does not apply automation modes`);
   }
+  // The same both ways for the external engine (RS-PL-4 on).
+  if (rs.externalEngine && !inputs.external) {
+    throw new Error(
+      `Rule set ${rs.version} needs the external decision engine role in the decision inputs`,
+    );
+  }
+  if (!rs.externalEngine && inputs.external) {
+    throw new Error(`Rule set ${rs.version} does not call an external decision engine`);
+  }
   const sc = scorecard(versions.scorecard);
   const withEstimates: DecisionResult = {
     ...byRules,
     engineOutcome: byRules.outcome,
     ...estimates(byRules.grade, inputs, rs, sc),
   };
-  return applyAutomation(withEstimates, inputs.automation);
+  return applyAutomation(applyExternal(withEstimates, inputs), inputs.automation);
 }
 
 type RulesResult = Omit<DecisionResult, "engineOutcome" | "pd" | "recommendedAmount">;
@@ -441,6 +452,154 @@ const OUTCOME_WORDS: Record<DecisionOutcome, string> = {
   REFER: "refer",
   AUTO_DECLINE: "auto-decline",
 };
+
+/** The external engine's answer as a decision outcome (one table: the engine and the views). */
+export const EXTERNAL_OUTCOME: Record<"APPROVE" | "REFER" | "DECLINE", DecisionOutcome> = {
+  APPROVE: DecisionOutcome.Approve,
+  REFER: DecisionOutcome.Refer,
+  DECLINE: DecisionOutcome.Decline,
+};
+
+/**
+ * The bank's own controls that stand when the external engine decides instead of the score:
+ * a failed rule here refers an external approval. The credit rules it replaces (score band,
+ * debt-to-income, file depth, income mismatch, bureau answered) do not.
+ */
+function bankControls(result: DecisionResult, inputs: DecisionInputs): ReasonCode[] {
+  const controls: ReasonCode[] = [];
+  for (const r of result.ruleResults) {
+    if (r.id === "RF-AMOUNT" && r.result === "FAIL") controls.push(REASONS.amountAboveAutoLimit);
+    if (r.id === "RF-RELATED" && r.result === "FAIL") controls.push(REASONS.relatedParty);
+    if (r.id === "RF-FRAUD" && r.result === "FAIL") controls.push(REASONS.fraudFlag);
+    if (r.id === "RF-FRAUD" && r.result === "NOT_EVALUATED") {
+      controls.push(REASONS.fraudUnavailable);
+    }
+  }
+  if (inputs.screening.status === "UNAVAILABLE") controls.push(REASONS.screeningUnavailable);
+  return controls;
+}
+
+/** The bank's own decision providers that could not answer, as their outage reasons. */
+function bankOutages(inputs: DecisionInputs): ReasonCode[] {
+  const outages: ReasonCode[] = [];
+  if (inputs.bureau.status === "UNAVAILABLE") outages.push(REASONS.bureauUnavailable);
+  if (inputs.screening.status === "UNAVAILABLE") outages.push(REASONS.screeningUnavailable);
+  if (inputs.fraud?.status === "UNAVAILABLE") outages.push(REASONS.fraudUnavailable);
+  return outages;
+}
+
+/**
+ * The external decision engine (PRD DEC-008), applied to what the rules and the score decided
+ * and before the automation mode. Role NONE (or a version without the step): unchanged.
+ *
+ * - A knockout declines whatever the external engine says: knockouts are the bank's policy.
+ * - ALONGSIDE: the two outcomes agree, it stands; they disagree, a person decides.
+ * - INSTEAD: the external outcome replaces the score and the credit rules. An external
+ *   approval still refers when a bank control fired (`bankControls`), or when there is no
+ *   built-in grade to price the loan; an external decline refers when the bank's bureau,
+ *   screening or fraud check did not answer (`bankOutages`, NFR-005).
+ * - Either role: an engine that could not answer refers, never declines (NFR-005).
+ *
+ * The result's `engineOutcome` is the combined outcome: what automation would apply.
+ */
+function applyExternal(result: DecisionResult, inputs: DecisionInputs): DecisionResult {
+  const ext = inputs.external;
+  if (!ext || ext.role === "NONE") return result;
+  const name =
+    ext.role === "ALONGSIDE"
+      ? "External decision engine agrees with the built-in engine"
+      : "External decision engine approves (used instead of the score)";
+  // The client's codes are its own identifiers, named as such; the reference comes last
+  // ("ref …") so the panel can set it apart.
+  const answer =
+    ext.status === "OK"
+      ? `${OUTCOME_WORDS[EXTERNAL_OUTCOME[ext.decision]]}${ext.reasonCodes.length > 0 ? `; client codes: ${ext.reasonCodes.join(", ")}` : ""}; ref ${ext.reference}`
+      : `external engine unavailable: ${ext.reason}`;
+  const withRule = (outcome: RuleResult["result"], value = answer): RuleResult[] => [
+    ...result.ruleResults,
+    { id: "EX-ENGINE", name, kind: "REFERRAL", result: outcome, value },
+  ];
+  const decided = (
+    outcome: DecisionOutcome,
+    reasons: ReasonCode[],
+    ruleResults: RuleResult[],
+    leadTrigger?: string,
+  ): DecisionResult => {
+    const unique = reasons.filter((r, i) => reasons.findIndex((x) => x.code === r.code) === i);
+    const refer = outcome === DecisionOutcome.Refer;
+    return {
+      ...result,
+      outcome,
+      engineOutcome: outcome,
+      ruleResults,
+      reasonCodes: unique,
+      // One trigger per reason, in order; the first may carry more detail than its wording.
+      referralTriggers: refer
+        ? unique.map((r, i) => (i === 0 && leadTrigger ? leadTrigger : r.staff))
+        : [],
+    };
+  };
+
+  if (result.ruleResults.some((r) => r.kind === "KNOCKOUT" && r.result === "FAIL")) {
+    return {
+      ...result,
+      ruleResults: withRule("NOT_EVALUATED", `${answer}; a knockout declines whatever it says`),
+    };
+  }
+
+  if (ext.role === "ALONGSIDE") {
+    if (ext.status === "UNAVAILABLE") {
+      return decided(
+        DecisionOutcome.Refer,
+        [REASONS.externalUnavailable, ...result.reasonCodes],
+        withRule("NOT_EVALUATED"),
+      );
+    }
+    const theirs = EXTERNAL_OUTCOME[ext.decision];
+    if (theirs === result.outcome) return { ...result, ruleResults: withRule("PASS") };
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalDisagrees, ...result.reasonCodes],
+      withRule("FAIL"),
+      `${REASONS.externalDisagrees.staff} (built-in: ${OUTCOME_WORDS[result.outcome]}; external: ${OUTCOME_WORDS[theirs]})`,
+    );
+  }
+
+  // INSTEAD
+  const controls = bankControls(result, inputs);
+  if (ext.status === "UNAVAILABLE") {
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalUnavailable, ...controls],
+      withRule("NOT_EVALUATED"),
+    );
+  }
+  if (ext.decision === "DECLINE") {
+    // A bank provider that did not answer turns the decline into a referral (NFR-005): the
+    // client's decline was made without the bank's own bureau, screening or fraud result.
+    const outages = bankOutages(inputs);
+    if (outages.length > 0) {
+      return decided(
+        DecisionOutcome.Refer,
+        [...outages, REASONS.externalDeclined, ...controls],
+        withRule("FAIL"),
+      );
+    }
+    return decided(DecisionOutcome.Decline, [REASONS.externalDeclined], withRule("FAIL"));
+  }
+  if (ext.decision === "REFER") {
+    return decided(
+      DecisionOutcome.Refer,
+      [REASONS.externalReferred, ...controls],
+      withRule("FAIL"),
+    );
+  }
+  if (controls.length > 0) return decided(DecisionOutcome.Refer, controls, withRule("PASS"));
+  if (result.grade === null) {
+    return decided(DecisionOutcome.Refer, [REASONS.externalNoGrade], withRule("PASS"));
+  }
+  return decided(DecisionOutcome.Approve, [], withRule("PASS"));
+}
 
 /**
  * The product's automation mode and kill switch (PRD §7.5). Live with the switch off: the

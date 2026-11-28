@@ -236,8 +236,24 @@ describe("score bands and referral triggers (D-4, D-5, D-6, D-7)", () => {
       ...MARIA_F1,
       automation: { mode, killSwitch },
     });
+    const ext = (
+      role: "ALONGSIDE" | "INSTEAD",
+      decision: "APPROVE" | "REFER" | "DECLINE" | null,
+      base: DecisionInputs = MARIA_F1,
+    ): DecisionInputs => ({
+      ...base,
+      external:
+        decision === null
+          ? { role, status: "UNAVAILABLE", reason: "outage" }
+          : { role, status: "OK", decision, reasonCodes: [], reference: "EXT-1" },
+    });
     const seen = new Set<string>();
     for (const p of [
+      ext("ALONGSIDE", null),
+      ext("ALONGSIDE", "DECLINE"),
+      ext("INSTEAD", "REFER"),
+      ext("INSTEAD", "DECLINE"),
+      ext("INSTEAD", "APPROVE", bureauDown),
       mismatch,
       related,
       fraudFlag,

@@ -2,6 +2,7 @@
 
 Ungated lessons only, one per line, newest first. Load only the ones for your files: `pnpm lessons for <files> --role ui-ux`. Full story: `pnpm lessons show <id>`. Enforced lessons are not listed; the rule's message is the lesson.
 
+- [ui-ux-20261128-panel-names-the-decider] paths: apps/backoffice/src/components/case/** · shape: test-candidate · When a new source can decide a case, the decision panel names it and its Simulated label lists it. Check: an outcome from the client engine is not shown under a built-in score band alone.
 - [ui-ux-20261128-field-error-needs-its-field] paths: apps/backoffice/src/** · shape: test-candidate · A field error the API can return is shown even when its input is not rendered. Check: each field error the endpoint sends shows in every form branch, or in the error callout.
 - [ui-ux-20261128-no-figure-below-minimum] paths: apps/backoffice/src/** · shape: test-candidate · A statistic computed on fewer cases than its minimum is not shown as a figure beside its thresholds. Check: under an "insufficient data" status, the value reads "not computed" with the counts.
 - [ui-ux-20261128-engine-figure-says-basis] paths: apps/backoffice/src/** · shape: test-candidate · An engine figure is named as the engine's, not with a staff action's word, says it is indicative, and puts its edge value in words. Check: no "Recommended …" engine figure; a zero reads as a sentence.

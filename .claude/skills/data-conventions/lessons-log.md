@@ -40,6 +40,21 @@ reported as a finding, or reported as an orphan. It never drops a record through
 the rail's payment under that key. A payout with no account behind it, which is exactly what
 reconciliation exists to catch, would leave no trace, and the summary would still add up.
 Pin it with a unit property: matched + findings referencing each feed record = feed length.
+## data-20261128-outage-refer-survives-override
+
+NFR-005 (outages degrade to referral, never decline) is enforced inside the built-in rules, so a
+later engine step that *replaces* the outcome (an external engine used instead, an override
+table, a champion/challenger swap) silently bypasses it. Such a step must itself turn a
+replacing DECLINE into REFER whenever any input provider in the snapshot was UNAVAILABLE.
+Why: the replacing answer may have been produced from the very gap the outage left (a null
+bureau score, no screening), and the simulator being well-behaved does not make the engine
+safe against a real provider that declines on missing data. Nearest deterministic
+alternative: a table test over every UNAVAILABLE input × each replacing outcome.
+
+- 2026-11-28 — Lane C batch 5 (DEC-008, RS-PL-4). `applyExternal` INSTEAD returns AUTO_DECLINE
+  on an external DECLINE even with the bureau, screening or fraud check unavailable; only the
+  simulator's own "no score → REFER" kept it from showing. Found by the data reviewer.
+
 ## data-20261128-history-joins-the-record-it-acted-on
 
 An activity event that acts on a specific decision (a recommendation, an override, an

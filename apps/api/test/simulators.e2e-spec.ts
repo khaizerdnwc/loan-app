@@ -13,6 +13,9 @@ import {
   type DocumentIntake,
   E_SIGNATURE,
   type ESignature,
+  EXTERNAL_DECISION_ENGINE,
+  type ExternalDecisionEngine,
+  type ExternalDecisionRequest,
   FRAUD_CHECK,
   type FraudCheck,
   KYC_AML,
@@ -37,6 +40,47 @@ afterAll(async () => {
 });
 afterEach(async () => {
   await h.ds.query("TRUNCATE sim.service_mode");
+});
+
+/** What the decision sends the external engine (Maria's figures unless changed). */
+const externalRequest = (
+  patch: Partial<ExternalDecisionRequest> = {},
+): ExternalDecisionRequest => ({
+  applicantId: "APL-MARIA",
+  productCode: "PL",
+  amount: "150000.00",
+  tenorMonths: 24,
+  monthlyIncome: "78000.00",
+  monthlyObligations: "9000.00",
+  bureauScore: 748,
+  ...patch,
+});
+
+describe("the simulated client decision engine (PRD DEC-008, EX-3)", () => {
+  it("applies its own synthetic policy, labelled simulated, with a stable reference", async () => {
+    const engine = h.app.get<ExternalDecisionEngine>(EXTERNAL_DECISION_ENGINE);
+    const approve = await engine.evaluate(externalRequest());
+    expect(approve).toMatchObject({
+      provider: "Client decision engine (simulated)",
+      mode: "SIMULATED",
+      decision: "APPROVE",
+      reasonCodes: [],
+    });
+    expect((await engine.evaluate(externalRequest())).reference).toBe(approve.reference);
+    for (const [patch, decision, code] of [
+      [{ bureauScore: 559 }, "DECLINE", "EXT-LOW-SCORE"],
+      [{ bureauScore: 560 }, "REFER", "EXT-SCORE-REVIEW"],
+      [{ bureauScore: 639 }, "REFER", "EXT-SCORE-REVIEW"],
+      [{ bureauScore: null }, "REFER", "EXT-NO-SCORE"],
+      [{ monthlyIncome: "0.00" }, "REFER", "EXT-NO-INCOME"],
+      // 45% of ₱78,000 is ₱35,100: at the cap approves, one centavo over refers.
+      [{ monthlyObligations: "35100.00" }, "APPROVE", undefined],
+      [{ monthlyObligations: "35100.01" }, "REFER", "EXT-HIGH-OBLIGATIONS"],
+    ] as const) {
+      const r = await engine.evaluate(externalRequest(patch));
+      expect([r.decision, r.reasonCodes[0]]).toEqual([decision, code]);
+    }
+  });
 });
 
 const maria = {
@@ -394,6 +438,9 @@ describe("simulated providers conform to their ports", () => {
     ["FRAUD", "OUTAGE"],
     ["FRAUD", "TIMEOUT"],
     ["FRAUD", "MALFORMED"],
+    ["EXTERNAL_DECISION", "OUTAGE"],
+    ["EXTERNAL_DECISION", "TIMEOUT"],
+    ["EXTERNAL_DECISION", "MALFORMED"],
   ])(
     "%s in %s fails with ProviderUnavailableError, never a wrong answer",
     async (service, mode) => {
@@ -424,6 +471,8 @@ describe("simulated providers conform to their ports", () => {
             documentTitle: "d",
           }),
         FRAUD: () => h.app.get<FraudCheck>(FRAUD_CHECK).assess(maria),
+        EXTERNAL_DECISION: () =>
+          h.app.get<ExternalDecisionEngine>(EXTERNAL_DECISION_ENGINE).evaluate(externalRequest()),
       }[service as "CREDIT_BUREAU"];
       const err = await call().catch((e: unknown) => e);
       expect(err).toBeInstanceOf(ProviderUnavailableError);
@@ -501,6 +550,7 @@ describe("simulation controls", () => {
       "DISBURSEMENT",
       "DOCUMENT_EXTRACTION",
       "DOCUMENT_INTAKE",
+      "EXTERNAL_DECISION",
       "E_SIGNATURE",
       "FRAUD",
       "KYC_AML",
