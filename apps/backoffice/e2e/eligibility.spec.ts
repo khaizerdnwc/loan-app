@@ -23,6 +23,17 @@ test("EL-2 the loan officer pre-checks stated figures: likely eligible, with the
 
   await expect(page.getByText("Likely eligible")).toBeVisible();
   await expect(page.getByRole("list", { name: "Policy checks" })).toContainText("Applicant age");
-  await expect(page.getByText("Affordable at the best rate")).toBeVisible();
+  // The engine's affordable figures, labelled with their basis (Maria's ₱150,000 fits at every rate).
+  const best = page.getByText("Affordable amount (engine), best grade rate", { exact: true });
+  await expect(best).toBeVisible();
+  await expect(best.locator("xpath=following-sibling::dd[1]")).toHaveText("₱150,000.00");
+  await expect(
+    page.getByText("Affordable amount (engine), highest grade rate", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByText(
+      /^Indicative: the most these figures can repay within the debt-service limit of .+, up to the amount asked\. Not an offer\.$/,
+    ),
+  ).toBeVisible();
   await expect(page.getByText(/not a decision or an offer/)).toBeVisible();
 });
