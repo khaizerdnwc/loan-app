@@ -6,10 +6,12 @@ export const dynamic = "force-dynamic";
 type Context = { params: Promise<{ path: string[] }> };
 
 /** The API's top-level routes the backoffice may reach; anything else is not forwarded. */
-const ALLOWED_ROOTS = new Set([
+export const ALLOWED_ROOTS: ReadonlySet<string> = new Set([
   "auth",
   "cases",
   "applicants",
+  "customers",
+  "loan-officers",
   "products",
   "decisions",
   "simulation",

@@ -30,13 +30,13 @@ test("WI-1 and QR-1 a walk-in is captured by hand, referred to the team queue, p
 }) => {
   await newApplication(page);
   await dialog(page).getByRole("button", { name: "New to the bank" }).click();
-  await dialog(page).getByLabel("Full name").fill("Rogelio Santiago");
-  await dialog(page).getByLabel("Birth date").fill("1988-06-12");
-  await dialog(page).getByLabel("Government ID (last 4 digits)").fill("4410");
-  await dialog(page).getByLabel("Employer").fill("Bulacan Hardware Trading");
-  await dialog(page).getByLabel("Months with employer").fill("36");
-  await dialog(page).getByLabel("Monthly income (pesos)").fill("52000");
-  await dialog(page).getByLabel("Monthly obligations (pesos)").fill("6000");
+  await dialog(page).getByLabel("Full name", { exact: true }).fill("Rogelio Santiago");
+  await dialog(page).getByLabel("Birth date", { exact: true }).fill("1988-06-12");
+  await dialog(page).getByLabel("Government ID (last 4 digits)", { exact: true }).fill("4410");
+  await dialog(page).getByLabel("Employer", { exact: true }).fill("Bulacan Hardware Trading");
+  await dialog(page).getByLabel("Months with employer", { exact: true }).fill("36");
+  await dialog(page).getByLabel("Monthly income (pesos)", { exact: true }).fill("52000");
+  await dialog(page).getByLabel("Monthly obligations (pesos)", { exact: true }).fill("6000");
   await dialog(page).getByRole("button", { name: "Add applicant" }).click();
   await expect(dialog(page)).toBeHidden();
   await expect(page.getByLabel("Applicant", { exact: true })).toHaveValue(/^APL-W/);
@@ -50,8 +50,8 @@ test("WI-1 and QR-1 a walk-in is captured by hand, referred to the team queue, p
   await expect(page.getByTestId("case-owner")).toContainText("Owner Paolo Tan");
 
   await page.getByRole("button", { name: "Reassign" }).click();
-  await dialog(page).getByLabel("New owner").selectOption("STF-JOY");
-  await dialog(page).getByLabel("Reason").fill("Paolo is on leave from Monday.");
+  await dialog(page).getByLabel("New owner", { exact: true }).selectOption("STF-JOY");
+  await dialog(page).getByLabel("Reason", { exact: true }).fill("Paolo is on leave from Monday.");
   await dialog(page).getByRole("button", { name: "Reassign" }).click();
   await expect(page.getByTestId("case-owner")).toContainText("Owner Joy Dela Cruz");
 
@@ -73,7 +73,7 @@ test("WI-1 and QR-1 a walk-in is captured by hand, referred to the team queue, p
 
 test("WI-1 an existing customer is pre-filled from simulated core banking", async ({ page }) => {
   await newApplication(page);
-  await dialog(page).getByLabel("Customer number").fill("CIF-100412");
+  await dialog(page).getByLabel("Customer number", { exact: true }).fill("CIF-100412");
   await dialog(page).getByRole("button", { name: "Find in core" }).click();
   const found = dialog(page).getByTestId("core-customer");
   await expect(found).toContainText("Celeste Navarro");
