@@ -33,5 +33,6 @@ export { moneyColumn, moneyTransformer } from "./database/money.transformer";
 export * from "./decisioning/engine";
 export { IntakeRepository } from "./intake/intake.repository";
 export { LendingModule, type LendingModuleOptions } from "./lending.module";
+export { ProviderGateway } from "./providers/provider-gateway.service";
 export { ProvidersRepository } from "./providers/providers.repository";
 export { SEED_APPLICANTS, SEED_STAFF, SEED_TEST_PASSWORD, seed } from "./seed/seed";

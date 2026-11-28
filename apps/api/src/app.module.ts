@@ -14,6 +14,8 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { SimulatedProvidersModule } from "./adapters/simulated/simulated-providers.module";
 import { env } from "./config/env";
 import { ExpirySweep } from "./expiry-sweep";
+import { HttpMetrics, METRICS_ENABLED } from "./observability/http-metrics";
+import { MetricsController } from "./observability/metrics.controller";
 import { signInAccountGlobalTracker, signInAccountTracker } from "./sign-in-trackers";
 import { SessionThrottlerGuard } from "./throttler.guard";
 
@@ -79,11 +81,14 @@ class HealthController {
       },
     }),
   ],
-  controllers: [HealthController],
+  controllers: [HealthController, MetricsController],
   providers: [
     { provide: APP_GUARD, useClass: SessionThrottlerGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
     ExpirySweep,
+    // Request metrics (written by the request-log middleware in app.ts, read by GET /metrics).
+    HttpMetrics,
+    { provide: METRICS_ENABLED, useFactory: () => env().METRICS_ENABLED },
   ],
 })
 export class AppModule {}

@@ -100,8 +100,11 @@ const HANDLER = /@(?:Get|Post|Put|Patch|Delete)\(\s?["'`]([^"'`]+)["'`]/g;
  * Served on purpose but never through the proxy:
  * - health: the platform's liveness probe calls the API directly; the backoffice has no use
  *   for it, and keeping it out of the proxy keeps the browser-facing surface minimal.
+ * - metrics: Prometheus scrapes the API on its private network (and it is off unless
+ *   METRICS_ENABLED=true); through the proxy it would publish request counts and provider
+ *   health to anyone with a browser.
  */
-const NOT_PROXIED = new Set(["health"]);
+const NOT_PROXIED = new Set(["health", "metrics"]);
 
 function rootsServed(): Map<string, string> {
   const roots = new Map<string, string>();

@@ -114,6 +114,37 @@ describe("the /api/* proxy", () => {
     expect(sent().init.signal).toBeInstanceOf(AbortSignal);
   });
 
+  it("forwards a well-formed request id and echoes the API's", async () => {
+    fetchMock.mockResolvedValueOnce(
+      new Response("{}", { status: 200, headers: { "x-request-id": "req-from-api-1" } }),
+    );
+    const res = await call(GET, ["cases"], { headers: { "x-request-id": "browser-req-42" } });
+    expect(sent().init.headers.get("x-request-id")).toBe("browser-req-42");
+    expect(res.headers.get("x-request-id")).toBe("req-from-api-1");
+  });
+
+  it.each([
+    ["missing", undefined],
+    ["too short", "abc"],
+    ["with spaces and quotes", 'x" y'],
+    ["too long", "a".repeat(65)],
+  ])(
+    "replaces a %s request id with a new one, and echoes it when the API sends none",
+    async (_l, id) => {
+      const res = await call(GET, ["cases"], { headers: id ? { "x-request-id": id } : {} });
+      const forwarded = sent().init.headers.get("x-request-id") as string;
+      expect(forwarded).toMatch(/^[0-9a-f-]{36}$/);
+      expect(res.headers.get("x-request-id")).toBe(forwarded);
+    },
+  );
+
+  it("puts the request id on its own problem answers too (502)", async () => {
+    fetchMock.mockRejectedValueOnce(new TypeError("fetch failed"));
+    const res = await call(GET, ["cases"], { headers: { "x-request-id": "browser-req-43" } });
+    expect(res.status).toBe(502);
+    expect(res.headers.get("x-request-id")).toBe("browser-req-43");
+  });
+
   it("behind one trusted balancer, passes on only the address it appended", async () => {
     vi.stubEnv("WEB_TRUST_PROXY_HOPS", "1");
     resetEnvForTests();
@@ -142,10 +173,11 @@ describe("the /api/* proxy", () => {
   it("refuses a body over the cap with 413, without calling the API", async () => {
     const res = await call(POST, ["cases"], {
       method: "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-request-id": "browser-req-413" },
       body: "x".repeat(MAX_REQUEST_BODY_BYTES + 1),
     });
     expect(res.status).toBe(413);
+    expect(res.headers.get("x-request-id")).toBe("browser-req-413");
     expect(res.headers.get("content-type")).toBe("application/problem+json");
     expect(await res.json()).toMatchObject({ status: 413, code: "VALIDATION_FAILED" });
     expect(fetchMock).not.toHaveBeenCalled();
@@ -188,6 +220,7 @@ describe("the /api/* proxy", () => {
       const request = new NextRequest("http://office.test/api/cases", {
         method: "POST",
         body: stalled,
+        headers: { "x-request-id": "browser-req-504" },
         duplex: "half",
         // Node's fetch needs duplex for a stream body; Next's RequestInit type does not list it.
       } as unknown as ConstructorParameters<typeof NextRequest>[1]);
@@ -202,6 +235,7 @@ describe("the /api/* proxy", () => {
       await vi.advanceTimersByTimeAsync(1);
       const res = await pending;
       expect(res.status).toBe(504);
+      expect(res.headers.get("x-request-id")).toBe("browser-req-504");
       expect(res.headers.get("content-type")).toBe("application/problem+json");
       expect(await res.json()).toMatchObject({ status: 504, code: "PROVIDER_UNAVAILABLE" });
       expect(cancelled).toBe(true);

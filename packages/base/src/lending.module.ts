@@ -132,7 +132,7 @@ export class LendingModule {
         EligibilityService,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
-      exports: [SessionGuard, JwtModule, ExpiryService],
+      exports: [SessionGuard, JwtModule, ExpiryService, ProviderGateway],
     };
   }
 }
