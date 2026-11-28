@@ -4,6 +4,19 @@ Full narratives, newest first. **Not loaded** by any skill or agent: the loaded,
 one-liners are in `lessons.md`. Read one entry with `pnpm lessons show <id>`, or every entry a
 rule enforces with `pnpm lessons show house/<rule>`. A `Gate:` line means a machine enforces it.
 
+## data-20261128-case-id-column-needs-fk
+
+Gate: test: apps/api/test/integrity.e2e-spec.ts (every case_id column, read from the catalogue, is a NO ACTION foreign key to loan_case)
+
+Every new `case_id` (or other `<parent>_id`) column referencing a lending row gets a NO ACTION foreign key in the
+migration that creates it. Why: H7 made every child reference a key, but its test checks a
+fixed list of eleven constraint names (`integrity.e2e-spec.ts`), so a new table escapes it.
+Lane B #23 (2026-11-28) added `staff_notification.case_id` and `notification_delivery.case_id`
+without keys. `NotificationRepository.pending()` silently skips a delivery whose case is
+missing, and that row then stays PENDING at the head of the oldest-first `take(50)`. Nearest
+deterministic gate: an integration assertion over `information_schema.columns` (every `case_id`
+uuid column in `public` has a `pg_constraint` FK), not a named list.
+
 ## data-20261128-queue-filter-before-limit
 
 A work queue's filter (status = pending, owner, product) is part of the query, applied before
@@ -18,6 +31,8 @@ pending row and asserts the pending row is listed.
   Found by the data reviewer.
 
 ## data-20261128-reconcile-every-feed-record
+
+Gate: test: packages/base/test/operations/reconcile.test.ts
 
 A reconciliation accounts for every record in every feed exactly once: it is matched,
 reported as a finding, or reported as an orphan. It never drops a record through a `continue`. Why: in Lane B's

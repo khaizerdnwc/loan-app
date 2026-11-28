@@ -5,6 +5,7 @@ export * from "./domain";
 export * from "./governance";
 export * from "./intake";
 export * from "./money";
+export * from "./notifications";
 export * from "./operations";
 export * from "./problem";
 export * from "./providers";

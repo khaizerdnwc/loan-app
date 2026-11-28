@@ -174,6 +174,7 @@ export async function resetModes(page: Page): Promise<void> {
       "FRAUD",
       "DOCUMENT_INTAKE",
       "CUSTOMER_LOOKUP",
+      "NOTIFICATIONS",
       "DOCUMENT_EXTRACTION",
     ];
     const out: number[] = [];

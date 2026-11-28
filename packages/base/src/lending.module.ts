@@ -39,6 +39,10 @@ import { IntakeController } from "./intake/intake.controller";
 import { IntakeRepository } from "./intake/intake.repository";
 import { IntakeService } from "./intake/intake.service";
 import { LENDING_OPTIONS, type LendingModuleOptions } from "./lending.options";
+import { NotificationRepository } from "./notifications/notification.repository";
+import { NotificationService } from "./notifications/notification.service";
+import { NotificationReadsService } from "./notifications/notification-reads.service";
+import { NotificationsController } from "./notifications/notifications.controller";
 import { OperationsController } from "./operations/operations.controller";
 import { OperationsRepository } from "./operations/operations.repository";
 import { OperationsService } from "./operations/operations.service";
@@ -88,6 +92,7 @@ export class LendingModule {
         ReportsController,
         SlaController,
         TurnaroundController,
+        NotificationsController,
         ProvidersController,
         GovernanceController,
         IntakeController,
@@ -119,6 +124,9 @@ export class LendingModule {
         ReportsService,
         SlaRepository,
         SlaService,
+        NotificationRepository,
+        NotificationService,
+        NotificationReadsService,
         ProvidersRepository,
         ProviderGateway,
         GovernanceRepository,
@@ -128,7 +136,14 @@ export class LendingModule {
         ExtractionService,
       ],
       // ExpiryService: the API's composition root schedules the expiry sweep (expireStale).
-      exports: [SessionGuard, JwtModule, ExpiryService],
+      // NotificationService and NotificationReadsService: likewise the notification sweep.
+      exports: [
+        SessionGuard,
+        JwtModule,
+        ExpiryService,
+        NotificationService,
+        NotificationReadsService,
+      ],
     };
   }
 }

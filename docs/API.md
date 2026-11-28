@@ -98,6 +98,9 @@ to the API with the cookie, so the session stays first-party. Tests may send
 | GET | /sla/cases?view=queue\|all | loan officer, approver, loan operations, supervisor, compliance | `SlaView[]`: the stage clock of each case in the caller's queue (or all it can see) that is in a stage with an SLA |
 | GET | /sla/cases/:id | same, and the case's own visibility (404 outside it) | `CaseSlaView` `{ sla: SlaView \| null, holidayCalendarEnds }` (sla null for a stage without an SLA) |
 | GET | /reports/turnaround?from=&to= | loan officer, approver, compliance, admin | `TurnaroundReport`: business time per stage for visits ending in the period, open cases by SLA state, holidays skipped, `holidayCalendarEnds` (served by the sla/ module's `TurnaroundController`) |
+| GET | /notifications | every role | `StaffNotificationList` `{ items, unread }`: the caller's alerts (addressed to them or to their role), newest first, at most 50; each with `readAt` and `readByName` |
+| POST | /notifications/:id/read | every role (its own alerts only: 404 otherwise) | `StaffNotificationView` with `readAt`; idempotent; an alert for a role is read for the whole role |
+| GET | /notifications/cases/:id | loan officer, approver, loan operations, supervisor, compliance, and the case's own visibility (404 outside it) | `BorrowerMessageView[]`: the case's borrower messages (channel, template, words, status PENDING/SENT/FAILED, attempts, simulated reference, failure kind), newest first |
 | GET | /reports/funnel?from=&to= | loan officer, approver, compliance, admin | `OriginationFunnelReport` (same period rules) |
 | GET | /intake/drafts?view=pending\|all | loan officer, compliance | `IntakeDraftView[]` (default pending: waiting for review), newest upload first; `actions` (CONFIRM, DISCARD) only for the loan officer while pending |
 | GET | /intake/drafts/:id | loan officer, compliance | `IntakeDraftView` |

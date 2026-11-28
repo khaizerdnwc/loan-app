@@ -48,8 +48,8 @@ this (`pnpm deps:check`, part of the `static` stage).
   folders `auth/`, `cases/`, `simulation/`, `compliance/` (AML escalations), `audit/` (the
   hash-chained audit log), `automation/` (product automation mode and kill switch), `operations/`
   (booking exceptions, reconciliation), `reports/` (read-only aggregates), `sla/` (stage SLAs,
-  business time), `intake/` (email and file intake drafts and OCR readings, which only feed the
-  case aggregate), `providers/` (the
+  business time), `notifications/` (staff alerts, borrower messages), `intake/` (email and
+  file intake drafts and OCR readings, which only feed the case aggregate), `providers/` (the
   decision's provider gateway: retry, circuit breaker, bureau reuse, cost counter), `governance/`
   (model registry, override and drift monitoring, read-only) and the pure
   `decisioning/engine/`. Every case service works on one aggregate (the loan case) through one
@@ -62,8 +62,18 @@ this (`pnpm deps:check`, part of the `static` stage).
   `audit/` ← `compliance/` ← `cases/` ← `operations/`, `sla/`; `reports/` ← `sla/` (sla/ uses
   the report period rules; reports/ never imports sla/, and the turnaround route, though under
   /reports, is declared in sla/); `cases/` ← `intake/` (intake/ uses cases/; nothing in cases/
-  imports intake/). It exports only `SessionGuard`,
-  `JwtModule` and `ExpiryService` (for the API's expiry-sweep timer).
+  imports intake/). `notifications/` (staff alerts, the borrower-message outbox
+  and its sender) is **the one allowed two-way folder pair**, `cases/` ↔ `notifications/`,
+  and only through two edges: `cases/activity.service.ts` → `notifications/notification.service.ts`,
+  and `notifications/notification.repository.ts` → `cases/entities/loan-case.entity.ts` (an
+  entity read). `notification.service.ts` and `notification.repository.ts` never import a
+  `cases/` service (that would be a DI cycle through ActivityService); they depend only on the
+  repository, the transaction runner and the `NOTIFICATIONS` port. Nothing in `cases/` imports
+  `notification-reads.service.ts`, which may use `cases/` (visibility) and `sla/` (clocks) and
+  is imported only by its controller and the API's sweep. No provider call inside `tx.run`: the outbox row is
+  written in the case's transaction and sent later. It exports only `SessionGuard`,
+  `JwtModule`, `ExpiryService` (for the API's expiry-sweep timer) and `NotificationService`
+  and `NotificationReadsService` (for the API's notification sweep).
 - The decision engine is pure (no Nest, no I/O) and versioned, so it can be unit-tested and
   re-run to reproduce a decision.
 - The case lifecycle is **one transition table** (`cases/lifecycle.ts`): a status is written

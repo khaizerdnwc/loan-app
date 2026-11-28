@@ -14,6 +14,7 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { SimulatedProvidersModule } from "./adapters/simulated/simulated-providers.module";
 import { env } from "./config/env";
 import { ExpirySweep } from "./expiry-sweep";
+import { NotificationSweep } from "./notification-sweep";
 import { signInAccountGlobalTracker, signInAccountTracker } from "./sign-in-trackers";
 import { SessionThrottlerGuard } from "./throttler.guard";
 
@@ -84,6 +85,7 @@ class HealthController {
     { provide: APP_GUARD, useClass: SessionThrottlerGuard },
     { provide: APP_GUARD, useExisting: SessionGuard },
     ExpirySweep,
+    NotificationSweep,
   ],
 })
 export class AppModule {}

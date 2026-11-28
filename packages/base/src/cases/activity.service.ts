@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import type { EntityManager } from "typeorm";
 import { AuditService } from "../audit/audit.service";
 import type { SessionUser } from "../auth/session";
+import { NotificationService } from "../notifications/notification.service";
 import { ActivityEventEntity } from "./entities/activity-event.entity";
 
 export interface ActivityInput {
@@ -29,7 +30,10 @@ export interface ActivityInput {
  */
 @Injectable()
 export class ActivityService {
-  constructor(private readonly audit: AuditService) {}
+  constructor(
+    private readonly audit: AuditService,
+    private readonly notifications: NotificationService,
+  ) {}
 
   async record(manager: EntityManager, input: ActivityInput): Promise<void> {
     const system = input.actor === "SYSTEM";
@@ -61,6 +65,15 @@ export class ActivityService {
           ? { fromStatus: input.fromStatus ?? null, toStatus: input.toStatus ?? null }
           : {}),
       },
+    });
+    // Staff alerts and borrower messages the event calls for (PRD NTF-001/002), in this
+    // transaction too; the gateway is called later, outside it.
+    await this.notifications.onActivity(manager, {
+      caseId: input.caseId,
+      actorId: system ? "SYSTEM" : actor.id,
+      action: input.action,
+      toStatus: input.toStatus ?? null,
+      details: input.details ?? {},
     });
   }
 }

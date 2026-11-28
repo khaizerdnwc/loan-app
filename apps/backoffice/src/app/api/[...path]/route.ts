@@ -22,6 +22,7 @@ export const ALLOWED_ROOTS: ReadonlySet<string> = new Set([
   "operations",
   "reports",
   "sla",
+  "notifications",
   "providers",
   "models",
   "intake",

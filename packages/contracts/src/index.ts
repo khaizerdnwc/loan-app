@@ -9,4 +9,5 @@ export * from "./e-signature.port";
 export * from "./errors";
 export * from "./fraud-check.port";
 export * from "./kyc-aml.port";
+export * from "./notifications.port";
 export * from "./simulation-control.port";

@@ -29,6 +29,9 @@ packages/base        the lending domain — one Nest module (lending.module.ts):
                        reports/     decision mix and origination funnel (read-only)
                        sla/         stage SLAs in Philippine business time, the holiday
                                     calendar and turnaround (read-only over the history)
+                       notifications/  staff alerts and the borrower-message outbox
+                                    (written in the case event's transaction), the
+                                    sender (port, outside any transaction), SLA alerts
                        intake/      email and file intake (OCR drafts confirmed into case
                                     drafts) and OCR readings of case documents
                        decisioning/engine/  pure, versioned decide()
@@ -68,7 +71,7 @@ or a committee adds a real second aggregate.
 (it reads `BookingRequestEntity` and `LoanCaseEntity`, uses `CasesRepository` and the same
 transaction runner), and its `reconciliation_run` table is an insert-only run log, not an
 aggregate of its own. `reports/` owns no state at all: it is read-only aggregate queries over
-the case, decision and activity tables. `sla/` is the same kind: read-only queries over the activity history, plus a holiday calendar that is reference data, not an aggregate. Folder dependencies stay one-way: `sla/` uses `cases/` (visibility) and `reports/` (period rules and readers), and nothing in `cases/` or `reports/` imports `sla/`; the turnaround report keeps its `/reports/turnaround` URL but its controller is declared in `sla/`.
+the case, decision and activity tables. `sla/` is the same kind: read-only queries over the activity history, plus a holiday calendar that is reference data, not an aggregate. `notifications/` hangs off the activity history: `cases/activity.service.ts` calls `NotificationService.onActivity` on its own manager after the audit append, so a case event's staff alerts and borrower-message outbox rows commit with it or not at all. `NotificationService` depends only on its repository (which reads `LoanCaseEntity` for the reference and owner), the transaction runner and the `NOTIFICATIONS` port, and sends outside any transaction; `NotificationReadsService` (the reads, mark read, SLA-breach alerts) uses `cases/` (visibility) and `sla/` (clocks). Keeping the two apart is what keeps the DI graph acyclic: nothing in `cases/` or `sla/` imports the reads service. Folder dependencies stay one-way: `sla/` uses `cases/` (visibility) and `reports/` (period rules and readers), and nothing in `cases/` or `reports/` imports `sla/`; the turnaround report keeps its `/reports/turnaround` URL but its controller is declared in `sla/`.
 
 `intake/` stays inside too: an intake draft is confirmed into a case draft inside the same
 transaction (`CasesService.captureDraft`, INT-007 and the case's activity events), and an OCR
